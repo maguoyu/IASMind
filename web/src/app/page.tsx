@@ -3,7 +3,7 @@
 
 "use client";
 
-import { HomeOutlined, MessageOutlined, BarChartOutlined, SettingOutlined, BulbOutlined, FolderOutlined } from "@ant-design/icons";
+import { HomeOutlined, MessageOutlined, BarChartOutlined, SettingOutlined, BulbOutlined, BookOutlined, FileTextOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -33,32 +33,32 @@ export default function HomePage() {
       color: "bg-gradient-to-br from-blue-500 to-purple-600"
     },
     {
-      title: "数据分析",
-      description: "创建和查看数据图表，进行数据可视化分析",
+      title: "Chat BI",
+      description: "通过对话方式进行商业智能分析和数据洞察",
       icon: <BarChartOutlined className="text-2xl" />,
-      href: "/dataanalysis",
+      href: "/charts",
       color: "bg-gradient-to-br from-green-500 to-teal-600"
+    },
+    {
+      title: "分析报告",
+      description: "生成和查看数据分析报告，支持多种图表展示",
+      icon: <FileTextOutlined className="text-2xl" />,
+      href: "/reports",
+      color: "bg-gradient-to-br from-gray-500 to-slate-600"
     },
     {
       title: "Deep Research",
       description: "多智能体深度调研与知识梳理",
       icon: <BulbOutlined className="text-2xl" />,
-      href: "/chat",
+      href: "/deep_research",
       color: "bg-gradient-to-br from-orange-500 to-red-600"
     },
     {
-      title: "文件管理",
-      description: "管理和组织项目文件，支持文件浏览和操作",
-      icon: <FolderOutlined className="text-2xl" />,
-      href: "/files",
+      title: "知识库",
+      description: "构建和管理知识库，支持文档检索和智能问答",
+      icon: <BookOutlined className="text-2xl" />,
+      href: "/knowledge",
       color: "bg-gradient-to-br from-indigo-500 to-blue-600"
-    },
-    {
-      title: "系统设置",
-      description: "配置系统参数，管理用户偏好设置",
-      icon: <SettingOutlined className="text-2xl" />,
-      href: "/settings",
-      color: "bg-gradient-to-br from-gray-500 to-slate-600"
     }
   ], []);
 

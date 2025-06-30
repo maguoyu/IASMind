@@ -13,14 +13,14 @@ export function ThemeProviderWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isChatOrHomePage = pathname === "/" || pathname?.startsWith("/chat");
+  const isThemeSwitchablePage = pathname === "/" || pathname?.startsWith("/chat") || pathname?.startsWith("/data_analysis") || pathname?.startsWith("/deep_research") || pathname?.startsWith("/files") || pathname?.startsWith("/settings");
 
   return (
     <ThemeProvider
       attribute="class"
       defaultTheme={"dark"}
-      enableSystem={isChatOrHomePage}
-      forcedTheme={isChatOrHomePage ? undefined : "dark"}
+      enableSystem={isThemeSwitchablePage}
+      forcedTheme={isThemeSwitchablePage ? undefined : "dark"}
       disableTransitionOnChange
     >
       {children}

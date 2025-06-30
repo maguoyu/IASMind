@@ -132,7 +132,7 @@ export function InputBox({
   return (
     <div
       className={cn(
-        "bg-card relative flex h-full w-full flex-col rounded-[24px] border",
+        "bg-card relative flex h-full w-full flex-col rounded-[24px] border overflow-hidden",
         className,
       )}
       ref={containerRef}
@@ -160,13 +160,13 @@ export function InputBox({
           )}
           {isEnhanceAnimating && (
             <motion.div
-              className="pointer-events-none absolute inset-0 z-20"
+              className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="relative h-full w-full">
+              <div className="relative h-full w-full overflow-hidden">
                 {/* Knowledge enhancement effect overlay */}
                 <motion.div
                   className="absolute inset-0 rounded-[24px] bg-gradient-to-r from-green-500/10 via-blue-500/10 to-green-500/10"
@@ -189,7 +189,7 @@ export function InputBox({
                       top: `${30 + (i % 2) * 40}%`,
                     }}
                     animate={{
-                      y: [-10, -20, -10],
+                      y: [-5, -10, -5],
                       opacity: [0, 1, 0],
                       scale: [0.5, 1, 0.5],
                     }}
@@ -291,7 +291,7 @@ export function InputBox({
               )}
             </Button>
           </Tooltip>
-          <Tooltip title={responding ? "停止" : "搜索"}>
+          <Tooltip title={responding ? "停止" : "发送"}>
             <Button
               variant="outline"
               size="icon"

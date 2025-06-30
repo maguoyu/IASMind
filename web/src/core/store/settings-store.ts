@@ -12,6 +12,8 @@ const DEFAULT_SETTINGS: SettingsState = {
     autoAcceptedPlan: false,
     enableDeepThinking: false,
     enableBackgroundInvestigation: false,
+    enableOnlineSearch: false,
+    enableKnowledgeRetrieval: false,
     maxPlanIterations: 1,
     maxStepNum: 3,
     maxSearchResults: 3,

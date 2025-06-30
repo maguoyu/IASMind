@@ -3,7 +3,7 @@
 
 "use client";
 
-import { GithubOutlined } from "@ant-design/icons";
+import { HomeOutlined } from "@ant-design/icons";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -30,13 +30,10 @@ export default function HomePage() {
       <header className="fixed top-0 left-0 flex h-12 w-full items-center justify-between px-4">
         <Logo />
         <div className="flex items-center">
-          <Tooltip title="Star DeerFlow on GitHub">
+          <Tooltip title="返回首页">
             <Button variant="ghost" size="icon" asChild>
-              <Link
-                href="https://github.com/bytedance/deer-flow"
-                target="_blank"
-              >
-                <GithubOutlined />
+              <Link href="/">
+                <HomeOutlined />
               </Link>
             </Button>
           </Tooltip>

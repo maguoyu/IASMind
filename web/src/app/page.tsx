@@ -3,7 +3,7 @@
 
 "use client";
 
-import { GithubOutlined, MessageOutlined, BarChartOutlined, SettingOutlined, BulbOutlined, FolderOutlined } from "@ant-design/icons";
+import { HomeOutlined, MessageOutlined, BarChartOutlined, SettingOutlined, BulbOutlined, FolderOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -36,7 +36,7 @@ export default function HomePage() {
       title: "数据分析",
       description: "创建和查看数据图表，进行数据可视化分析",
       icon: <BarChartOutlined className="text-2xl" />,
-      href: "/data_analysis",
+      href: "/dataanalysis",
       color: "bg-gradient-to-br from-green-500 to-teal-600"
     },
     {
@@ -68,13 +68,10 @@ export default function HomePage() {
       <header className="fixed top-0 left-0 flex h-16 w-full items-center justify-between px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 z-50">
         <Logo />
         <div className="flex items-center gap-2">
-          <Tooltip title="Star DeerFlow on GitHub">
+          <Tooltip title="返回首页">
             <Button variant="ghost" size="icon" asChild>
-              <Link
-                href="https://github.com/bytedance/deer-flow"
-                target="_blank"
-              >
-                <GithubOutlined />
+              <Link href="/">
+                <HomeOutlined />
               </Link>
             </Button>
           </Tooltip>

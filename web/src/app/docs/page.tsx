@@ -3,7 +3,7 @@
 
 "use client";
 
-import { GithubOutlined, SaveOutlined, FileTextOutlined } from "@ant-design/icons";
+import { HomeOutlined, SaveOutlined, FileTextOutlined } from "@ant-design/icons";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Suspense, useState } from "react";
@@ -58,13 +58,10 @@ export default function DocsPage() {
               <SaveOutlined />
             </Button>
           </Tooltip>
-          <Tooltip title="Star DeerFlow on GitHub">
+          <Tooltip title="返回首页">
             <Button variant="ghost" size="icon" asChild>
-              <Link
-                href="https://github.com/bytedance/deer-flow"
-                target="_blank"
-              >
-                <GithubOutlined />
+              <Link href="/">
+                <HomeOutlined />
               </Link>
             </Button>
           </Tooltip>

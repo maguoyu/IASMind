@@ -18,8 +18,8 @@ import { enhancePrompt } from "~/core/api";
 import { getConfig } from "~/core/api/config";
 import type { Option, Resource } from "~/core/messages";
 import {
-  setEnableDeepThinking,
-  setEnableBackgroundInvestigation,
+  setEnableOnlineSearch,
+  setEnableKnowledgeRetrieval,
   useSettingsStore,
 } from "~/core/store";
 import { cn } from "~/lib/utils";
@@ -47,10 +47,10 @@ export function InputBox({
   onRemoveFeedback?: () => void;
 }) {
   const enableOnlineSearch = useSettingsStore(
-    (state) => state.general.enableDeepThinking,
+    (state) => state.general.enableOnlineSearch,
   );
   const enableKnowledgeRetrieval = useSettingsStore(
-    (state) => state.general.enableBackgroundInvestigation,
+    (state) => state.general.enableKnowledgeRetrieval,
   );
   const reasoningModel = useMemo(() => getConfig().models.reasoning?.[0], []);
   const reportStyle = useSettingsStore((state) => state.general.reportStyle);
@@ -122,11 +122,11 @@ export function InputBox({
   }, [currentPrompt, isEnhancing]);
 
   const handleOnlineSearchToggle = useCallback(() => {
-    setEnableDeepThinking(!enableOnlineSearch);
+    setEnableOnlineSearch(!enableOnlineSearch);
   }, [enableOnlineSearch]);
 
   const handleKnowledgeRetrievalToggle = useCallback(() => {
-    setEnableBackgroundInvestigation(!enableKnowledgeRetrieval);
+    setEnableKnowledgeRetrieval(!enableKnowledgeRetrieval);
   }, [enableKnowledgeRetrieval]);
 
   return (

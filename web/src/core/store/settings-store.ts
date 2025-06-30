@@ -27,6 +27,8 @@ export type SettingsState = {
     autoAcceptedPlan: boolean;
     enableDeepThinking: boolean;
     enableBackgroundInvestigation: boolean;
+    enableOnlineSearch: boolean;
+    enableKnowledgeRetrieval: boolean;
     maxPlanIterations: number;
     maxStepNum: number;
     maxSearchResults: number;
@@ -156,6 +158,24 @@ export function setEnableBackgroundInvestigation(value: boolean) {
     general: {
       ...state.general,
       enableBackgroundInvestigation: value,
+    },
+  }));
+  saveSettings();
+}
+export function  setEnableOnlineSearch(value: boolean) {
+  useSettingsStore.setState((state) => ({
+    general: {
+      ...state.general,
+      enableOnlineSearch: value,
+    },
+  }));
+  saveSettings();
+}
+export function setEnableKnowledgeRetrieval(value: boolean) {
+  useSettingsStore.setState((state) => ({
+    general: {
+      ...state.general,
+      enableKnowledgeRetrieval: value,
     },
   }));
   saveSettings();

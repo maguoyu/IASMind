@@ -3,7 +3,7 @@
 
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Lightbulb, X } from "lucide-react";
+import { ArrowUp, Search, BookOpen, X, Globe } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { Detective } from "~/components/deer-flow/icons/detective";
@@ -46,10 +46,10 @@ export function InputBox({
   onCancel?: () => void;
   onRemoveFeedback?: () => void;
 }) {
-  const enableDeepThinking = useSettingsStore(
+  const enableOnlineSearch = useSettingsStore(
     (state) => state.general.enableDeepThinking,
   );
-  const backgroundInvestigation = useSettingsStore(
+  const enableKnowledgeRetrieval = useSettingsStore(
     (state) => state.general.enableBackgroundInvestigation,
   );
   const reasoningModel = useMemo(() => getConfig().models.reasoning?.[0], []);
@@ -85,7 +85,7 @@ export function InputBox({
     [responding, onCancel, onSend, feedback, onRemoveFeedback],
   );
 
-  const handleEnhancePrompt = useCallback(async () => {
+  const handleEnhanceQuery = useCallback(async () => {
     if (currentPrompt.trim() === "" || isEnhancing) {
       return;
     }
@@ -94,18 +94,18 @@ export function InputBox({
     setIsEnhanceAnimating(true);
 
     try {
-      const enhancedPrompt = await enhancePrompt({
-        prompt: currentPrompt,
-        report_style: reportStyle.toUpperCase(),
+      const enhancedQuery = await enhancePrompt({
+        prompt: `将以下查询优化为更精确的知识库检索问题：${currentPrompt}`,
+        report_style: "STRUCTURED",
       });
 
       // Add a small delay for better UX
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Update the input with the enhanced prompt with animation
+      // Update the input with the enhanced query with animation
       if (inputRef.current) {
-        inputRef.current.setContent(enhancedPrompt);
-        setCurrentPrompt(enhancedPrompt);
+        inputRef.current.setContent(enhancedQuery);
+        setCurrentPrompt(enhancedQuery);
       }
 
       // Keep animation for a bit longer to show the effect
@@ -113,13 +113,21 @@ export function InputBox({
         setIsEnhanceAnimating(false);
       }, 1000);
     } catch (error) {
-      console.error("Failed to enhance prompt:", error);
+      console.error("Failed to enhance query:", error);
       setIsEnhanceAnimating(false);
       // Could add toast notification here
     } finally {
       setIsEnhancing(false);
     }
-  }, [currentPrompt, isEnhancing, reportStyle]);
+  }, [currentPrompt, isEnhancing]);
+
+  const handleOnlineSearchToggle = useCallback(() => {
+    setEnableDeepThinking(!enableOnlineSearch);
+  }, [enableOnlineSearch]);
+
+  const handleKnowledgeRetrievalToggle = useCallback(() => {
+    setEnableBackgroundInvestigation(!enableKnowledgeRetrieval);
+  }, [enableKnowledgeRetrieval]);
 
   return (
     <div
@@ -159,23 +167,23 @@ export function InputBox({
               transition={{ duration: 0.3 }}
             >
               <div className="relative h-full w-full">
-                {/* Sparkle effect overlay */}
+                {/* Knowledge enhancement effect overlay */}
                 <motion.div
-                  className="absolute inset-0 rounded-[24px] bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10"
+                  className="absolute inset-0 rounded-[24px] bg-gradient-to-r from-green-500/10 via-blue-500/10 to-green-500/10"
                   animate={{
                     background: [
-                      "linear-gradient(45deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1))",
-                      "linear-gradient(225deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1))",
-                      "linear-gradient(45deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1))",
+                      "linear-gradient(45deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1), rgba(34, 197, 94, 0.1))",
+                      "linear-gradient(225deg, rgba(59, 130, 246, 0.1), rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1))",
+                      "linear-gradient(45deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1), rgba(34, 197, 94, 0.1))",
                     ],
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-                {/* Floating sparkles */}
+                {/* Floating knowledge particles */}
                 {[...Array(6)].map((_, i) => (
                   <motion.div
                     key={i}
-                    className="absolute h-2 w-2 rounded-full bg-blue-400"
+                    className="absolute h-2 w-2 rounded-full bg-green-400"
                     style={{
                       left: `${20 + i * 12}%`,
                       top: `${30 + (i % 2) * 40}%`,
@@ -205,51 +213,21 @@ export function InputBox({
           ref={inputRef}
           onEnter={handleSendMessage}
           onChange={setCurrentPrompt}
+          placeholder="请输入您想要查询的问题或关键词..."
         />
       </div>
       <div className="flex items-center px-4 py-2">
         <div className="flex grow gap-2">
-          {reasoningModel && (
-            <Tooltip
-              className="max-w-60"
-              title={
-                <div>
-                  <h3 className="mb-2 font-bold">
-                    Deep Thinking Mode: {enableDeepThinking ? "On" : "Off"}
-                  </h3>
-                  <p>
-                    When enabled, DeerFlow will use reasoning model (
-                    {reasoningModel}) to generate more thoughtful plans.
-                  </p>
-                </div>
-              }
-            >
-              <Button
-                className={cn(
-                  "rounded-2xl",
-                  enableDeepThinking && "!border-brand !text-brand",
-                )}
-                variant="outline"
-                onClick={() => {
-                  setEnableDeepThinking(!enableDeepThinking);
-                }}
-              >
-                <Lightbulb /> Deep Thinking
-              </Button>
-            </Tooltip>
-          )}
-
           <Tooltip
             className="max-w-60"
             title={
               <div>
                 <h3 className="mb-2 font-bold">
-                  Investigation Mode: {backgroundInvestigation ? "On" : "Off"}
+                  联网检索: {enableOnlineSearch ? "开启" : "关闭"}
                 </h3>
                 <p>
-                  When enabled, DeerFlow will perform a quick search before
-                  planning. This is useful for researches related to ongoing
-                  events and news.
+                  开启后，系统将通过互联网搜索获取最新信息，
+                  为您提供更及时、更全面的答案和数据。
                 </p>
               </div>
             }
@@ -257,20 +235,43 @@ export function InputBox({
             <Button
               className={cn(
                 "rounded-2xl",
-                backgroundInvestigation && "!border-brand !text-brand",
+                enableOnlineSearch && "!border-brand !text-brand bg-brand/5",
               )}
               variant="outline"
-              onClick={() =>
-                setEnableBackgroundInvestigation(!backgroundInvestigation)
-              }
+              onClick={handleOnlineSearchToggle}
             >
-              <Detective /> Investigation
+              <Globe size={16} /> 联网检索
             </Button>
           </Tooltip>
-          <ReportStyleDialog />
+
+          <Tooltip
+            className="max-w-60"
+            title={
+              <div>
+                <h3 className="mb-2 font-bold">
+                  知识检索: {enableKnowledgeRetrieval ? "开启" : "关闭"}
+                </h3>
+                <p>
+                  开启后，系统将在知识库中进行深度检索，
+                  结合多个相关文档为您提供更全面的答案。
+                </p>
+              </div>
+            }
+          >
+            <Button
+              className={cn(
+                "rounded-2xl",
+                enableKnowledgeRetrieval && "!border-brand !text-brand bg-brand/5",
+              )}
+              variant="outline"
+              onClick={handleKnowledgeRetrievalToggle}
+            >
+              <BookOpen size={16} /> 知识检索
+            </Button>
+          </Tooltip>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Tooltip title="Enhance prompt with AI">
+          <Tooltip title="优化查询语句">
             <Button
               variant="ghost"
               size="icon"
@@ -278,7 +279,7 @@ export function InputBox({
                 "hover:bg-accent h-10 w-10",
                 isEnhancing && "animate-pulse",
               )}
-              onClick={handleEnhancePrompt}
+              onClick={handleEnhanceQuery}
               disabled={isEnhancing || currentPrompt.trim() === ""}
             >
               {isEnhancing ? (
@@ -290,7 +291,7 @@ export function InputBox({
               )}
             </Button>
           </Tooltip>
-          <Tooltip title={responding ? "Stop" : "Send"}>
+          <Tooltip title={responding ? "停止" : "搜索"}>
             <Button
               variant="outline"
               size="icon"
@@ -313,7 +314,7 @@ export function InputBox({
           <BorderBeam
             duration={5}
             size={250}
-            className="from-transparent via-red-500 to-transparent"
+            className="from-transparent via-green-500 to-transparent"
           />
           <BorderBeam
             duration={5}

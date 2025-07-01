@@ -11,7 +11,7 @@ import { extractReplayIdFromSearchParams } from "./get-replay-id";
 export function useReplay() {
   const searchParams = useSearchParams();
   const replayId = useMemo(
-    () => extractReplayIdFromSearchParams(searchParams.toString()),
+    () => extractReplayIdFromSearchParams(searchParams?.toString() ?? ""),
     [searchParams],
   );
   return {

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { HomeOutlined, MessageOutlined, BarChartOutlined, SettingOutlined, BulbOutlined, BookOutlined, FileTextOutlined } from "@ant-design/icons";
+import { HomeOutlined, MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -38,6 +38,13 @@ export default function HomePage() {
       icon: <BarChartOutlined className="text-2xl" />,
       href: "/charts",
       color: "bg-gradient-to-br from-green-500 to-teal-600"
+    },
+    {
+      title: "数据探索",
+      description: "上传数据文件，进行可视化分析和智能洞察",
+      icon: <DatabaseOutlined className="text-2xl" />,
+      href: "/data_exploration",
+      color: "bg-gradient-to-br from-cyan-500 to-blue-600"
     },
     {
       title: "分析报告",

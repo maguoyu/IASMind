@@ -25,6 +25,10 @@ import type { Tab } from "./types";
 
 const generalFormSchema = z.object({
   autoAcceptedPlan: z.boolean(),
+  enableDeepThinking: z.boolean(),
+  enableBackgroundInvestigation: z.boolean(),
+  enableOnlineSearch: z.boolean(),
+  enableKnowledgeRetrieval: z.boolean(),
   maxPlanIterations: z.number().min(1, {
     message: "Max plan iterations must be at least 1.",
   }),
@@ -34,9 +38,6 @@ const generalFormSchema = z.object({
   maxSearchResults: z.number().min(1, {
     message: "Max search results must be at least 1.",
   }),
-  // Others
-  enableBackgroundInvestigation: z.boolean(),
-  enableDeepThinking: z.boolean(),
   reportStyle: z.enum(["academic", "popular_science", "news", "social_media"]),
 });
 

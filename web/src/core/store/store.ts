@@ -74,7 +74,7 @@ export const useStore = create<{
   },
 }));
 
-export async function sendMessage(
+export async function sendMessage(agentPath?: string,
   content?: string,
   {
     interruptFeedback,
@@ -98,6 +98,7 @@ export async function sendMessage(
 
   const settings = getChatStreamSettings();
   const stream = chatStream(
+    agentPath ?? "chat/stream",
     content ?? "[REPLAY]",
     {
       thread_id: THREAD_ID,

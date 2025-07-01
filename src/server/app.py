@@ -64,7 +64,7 @@ app.add_middleware(
 graph = build_graph_with_memory()
 
 
-@app.post("/api/chat/stream")
+@app.post("/api/deep_research/stream")
 async def chat_stream(request: ChatRequest):
     thread_id = request.thread_id
     if thread_id == "__default__":

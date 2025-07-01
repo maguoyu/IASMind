@@ -29,7 +29,7 @@ export default function HomePage() {
       title: "智能对话",
       description: "与AI助手进行自然语言对话，获取智能回答和建议",
       icon: <MessageOutlined className="text-2xl" />,
-      href: "/chat",
+      href: "/chatbot",
       color: "bg-gradient-to-br from-blue-500 to-purple-600"
     },
     {

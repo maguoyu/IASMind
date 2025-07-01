@@ -13,7 +13,9 @@ import { resolveServiceURL } from "./resolve-service-url";
 import type { ChatEvent } from "./types";
 
 export async function* chatStream(
+  agentPath: string,
   userMessage: string,
+
   params: {
     thread_id: string;
     resources?: Array<Resource>;
@@ -45,7 +47,7 @@ export async function* chatStream(
     return yield* chatReplayStream(userMessage, params, options);
   
   try{
-    const stream = fetchStream(resolveServiceURL("chat/stream"), {
+    const stream = fetchStream(resolveServiceURL(agentPath), {
       body: JSON.stringify({
         messages: [{ role: "user", content: userMessage }],
         ...params,

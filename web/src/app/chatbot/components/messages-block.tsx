@@ -47,6 +47,7 @@ export function MessagesBlock({ className }: { className?: string }) {
       abortControllerRef.current = abortController;
       try {
         await sendMessage(
+          "chatbot/stream",
           message,
           {
             interruptFeedback:

@@ -13,7 +13,7 @@ export function ThemeProviderWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isThemeSwitchablePage = pathname === "/" || pathname?.startsWith("/chat") || pathname?.startsWith("/data_analysis") || pathname?.startsWith("/deep_research") || pathname?.startsWith("/files") || pathname?.startsWith("/settings");
+  const isThemeSwitchablePage = pathname === "/" || pathname?.startsWith("/chat") || pathname?.startsWith("/data_exploration") || pathname?.startsWith("/deep_research") || pathname?.startsWith("/charts") || pathname?.startsWith("/reports");
 
   return (
     <ThemeProvider

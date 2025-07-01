@@ -146,7 +146,7 @@ export function AddMCPServerDialog({
           <DialogTitle>Add New MCP Servers</DialogTitle>
         </DialogHeader>
         <DialogDescription>
-          DeerFlow uses the standard JSON MCP config to create a new server.
+                          IAS_Mind uses the standard JSON MCP config to create a new server.
           <br />
           Paste your config below and click &quot;Add&quot; to add new servers.
         </DialogDescription>

@@ -14,7 +14,7 @@ import { env } from "~/env";
 import { Toaster } from "../components/deer-flow/toaster";
 
 export const metadata: Metadata = {
-  title: "🦌 DeerFlow",
+  title: "🧠 IAS_Mind",
   description:
     "Deep Exploration and Efficient Research, an AI tool that combines language models with specialized tools for research tasks.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
@@ -32,7 +32,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <head>
-        <script>{`window.__deerflowConfig = ${JSON.stringify(conf)}`}</script>
+        <script>{`window.__iasmindConfig = ${JSON.stringify(conf)}`}</script>
         {/* Define isSpace function globally to fix markdown-it issues with Next.js + Turbopack
           https://github.com/markdown-it/markdown-it/issues/1082#issuecomment-2749656365 */}
         <Script id="markdown-it-fix" strategy="beforeInteractive">

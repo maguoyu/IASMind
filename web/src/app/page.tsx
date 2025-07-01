@@ -92,7 +92,7 @@ export default function HomePage() {
         {/* Welcome Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-            欢迎使用 DeerFlow
+            欢迎使用 IAS_Mind
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
             一个强大的AI工作平台，集成了智能对话、数据分析、思维导图等多种功能，提升您的工作效率
@@ -173,7 +173,7 @@ function Footer() {
       </div>
       <div className="text-muted-foreground mb-8 flex flex-col items-center justify-center text-xs">
         <p>Licensed under MIT License</p>
-        <p>&copy; {year} DeerFlow</p>
+        <p>&copy; {year} IAS_Mind</p>
       </div>
     </footer>
   );

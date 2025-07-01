@@ -84,7 +84,7 @@ export default function DocsPage() {
                     {
                       type: "heading",
                       attrs: { level: 1 },
-                      content: [{ type: "text", text: "欢迎使用 DeerFlow 文档编辑器" }]
+                      content: [{ type: "text", text: "欢迎使用 IAS_Mind 文档编辑器" }]
                     },
                     {
                       type: "paragraph",

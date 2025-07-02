@@ -100,10 +100,12 @@ export async function sendMessage(agentPath?: string,
   } = {},
   options: { abortSignal?: AbortSignal } = {},
 ) {
+  const currentThreadId = useStore.getState().threadId ?? THREAD_ID;
+  
   if (content != null) {
     appendMessage({
       id: nanoid(),
-      threadId: THREAD_ID,
+      threadId: currentThreadId,
       role: "user",
       content: content,
       contentChunks: [content],
@@ -116,7 +118,7 @@ export async function sendMessage(agentPath?: string,
     agentPath ?? "chatbot/stream",
     content ?? "[REPLAY]",
     {
-      thread_id: THREAD_ID,
+      thread_id: currentThreadId,
       interrupt_feedback: interruptFeedback,
       resources,
       auto_accepted_plan: settings.autoAcceptedPlan,

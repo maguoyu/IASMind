@@ -1,7 +1,7 @@
 import logging
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from src.chatbot.graph.builder import build_graph_with_memory
@@ -21,20 +21,28 @@ _graph = build_graph_with_memory()
 
 
 @router.post("/stream")
-async def chatbot_stream(request: ChatRequest):
+async def chatbot_stream(request: ChatRequest, http_request: Request):
     """Stream chatbot responses with RAG support."""
     try:
         thread_id = request.thread_id
         if thread_id == "__default__":
             thread_id = str(uuid4())
 
-        return StreamingResponse(
-            astream_chatbot_generator(
+        async def stream_with_disconnect_check():
+            async for chunk in astream_chatbot_generator(
                 _graph,
                 request.model_dump()["messages"],
                 thread_id or str(uuid4()),
                 request.resources or [],
-            ),
+            ):
+                # Check if client has disconnected
+                if await http_request.is_disconnected():
+                    print(f"Client disconnected for chatbot thread {thread_id}, stopping backend task")
+                    break
+                yield chunk
+
+        return StreamingResponse(
+            stream_with_disconnect_check(),
             media_type="text/event-stream",
         )
     except Exception as e:

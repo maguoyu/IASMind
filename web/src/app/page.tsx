@@ -62,7 +62,7 @@ export default function HomePage() {
     },
     {
       title: "知识库",
-      description: "构建和管理知识库，支持文档检索和智能问答",
+      description: "构建和管理知识库，支撑文档检索和智能问答",
       icon: <BookOutlined className="text-2xl" />,
       href: "/knowledge",
       color: "bg-gradient-to-br from-indigo-500 to-blue-600"

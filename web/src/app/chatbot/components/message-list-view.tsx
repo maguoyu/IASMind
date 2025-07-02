@@ -144,6 +144,7 @@ function MessageListItem({
       message.agent === "coordinator" ||
       message.agent === "planner" ||
       message.agent === "podcast" ||
+      message.agent === "chatbot" ||
       startOfResearch
     ) {
       let content: React.ReactNode;

@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.server.routers.deep_research_router import router as deep_research_router
+from src.server.routers.chatbot_router import router as chatbot_router
 from src.server.routers.tts_router import router as tts_router
 from src.server.routers.podcast_router import router as podcast_router
 from src.server.routers.ppt_router import router as ppt_router
@@ -35,6 +36,7 @@ app.add_middleware(
 
 # Include all routers
 app.include_router(deep_research_router)
+app.include_router(chatbot_router)
 app.include_router(tts_router)
 app.include_router(podcast_router)
 app.include_router(ppt_router)

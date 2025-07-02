@@ -8,6 +8,7 @@ import { Geist } from "next/font/google";
 import Script from "next/script";
 
 import { ThemeProviderWrapper } from "~/components/deer-flow/theme-provider-wrapper";
+import { RouteChangeHandler } from "~/components/deer-flow/route-change-handler";
 import { loadConfig } from "~/core/api/config";
 import { env } from "~/env";
 
@@ -46,7 +47,10 @@ export default async function RootLayout({
         </Script>
       </head>
       <body className="bg-app">
-        <ThemeProviderWrapper>{children}</ThemeProviderWrapper>
+        <ThemeProviderWrapper>
+          <RouteChangeHandler />
+          {children}
+        </ThemeProviderWrapper>
         <Toaster />
         {
           // NO USER BEHAVIOR TRACKING OR PRIVATE DATA COLLECTION BY DEFAULT

@@ -17,7 +17,7 @@ import { fastForwardReplay } from "~/core/api";
 import { useReplayMetadata } from "~/core/api/hooks";
 import type { Option, Resource } from "~/core/messages";
 import { useReplay } from "~/core/replay";
-import { sendMessage, useMessageIds, useStore } from "~/core/store";
+import { sendMessage, useMessageIds, useStore, getGlobalAbortController, abortGlobalRequest } from "~/core/store";
 import { env } from "~/env";
 import { cn } from "~/lib/utils";
 
@@ -33,7 +33,6 @@ export function MessagesBlock({ className }: { className?: string }) {
   const { isReplay } = useReplay();
   const { title: replayTitle, hasError: replayHasError } = useReplayMetadata();
   const [replayStarted, setReplayStarted] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const [feedback, setFeedback] = useState<{ option: Option } | null>(null);
   const handleSend = useCallback(
     async (
@@ -43,8 +42,7 @@ export function MessagesBlock({ className }: { className?: string }) {
         resources?: Array<Resource>;
       },
     ) => {
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
+      const abortController = getGlobalAbortController();
       try {
         await sendMessage(
           "chatbot/stream",
@@ -63,8 +61,7 @@ export function MessagesBlock({ className }: { className?: string }) {
     [feedback],
   );
   const handleCancel = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
+    abortGlobalRequest();
   }, []);
   const handleFeedback = useCallback(
     (feedback: { option: Option }) => {

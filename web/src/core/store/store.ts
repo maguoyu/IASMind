@@ -33,6 +33,7 @@ export const useStore = create<{
   openResearch: (researchId: string | null) => void;
   closeResearch: () => void;
   setOngoingResearch: (researchId: string | null) => void;
+  resetStore: () => void;
 }>((set) => ({
   responding: false,
   threadId: THREAD_ID,
@@ -71,6 +72,20 @@ export const useStore = create<{
   },
   setOngoingResearch(researchId: string | null) {
     set({ ongoingResearchId: researchId });
+  },
+  resetStore() {
+    set({
+      responding: false,
+      threadId: nanoid(),
+      messageIds: [],
+      messages: new Map<string, Message>(),
+      researchIds: [],
+      researchPlanIds: new Map<string, string>(),
+      researchReportIds: new Map<string, string>(),
+      researchActivityIds: new Map<string, string[]>(),
+      ongoingResearchId: null,
+      openResearchId: null,
+    });
   },
 }));
 
@@ -401,4 +416,32 @@ export function useToolCalls() {
         .flat();
     }),
   );
+}
+
+// Global AbortController manager
+let globalAbortController: AbortController | null = null;
+
+export function getGlobalAbortController(): AbortController {
+  if (!globalAbortController) {
+    globalAbortController = new AbortController();
+  }
+  return globalAbortController;
+}
+
+export function abortGlobalRequest() {
+  if (globalAbortController) {
+    globalAbortController.abort();
+    globalAbortController = null;
+  }
+}
+
+export function resetGlobalAbortController() {
+  abortGlobalRequest();
+  globalAbortController = new AbortController();
+}
+
+// Export resetStore function
+export function resetStore() {
+  useStore.getState().resetStore();
+  abortGlobalRequest();
 }

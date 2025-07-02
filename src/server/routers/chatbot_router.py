@@ -51,9 +51,10 @@ async def chatbot_stream(request: ChatRequest, http_request: Request):
 
 
 async def astream_chatbot_generator(graph, messages, thread_id: str, resources):
-    """Simplified streaming generator for chatbot responses."""
+    """Streaming generator for chatbot responses using graph.astream."""
     import json
-    from uuid import uuid4
+    from typing import cast, Any
+    from langchain_core.messages import AIMessageChunk, BaseMessage
     
     input_ = {
         "messages": messages,
@@ -63,60 +64,39 @@ async def astream_chatbot_generator(graph, messages, thread_id: str, resources):
     }
     
     try:
-        # Use invoke for simpler non-streaming response first
-        result = await graph.ainvoke(
+        async for agent, _, event_data in graph.astream(
             input_,
             config={
                 "thread_id": thread_id,
                 "resources": resources,
-            }
-        )
-        
-        # Extract response from result
-        response_content = ""
-        if "response" in result:
-            response_content = result["response"]
-        elif "messages" in result and result["messages"]:
-            # Get the last message content
-            last_message = result["messages"][-1]
-            if hasattr(last_message, 'content'):
-                response_content = last_message.content
-            elif isinstance(last_message, dict) and 'content' in last_message:
-                response_content = last_message['content']
-        
-        if not response_content:
-            response_content = "抱歉，我无法生成回复。"
-        
-        # Create unique message ID for each response to avoid content accumulation
-        message_id = f"chatbot-msg-{uuid4().hex[:8]}"
-        
-        # Stream the response in chunks for better UX
-        chunk_size = 20
-        for i in range(0, len(response_content), chunk_size):
-            chunk = response_content[i:i+chunk_size]
-            event_stream_message = {
+            },
+            stream_mode=["messages", "updates"],
+            subgraphs=True,
+        ):
+            if isinstance(event_data, dict):
+                # Handle any dictionary events (like interrupts)
+                continue
+            
+            message_chunk, message_metadata = cast(
+                tuple[BaseMessage, dict[str, Any]], event_data
+            )
+            
+            event_stream_message: dict[str, Any] = {
                 "thread_id": thread_id,
                 "agent": "chatbot",
-                "id": message_id,  # 使用唯一的ID
-                "role": "assistant", 
-                "content": chunk,
+                "id": message_chunk.id,
+                "role": "assistant",
+                "content": message_chunk.content,
             }
-            yield f"event: message_chunk\ndata: {json.dumps(event_stream_message, ensure_ascii=False)}\n\n"
             
-            # Add small delay for streaming effect
-            import asyncio
-            await asyncio.sleep(0.05)
-        
-        # Send final message with finish_reason to indicate completion
-        final_message = {
-            "thread_id": thread_id,
-            "agent": "chatbot",
-            "id": message_id,
-            "role": "assistant",
-            "content": "",
-            "finish_reason": "stop",
-        }
-        yield f"event: message_chunk\ndata: {json.dumps(final_message, ensure_ascii=False)}\n\n"
+            if message_chunk.response_metadata.get("finish_reason"):
+                event_stream_message["finish_reason"] = message_chunk.response_metadata.get(
+                    "finish_reason"
+                )
+            
+            if isinstance(message_chunk, AIMessageChunk):
+                # AI Message - Raw message tokens
+                yield f"event: message_chunk\ndata: {json.dumps(event_stream_message, ensure_ascii=False)}\n\n"
     
     except Exception as e:
         logger.exception(f"Error in chatbot stream generator: {str(e)}")

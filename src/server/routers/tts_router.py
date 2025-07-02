@@ -44,13 +44,13 @@ async def text_to_speech(request: TTSRequest):
         # Call the TTS API
         result = tts_client.text_to_speech(
             text=request.text[:1024],
-            encoding=request.encoding,
-            speed_ratio=request.speed_ratio,
-            volume_ratio=request.volume_ratio,
-            pitch_ratio=request.pitch_ratio,
-            text_type=request.text_type,
-            with_frontend=request.with_frontend,
-            frontend_type=request.frontend_type,
+            encoding=request.encoding or "mp3",
+            speed_ratio=request.speed_ratio or 1.0,
+            volume_ratio=request.volume_ratio or 1.0,
+            pitch_ratio=request.pitch_ratio or 1.0,
+            text_type=request.text_type or "plain",
+            with_frontend=request.with_frontend or 1,
+            frontend_type=request.frontend_type or "unitTson",
         )
 
         if not result["success"]:

@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import List, cast, Any
 
 from src.graph import build_graph_with_memory
 from src.rag.retriever import Resource
@@ -73,9 +73,9 @@ async def astream_workflow_generator(
                 )
             continue
         message_chunk, message_metadata = cast(
-            tuple[BaseMessage, dict[str, any]], event_data
+            tuple[BaseMessage, dict[str, Any]], event_data
         )
-        event_stream_message: dict[str, any] = {
+        event_stream_message: dict[str, Any] = {
             "thread_id": thread_id,
             "agent": agent[0].split(":")[0],
             "id": message_chunk.id,
@@ -113,7 +113,7 @@ async def astream_workflow_generator(
                 # AI Message - Raw message tokens
                 yield _make_event("message_chunk", event_stream_message)
 
-def _make_event(event_type: str, data: dict[str, any]):
+def _make_event(event_type: str, data: dict[str, Any]):
     if data.get("content") == "":
         data.pop("content")
     return f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"

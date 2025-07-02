@@ -1,4 +1,6 @@
 from typing import List, cast
+
+from src.graph import build_graph_with_memory
 from src.rag.retriever import Resource
 from src.config.report_style import ReportStyle
 from langgraph.types import Command
@@ -6,7 +8,8 @@ from langchain_core.messages import AIMessageChunk, ToolMessage, BaseMessage
 import json
 
 
-async def _astream_workflow_generator(
+
+async def astream_workflow_generator(
     graph,
     messages: List[dict],
     thread_id: str,

@@ -63,7 +63,6 @@ app.add_middleware(
 )
 
 app.include_router(deep_research_router)
-graph = build_graph_with_memory()
 
 
 

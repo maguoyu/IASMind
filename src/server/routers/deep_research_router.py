@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from uuid import uuid4
-from src.server.generator_util import _astream_workflow_generator
+from src.server.generator_util import astream_workflow_generator
 from src.server.chat_request import ChatRequest
 from src.config.report_style import ReportStyle
 from src.graph.builder import build_graph_with_memory
@@ -11,6 +11,8 @@ router = APIRouter(
     tags=["deep_research"],
     responses={404: {"message": "您所访问的资源不存在！"}},
 )
+_graph = build_graph_with_memory()
+
 
 @router.post("/stream")
 async def chat_stream(request: ChatRequest):
@@ -18,11 +20,10 @@ async def chat_stream(request: ChatRequest):
     if thread_id == "__default__":
         thread_id = str(uuid4())
     
-    graph = build_graph_with_memory()
-    
+
     return StreamingResponse(
-        _astream_workflow_generator(
-            graph,
+        astream_workflow_generator(
+            _graph,
             request.model_dump()["messages"],
             thread_id or str(uuid4()),
             request.resources or [],

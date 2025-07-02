@@ -53,6 +53,12 @@ class ChatRequest(BaseModel):
     interrupt_feedback: Optional[str] = Field(
         None, description="Interrupt feedback from the user on the plan"
     )
+    enable_online_search: Optional[bool] = Field(
+        None, description="enable_online_search"
+    )
+    enable_knowledge_retrieval: Optional[bool] = Field(
+        None, description="enable_knowledge_retrieval"
+    )
     mcp_settings: Optional[dict] = Field(
         None, description="MCP settings for the chat request"
     )

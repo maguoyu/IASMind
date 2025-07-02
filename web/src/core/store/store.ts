@@ -98,13 +98,15 @@ export async function sendMessage(agentPath?: string,
 
   const settings = getChatStreamSettings();
   const stream = chatStream(
-    agentPath ?? "chat/stream",
+    agentPath ?? "chatbot/stream",
     content ?? "[REPLAY]",
     {
       thread_id: THREAD_ID,
       interrupt_feedback: interruptFeedback,
       resources,
       auto_accepted_plan: settings.autoAcceptedPlan,
+      enable_online_search: settings.enableOnlineSearch??false,
+      enable_knowledge_retrieval: settings.enableKnowledgeRetrieval??false,
       enable_deep_thinking: settings.enableDeepThinking ?? false,
       enable_background_investigation:
         settings.enableBackgroundInvestigation ?? true,

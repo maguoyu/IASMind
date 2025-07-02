@@ -5,8 +5,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from src.prompts.planner_model import StepType
 
-from .types import State
-from .nodes import (
+from src.deep_research.graph.types import State
+from src.deep_research.graph.nodes import (
     coordinator_node,
     planner_node,
     reporter_node,

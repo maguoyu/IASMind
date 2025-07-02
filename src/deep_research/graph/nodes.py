@@ -28,8 +28,8 @@ from src.prompts.planner_model import Plan
 from src.prompts.template import apply_prompt_template
 from src.utils.json_utils import repair_json_output
 
-from .types import State
-from ..config import SELECTED_SEARCH_ENGINE, SearchEngine
+from src.deep_research.graph.types import State
+from src.config import SELECTED_SEARCH_ENGINE, SearchEngine
 
 logger = logging.getLogger(__name__)
 

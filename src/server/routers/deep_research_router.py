@@ -4,7 +4,7 @@ from uuid import uuid4
 from src.server.generator_util import astream_workflow_generator
 from src.server.chat_request import ChatRequest
 from src.config.report_style import ReportStyle
-from src.graph.builder import build_graph_with_memory
+from src.deep_research.graph.builder import build_graph_with_memory
 
 router = APIRouter(
     prefix="/api/deep_research",

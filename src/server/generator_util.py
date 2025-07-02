@@ -1,6 +1,6 @@
 from typing import List, cast, Any
 
-from src.graph import build_graph_with_memory
+from src.deep_research.graph import build_graph_with_memory
 from src.rag.retriever import Resource
 from src.config.report_style import ReportStyle
 from langgraph.types import Command

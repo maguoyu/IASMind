@@ -3,7 +3,7 @@
 
 "use client";
 
-import { HomeOutlined, MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined } from "@ant-design/icons";
+import { HomeOutlined, MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined, LineChartOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -66,6 +66,13 @@ export default function HomePage() {
       icon: <BookOutlined className="text-2xl" />,
       href: "/knowledge",
       color: "bg-gradient-to-br from-indigo-500 to-blue-600"
+    },
+    {
+      title: "销售预测",
+      description: "预测航空汽油的销售情况，为航油采购提供数据支撑",
+      icon: <LineChartOutlined className="text-2xl" />,
+      href: "/sales_forecast",
+      color: "bg-gradient-to-br from-pink-500 to-rose-600"
     }
   ], []);
 

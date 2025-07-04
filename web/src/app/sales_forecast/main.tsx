@@ -1,0 +1,2355 @@
+"use client";
+
+import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, ArrowLeft, BarChart3 } from "lucide-react";
+import { useState } from "react";
+
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+
+interface SampleData {
+  id: string;
+  date: string;
+  sales_volume: number;
+  price: number;
+  region: string;
+  season: string;
+  weather: string;
+  events: string;
+  notes: string;
+  sampleFile: string;
+}
+
+interface ForecastData {
+  month: string;
+  predicted: number;
+  actual?: number;
+  confidence: number;
+}
+
+// 静态样本数据
+const staticSampleData: SampleData[] = [
+  // 历史销售数据
+  {
+    id: "1",
+    date: "2024-01-01",
+    sales_volume: 1000.5,
+    price: 8.5,
+    region: "华东",
+    season: "冬季",
+    weather: "晴天",
+    events: "元旦假期",
+    notes: "节假日期间销量增加",
+    sampleFile: "华东地区2024年1月样本数据.xlsx"
+  },
+  {
+    id: "2",
+    date: "2024-01-02",
+    sales_volume: 950.2,
+    price: 8.3,
+    region: "华东",
+    season: "冬季",
+    weather: "多云",
+    events: "",
+    notes: "工作日正常销量",
+    sampleFile: "华东地区2024年1月样本数据.xlsx"
+  },
+  {
+    id: "3",
+    date: "2024-01-03",
+    sales_volume: 1100.8,
+    price: 8.7,
+    region: "华南",
+    season: "冬季",
+    weather: "晴天",
+    events: "",
+    notes: "南方地区需求稳定",
+    sampleFile: "华南地区2023年样本数据.xlsx"
+  },
+  {
+    id: "4",
+    date: "2024-01-04",
+    sales_volume: 1050.3,
+    price: 8.6,
+    region: "华北",
+    season: "冬季",
+    weather: "阴天",
+    events: "",
+    notes: "北方地区需求稳定",
+    sampleFile: "华北地区2023年样本数据.xlsx"
+  },
+  {
+    id: "5",
+    date: "2024-01-05",
+    sales_volume: 1200.1,
+    price: 8.8,
+    region: "华东",
+    season: "冬季",
+    weather: "晴天",
+    events: "周末",
+    notes: "周末出行需求增加",
+    sampleFile: "华东地区2024年1月样本数据.xlsx"
+  },
+  // 年度汇总数据
+  {
+    id: "6",
+    date: "2023-12-31",
+    sales_volume: 8500.0,
+    price: 8.2,
+    region: "华东",
+    season: "冬季",
+    weather: "晴天",
+    events: "年终总结",
+    notes: "2023年华东地区年度汇总数据",
+    sampleFile: "华东地区2023年年度汇总.xlsx"
+  },
+  {
+    id: "7",
+    date: "2023-12-31",
+    sales_volume: 7200.0,
+    price: 8.1,
+    region: "华南",
+    season: "冬季",
+    weather: "晴天",
+    events: "年终总结",
+    notes: "2023年华南地区年度汇总数据",
+    sampleFile: "华南地区2023年样本数据.xlsx"
+  },
+  {
+    id: "8",
+    date: "2023-12-31",
+    sales_volume: 6800.0,
+    price: 8.0,
+    region: "华北",
+    season: "冬季",
+    weather: "晴天",
+    events: "年终总结",
+    notes: "2023年华北地区年度汇总数据",
+    sampleFile: "华北地区2023年样本数据.xlsx"
+  },
+  // 季度数据
+  {
+    id: "9",
+    date: "2023-10-01",
+    sales_volume: 2100.0,
+    price: 8.3,
+    region: "华东",
+    season: "秋季",
+    weather: "晴天",
+    events: "Q4季度开始",
+    notes: "2023年第四季度华东地区数据",
+    sampleFile: "华东地区2023年Q4季度数据.xlsx"
+  },
+  {
+    id: "10",
+    date: "2023-10-01",
+    sales_volume: 1800.0,
+    price: 8.2,
+    region: "华南",
+    season: "秋季",
+    weather: "晴天",
+    events: "Q4季度开始",
+    notes: "2023年第四季度华南地区数据",
+    sampleFile: "华南地区2023年样本数据.xlsx"
+  },
+  {
+    id: "11",
+    date: "2023-10-01",
+    sales_volume: 1700.0,
+    price: 8.1,
+    region: "华北",
+    season: "秋季",
+    weather: "晴天",
+    events: "Q4季度开始",
+    notes: "2023年第四季度华北地区数据",
+    sampleFile: "华北地区2023年样本数据.xlsx"
+  },
+  // 月度数据
+  {
+    id: "12",
+    date: "2023-12-01",
+    sales_volume: 700.0,
+    price: 8.4,
+    region: "华东",
+    season: "冬季",
+    weather: "多云",
+    events: "12月月度统计",
+    notes: "2023年12月华东地区月度数据",
+    sampleFile: "华东地区2023年12月数据.xlsx"
+  },
+  {
+    id: "13",
+    date: "2023-12-01",
+    sales_volume: 600.0,
+    price: 8.3,
+    region: "华南",
+    season: "冬季",
+    weather: "多云",
+    events: "12月月度统计",
+    notes: "2023年12月华南地区月度数据",
+    sampleFile: "华南地区2023年样本数据.xlsx"
+  },
+  {
+    id: "14",
+    date: "2023-12-01",
+    sales_volume: 550.0,
+    price: 8.2,
+    region: "华北",
+    season: "冬季",
+    weather: "多云",
+    events: "12月月度统计",
+    notes: "2023年12月华北地区月度数据",
+    sampleFile: "华北地区2023年样本数据.xlsx"
+  },
+  {
+    id: "15",
+    date: "2023-11-01",
+    sales_volume: 680.0,
+    price: 8.3,
+    region: "华东",
+    season: "秋季",
+    weather: "晴天",
+    events: "11月月度统计",
+    notes: "2023年11月华东地区月度数据",
+    sampleFile: "华东地区2023年11月数据.xlsx"
+  },
+  {
+    id: "16",
+    date: "2023-11-01",
+    sales_volume: 580.0,
+    price: 8.2,
+    region: "华南",
+    season: "秋季",
+    weather: "晴天",
+    events: "11月月度统计",
+    notes: "2023年11月华南地区月度数据",
+    sampleFile: "华南地区2023年样本数据.xlsx"
+  },
+  {
+    id: "17",
+    date: "2023-11-01",
+    sales_volume: 520.0,
+    price: 8.1,
+    region: "华北",
+    season: "秋季",
+    weather: "晴天",
+    events: "11月月度统计",
+    notes: "2023年11月华北地区月度数据",
+    sampleFile: "华北地区2023年样本数据.xlsx"
+  },
+  {
+    id: "18",
+    date: "2023-10-01",
+    sales_volume: 720.0,
+    price: 8.4,
+    region: "华东",
+    season: "秋季",
+    weather: "晴天",
+    events: "10月月度统计",
+    notes: "2023年10月华东地区月度数据",
+    sampleFile: "华东地区2023年10月数据.xlsx"
+  },
+  {
+    id: "19",
+    date: "2023-10-01",
+    sales_volume: 620.0,
+    price: 8.3,
+    region: "华南",
+    season: "秋季",
+    weather: "晴天",
+    events: "10月月度统计",
+    notes: "2023年10月华南地区月度数据",
+    sampleFile: "华南地区2023年样本数据.xlsx"
+  },
+  {
+    id: "20",
+    date: "2023-10-01",
+    sales_volume: 580.0,
+    price: 8.2,
+    region: "华北",
+    season: "秋季",
+    weather: "晴天",
+    events: "10月月度统计",
+    notes: "2023年10月华北地区月度数据",
+    sampleFile: "华北地区2023年样本数据.xlsx"
+  }
+];
+
+// 静态预测数据
+const staticForecastData: ForecastData[] = [
+  // 华东地区2024年销售预测 - 线性回归
+  { month: "2024-02", predicted: 1050, actual: 1020, confidence: 95 },
+  { month: "2024-03", predicted: 1100, actual: 1080, confidence: 92 },
+  { month: "2024-04", predicted: 1150, confidence: 88 },
+  { month: "2024-05", predicted: 1200, confidence: 85 },
+  { month: "2024-06", predicted: 1250, confidence: 82 },
+  { month: "2024-07", predicted: 1300, confidence: 80 },
+  { month: "2024-08", predicted: 1350, confidence: 78 },
+  { month: "2024-09", predicted: 1400, confidence: 75 },
+  { month: "2024-10", predicted: 1450, confidence: 72 },
+  { month: "2024-11", predicted: 1500, confidence: 70 },
+  { month: "2024-12", predicted: 1550, confidence: 68 },
+  { month: "2025-01", predicted: 1600, confidence: 65 },
+  
+  // 华南地区年度预测分析 - ARIMA模型
+  { month: "2024-02", predicted: 980, actual: 950, confidence: 94 },
+  { month: "2024-03", predicted: 1020, actual: 990, confidence: 91 },
+  { month: "2024-04", predicted: 1080, confidence: 87 },
+  { month: "2024-05", predicted: 1120, confidence: 84 },
+  { month: "2024-06", predicted: 1180, confidence: 81 },
+  { month: "2024-07", predicted: 1220, confidence: 79 },
+  { month: "2024-08", predicted: 1280, confidence: 76 },
+  { month: "2024-09", predicted: 1320, confidence: 73 },
+  { month: "2024-10", predicted: 1380, confidence: 70 },
+  { month: "2024-11", predicted: 1420, confidence: 68 },
+  { month: "2024-12", predicted: 1480, confidence: 65 },
+  { month: "2025-01", predicted: 1520, confidence: 62 },
+  
+  // 华北地区季度预测 - 指数平滑
+  { month: "2024-02", predicted: 850, actual: 820, confidence: 89 },
+  { month: "2024-03", predicted: 880, actual: 850, confidence: 86 },
+  { month: "2024-04", predicted: 920, confidence: 83 },
+  { month: "2024-05", predicted: 950, confidence: 80 },
+  { month: "2024-06", predicted: 980, confidence: 77 },
+  { month: "2024-07", predicted: 1020, confidence: 75 },
+  { month: "2024-08", predicted: 1050, confidence: 72 },
+  { month: "2024-09", predicted: 1080, confidence: 69 },
+  { month: "2024-10", predicted: 1120, confidence: 66 },
+  { month: "2024-11", predicted: 1150, confidence: 64 },
+  { month: "2024-12", predicted: 1180, confidence: 61 },
+  { month: "2025-01", predicted: 1220, confidence: 58 },
+  
+  // 全国销售深度预测 - LSTM神经网络
+  { month: "2024-02", predicted: 3200, actual: 3150, confidence: 96 },
+  { month: "2024-03", predicted: 3350, actual: 3300, confidence: 93 },
+  { month: "2024-04", predicted: 3500, confidence: 90 },
+  { month: "2024-05", predicted: 3650, confidence: 87 },
+  { month: "2024-06", predicted: 3800, confidence: 84 },
+  { month: "2024-07", predicted: 3950, confidence: 82 },
+  { month: "2024-08", predicted: 4100, confidence: 79 },
+  { month: "2024-09", predicted: 4250, confidence: 76 },
+  { month: "2024-10", predicted: 4400, confidence: 73 },
+  { month: "2024-11", predicted: 4550, confidence: 70 },
+  { month: "2024-12", predicted: 4700, confidence: 67 },
+  { month: "2025-01", predicted: 4850, confidence: 64 }
+];
+
+type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis";
+
+export default function SalesForecastMain() {
+  const [activeMenu, setActiveMenu] = useState<MenuItem>("upload");
+  const [sampleData, setSampleData] = useState<SampleData[]>(staticSampleData);
+  const [forecastData, setForecastData] = useState<ForecastData[]>([
+    { month: "2024-01", predicted: 1250, actual: 1280, confidence: 92 },
+    { month: "2024-02", predicted: 1180, actual: 1150, confidence: 88 },
+    { month: "2024-03", predicted: 1350, actual: 1320, confidence: 91 },
+    { month: "2024-04", predicted: 1420, actual: 1450, confidence: 89 },
+    { month: "2024-05", predicted: 1380, actual: 1360, confidence: 87 },
+    { month: "2024-06", predicted: 1550, actual: 1580, confidence: 93 },
+    { month: "2024-07", predicted: 1680, actual: 1650, confidence: 90 },
+    { month: "2024-08", predicted: 1620, actual: 1600, confidence: 88 },
+    { month: "2024-09", predicted: 1480, actual: 1520, confidence: 91 },
+    { month: "2024-10", predicted: 1350, actual: 1380, confidence: 89 },
+    { month: "2024-11", predicted: 1280, actual: 1250, confidence: 86 },
+    { month: "2024-12", predicted: 1450, actual: 1420, confidence: 92 },
+    // 第二组数据
+    { month: "2024-01", predicted: 980, actual: 950, confidence: 85 },
+    { month: "2024-02", predicted: 920, actual: 900, confidence: 82 },
+    { month: "2024-03", predicted: 1050, actual: 1080, confidence: 88 },
+    { month: "2024-04", predicted: 1120, actual: 1150, confidence: 90 },
+    { month: "2024-05", predicted: 1080, actual: 1060, confidence: 87 },
+    { month: "2024-06", predicted: 1250, actual: 1280, confidence: 92 },
+    { month: "2024-07", predicted: 1380, actual: 1350, confidence: 89 },
+    { month: "2024-08", predicted: 1320, actual: 1300, confidence: 87 },
+    { month: "2024-09", predicted: 1180, actual: 1220, confidence: 90 },
+    { month: "2024-10", predicted: 1050, actual: 1080, confidence: 88 },
+    { month: "2024-11", predicted: 980, actual: 950, confidence: 84 },
+    { month: "2024-12", predicted: 1150, actual: 1120, confidence: 91 },
+    // 第三组数据
+    { month: "2024-01", predicted: 850, actual: 880, confidence: 83 },
+    { month: "2024-02", predicted: 780, actual: 750, confidence: 80 },
+    { month: "2024-03", predicted: 920, actual: 950, confidence: 86 },
+    { month: "2024-04", predicted: 980, actual: 1020, confidence: 88 },
+    { month: "2024-05", predicted: 950, actual: 930, confidence: 85 },
+    { month: "2024-06", predicted: 1120, actual: 1150, confidence: 90 },
+    { month: "2024-07", predicted: 1250, actual: 1220, confidence: 87 },
+    { month: "2024-08", predicted: 1180, actual: 1160, confidence: 85 },
+    { month: "2024-09", predicted: 1050, actual: 1080, confidence: 88 },
+    { month: "2024-10", predicted: 920, actual: 950, confidence: 86 },
+    { month: "2024-11", predicted: 850, actual: 820, confidence: 82 },
+    { month: "2024-12", predicted: 1020, actual: 980, confidence: 89 },
+    // 第四组数据
+    { month: "2024-01", predicted: 2200, actual: 2250, confidence: 94 },
+    { month: "2024-02", predicted: 2100, actual: 2050, confidence: 91 },
+    { month: "2024-03", predicted: 2350, actual: 2380, confidence: 93 },
+    { month: "2024-04", predicted: 2420, actual: 2450, confidence: 95 },
+    { month: "2024-05", predicted: 2380, actual: 2360, confidence: 92 },
+    { month: "2024-06", predicted: 2550, actual: 2580, confidence: 96 },
+    { month: "2024-07", predicted: 2680, actual: 2650, confidence: 94 },
+    { month: "2024-08", predicted: 2620, actual: 2600, confidence: 93 },
+    { month: "2024-09", predicted: 2480, actual: 2520, confidence: 95 },
+    { month: "2024-10", predicted: 2350, actual: 2380, confidence: 93 },
+    { month: "2024-11", predicted: 2280, actual: 2250, confidence: 90 },
+    { month: "2024-12", predicted: 2450, actual: 2420, confidence: 94 }
+  ]);
+  const [filterRegion, setFilterRegion] = useState("");
+  const [filterSeason, setFilterSeason] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(5);
+  const [taskName, setTaskName] = useState("");
+  const [forecastPreviewPage, setForecastPreviewPage] = useState(1);
+  const [forecastPreviewPageSize] = useState(10);
+  const [filterTaskName, setFilterTaskName] = useState("");
+  const [filterAlgorithm, setFilterAlgorithm] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+  const [showWeightedForecast, setShowWeightedForecast] = useState(false);
+  const [weightConfig, setWeightConfig] = useState({
+    region: "华东",
+    company: "华东航空燃料有限公司",
+    models: [
+      { name: "线性回归", weight: 30, enabled: true },
+      { name: "ARIMA模型", weight: 25, enabled: true },
+      { name: "指数平滑", weight: 20, enabled: true },
+      { name: "LSTM神经网络", weight: 15, enabled: true },
+      { name: "Prophet时间序列", weight: 10, enabled: false }
+    ]
+  });
+
+  // 预设权重配置模板
+  const weightTemplates = {
+    "保守型": {
+      region: "华东",
+      company: "华东航空燃料有限公司",
+      models: [
+        { name: "线性回归", weight: 40, enabled: true },
+        { name: "ARIMA模型", weight: 30, enabled: true },
+        { name: "指数平滑", weight: 20, enabled: true },
+        { name: "LSTM神经网络", weight: 10, enabled: true },
+        { name: "Prophet时间序列", weight: 0, enabled: false }
+      ]
+    },
+    "平衡型": {
+      region: "华东",
+      company: "华东航空燃料有限公司",
+      models: [
+        { name: "线性回归", weight: 30, enabled: true },
+        { name: "ARIMA模型", weight: 25, enabled: true },
+        { name: "指数平滑", weight: 20, enabled: true },
+        { name: "LSTM神经网络", weight: 15, enabled: true },
+        { name: "Prophet时间序列", weight: 10, enabled: true }
+      ]
+    },
+    "激进型": {
+      region: "华东",
+      company: "华东航空燃料有限公司",
+      models: [
+        { name: "线性回归", weight: 20, enabled: true },
+        { name: "ARIMA模型", weight: 15, enabled: true },
+        { name: "指数平滑", weight: 15, enabled: true },
+        { name: "LSTM神经网络", weight: 30, enabled: true },
+        { name: "Prophet时间序列", weight: 20, enabled: true }
+      ]
+    }
+  };
+
+  // 模型性能测试数据
+  const modelPerformanceData = {
+    "线性回归": {
+      accuracy: 85.2,
+      mape: 12.3,
+      rmse: 45.6,
+      trainingTime: "30秒",
+      predictionTime: "2秒",
+      bestFor: "线性趋势明显的数据",
+      limitations: "对非线性关系敏感"
+    },
+    "ARIMA模型": {
+      accuracy: 88.7,
+      mape: 10.8,
+      rmse: 38.9,
+      trainingTime: "2分钟",
+      predictionTime: "5秒",
+      bestFor: "时间序列数据",
+      limitations: "需要足够的历史数据"
+    },
+    "指数平滑": {
+      accuracy: 82.1,
+      mape: 15.2,
+      rmse: 52.1,
+      trainingTime: "15秒",
+      predictionTime: "1秒",
+      bestFor: "短期预测",
+      limitations: "对长期趋势把握不足"
+    },
+    "LSTM神经网络": {
+      accuracy: 91.3,
+      mape: 8.9,
+      rmse: 32.4,
+      trainingTime: "8分钟",
+      predictionTime: "10秒",
+      bestFor: "复杂非线性关系",
+      limitations: "需要大量训练数据"
+    },
+    "Prophet时间序列": {
+      accuracy: 87.5,
+      mape: 11.6,
+      rmse: 41.2,
+      trainingTime: "1分钟",
+      predictionTime: "3秒",
+      bestFor: "季节性数据",
+      limitations: "对异常值敏感"
+    }
+  };
+
+  // 保存的权重配置列表
+  const [savedConfigs, setSavedConfigs] = useState([
+    {
+      id: "1",
+      name: "华东地区标准配置",
+      region: "华东",
+      company: "华东航空燃料有限公司",
+      models: [
+        { name: "线性回归", weight: 35, enabled: true },
+        { name: "ARIMA模型", weight: 25, enabled: true },
+        { name: "指数平滑", weight: 20, enabled: true },
+        { name: "LSTM神经网络", weight: 15, enabled: true },
+        { name: "Prophet时间序列", weight: 5, enabled: false }
+      ],
+      accuracy: 87.2,
+      lastUpdated: "2024-01-05",
+      description: "华东地区标准预测配置，适合常规业务场景"
+    },
+    {
+      id: "2",
+      name: "华南地区优化配置",
+      region: "华南",
+      company: "华南航空燃料有限公司",
+      models: [
+        { name: "线性回归", weight: 25, enabled: true },
+        { name: "ARIMA模型", weight: 30, enabled: true },
+        { name: "指数平滑", weight: 15, enabled: true },
+        { name: "LSTM神经网络", weight: 20, enabled: true },
+        { name: "Prophet时间序列", weight: 10, enabled: true }
+      ],
+      accuracy: 89.1,
+      lastUpdated: "2024-01-03",
+      description: "华南地区优化配置，提高预测准确性"
+    },
+    {
+      id: "3",
+      name: "华北地区保守配置",
+      region: "华北",
+      company: "华北航空燃料有限公司",
+      models: [
+        { name: "线性回归", weight: 40, enabled: true },
+        { name: "ARIMA模型", weight: 30, enabled: true },
+        { name: "指数平滑", weight: 20, enabled: true },
+        { name: "LSTM神经网络", weight: 10, enabled: true },
+        { name: "Prophet时间序列", weight: 0, enabled: false }
+      ],
+      accuracy: 85.8,
+      lastUpdated: "2023-12-15",
+      description: "华北地区保守配置，适合风险控制场景"
+    }
+  ]);
+
+  const [configName, setConfigName] = useState("");
+  const [configDescription, setConfigDescription] = useState("");
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showConfigList, setShowConfigList] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<string | null>(null);
+  const [configSearchTerm, setConfigSearchTerm] = useState("");
+  const [selectedConfigs, setSelectedConfigs] = useState<string[]>([]);
+  
+  // 历史执行记录
+  const [executionHistory, setExecutionHistory] = useState([
+    {
+      id: "1",
+      taskName: "华东地区2024年销售预测",
+      timestamp: "2024-01-05 15:30:00",
+      algorithm: "线性回归",
+      duration: "45秒",
+      status: "成功",
+      sampleCount: 20,
+      predictionMonths: 12,
+      accuracy: "85%"
+    },
+    {
+      id: "2",
+      taskName: "华南地区年度预测分析",
+      timestamp: "2024-01-04 14:20:00",
+      algorithm: "ARIMA模型",
+      duration: "2分30秒",
+      status: "成功",
+      sampleCount: 18,
+      predictionMonths: 18,
+      accuracy: "92%"
+    },
+    {
+      id: "3",
+      taskName: "华北地区季度预测",
+      timestamp: "2024-01-03 10:15:00",
+      algorithm: "指数平滑",
+      duration: "1分15秒",
+      status: "成功",
+      sampleCount: 15,
+      predictionMonths: 6,
+      accuracy: "78%"
+    },
+    {
+      id: "4",
+      taskName: "全国销售深度预测",
+      timestamp: "2024-01-02 16:45:00",
+      algorithm: "LSTM神经网络",
+      duration: "5分20秒",
+      status: "失败",
+      sampleCount: 25,
+      predictionMonths: 24,
+      accuracy: "-"
+    },
+    {
+      id: "5",
+      taskName: "华东地区月度预测",
+      timestamp: "2024-01-01 09:30:00",
+      algorithm: "Prophet时间序列",
+      duration: "3分15秒",
+      status: "成功",
+      sampleCount: 22,
+      predictionMonths: 12,
+      accuracy: "88%"
+    },
+    {
+      id: "6",
+      taskName: "华南地区短期预测",
+      timestamp: "2023-12-31 11:20:00",
+      algorithm: "多项式回归",
+      duration: "1分45秒",
+      status: "成功",
+      sampleCount: 16,
+      predictionMonths: 6,
+      accuracy: "82%"
+    },
+    {
+      id: "7",
+      taskName: "华北地区年度预测",
+      timestamp: "2023-12-30 14:10:00",
+      algorithm: "线性回归",
+      duration: "50秒",
+      status: "成功",
+      sampleCount: 19,
+      predictionMonths: 12,
+      accuracy: "87%"
+    },
+    {
+      id: "8",
+      taskName: "华东地区长期预测",
+      timestamp: "2023-12-29 16:30:00",
+      algorithm: "ARIMA模型",
+      duration: "2分45秒",
+      status: "成功",
+      sampleCount: 21,
+      predictionMonths: 18,
+      accuracy: "90%"
+    },
+    {
+      id: "9",
+      taskName: "华南地区季度预测",
+      timestamp: "2023-12-28 10:45:00",
+      algorithm: "指数平滑",
+      duration: "1分20秒",
+      status: "成功",
+      sampleCount: 14,
+      predictionMonths: 6,
+      accuracy: "76%"
+    },
+    {
+      id: "10",
+      taskName: "全国销售AI预测",
+      timestamp: "2023-12-27 13:15:00",
+      algorithm: "LSTM神经网络",
+      duration: "4分30秒",
+      status: "成功",
+      sampleCount: 23,
+      predictionMonths: 24,
+      accuracy: "94%"
+    }
+  ]);
+
+  // 菜单项配置
+  const menuItems = [
+    { id: "upload", label: "样本上传", icon: UploadIcon },
+    { id: "preview", label: "样本数据查询", icon: FileTextIcon },
+    { id: "forecast", label: "执行预测", icon: TrendingUpIcon },
+    { id: "forecast-preview", label: "预测结果查询", icon: BarChart3Icon },
+    { id: "analysis", label: "预测分析", icon: PieChartIcon }
+  ];
+
+  // 过滤数据
+  const filteredData = sampleData.filter(item => {
+    const matchesRegion = filterRegion === "" || item.region === filterRegion;
+    
+    // 根据样本类型过滤（通过notes字段判断）
+    const matchesSampleType = filterSeason === "" || 
+      (filterSeason === "历史销售数据" && item.notes.includes("销量")) ||
+      (filterSeason === "年度汇总数据" && item.notes.includes("年度汇总")) ||
+      (filterSeason === "季度数据" && item.notes.includes("季度")) ||
+      (filterSeason === "月度数据" && item.notes.includes("月度"));
+    
+    // 时间范围过滤
+    const matchesDateRange = (!startDate || item.date >= startDate) && 
+                            (!endDate || item.date <= endDate);
+    
+    return matchesRegion && matchesSampleType && matchesDateRange;
+  });
+
+  // 获取唯一区域和季节
+  const uniqueRegions = [...new Set(sampleData.map(item => item.region))];
+  const uniqueSeasons = [...new Set(sampleData.map(item => item.season))];
+  
+  // 分页计算
+  const totalPages = Math.ceil(executionHistory.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const currentPageData = executionHistory.slice(startIndex, endIndex);
+  
+  // 预测数据筛选和分页
+  const filteredForecastData = forecastData.filter((item, index) => {
+    // 根据索引确定任务名称和算法（简化逻辑）
+    const taskIndex = Math.floor(index / 12);
+    const taskNames = ["华东地区2024年销售预测", "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预测"];
+    const algorithms = ["线性回归", "ARIMA模型", "指数平滑", "LSTM神经网络"];
+    
+    const currentTaskName = taskNames[taskIndex] || taskNames[0]!;
+    const currentAlgorithm = algorithms[taskIndex] || algorithms[0]!;
+    
+    const matchesTaskName = !filterTaskName || filterTaskName === "all" || currentTaskName.includes(filterTaskName);
+    const matchesAlgorithm = !filterAlgorithm || filterAlgorithm === "all" || currentAlgorithm.includes(filterAlgorithm);
+    const matchesDateRange = (!filterStartDate || item.month >= filterStartDate) && 
+                            (!filterEndDate || item.month <= filterEndDate);
+    
+    return matchesTaskName && matchesAlgorithm && matchesDateRange;
+  });
+  
+  const forecastTotalPages = Math.ceil(filteredForecastData.length / forecastPreviewPageSize);
+  const forecastStartIndex = (forecastPreviewPage - 1) * forecastPreviewPageSize;
+  const forecastEndIndex = forecastStartIndex + forecastPreviewPageSize;
+  const currentForecastPageData = filteredForecastData.slice(forecastStartIndex, forecastEndIndex);
+  
+  // 计算加权综合预测
+  const calculateWeightedForecast = (month: string) => {
+    const enabledModels = weightConfig.models.filter(model => model.enabled);
+    const totalWeight = enabledModels.reduce((sum, model) => sum + model.weight, 0);
+    
+    if (totalWeight === 0) return null;
+    
+    // 基于月份和地区生成更真实的预测值
+    const monthParts = month.split('-');
+    const monthIndex = monthParts[1] ? parseInt(monthParts[1]) - 1 : 0;
+    const regionFactors: Record<string, number> = {
+      "华东": 1.0,
+      "华南": 0.85,
+      "华北": 0.75,
+      "全国": 1.2
+    };
+    const regionFactor = regionFactors[weightConfig.region] || 1.0;
+    
+    // 季节性调整因子
+    const seasonalFactors = [0.9, 0.85, 1.0, 1.1, 1.2, 1.3, 1.25, 1.2, 1.1, 1.0, 0.95, 0.9];
+    const seasonalFactor = seasonalFactors[monthIndex] || 1.0;
+    
+    // 不同模型的预测值（基于真实业务逻辑）
+    const modelPredictions = {
+      "线性回归": Math.round((1000 + monthIndex * 20) * seasonalFactor * regionFactor + Math.random() * 50),
+      "ARIMA模型": Math.round((980 + monthIndex * 15) * seasonalFactor * regionFactor + Math.random() * 40),
+      "指数平滑": Math.round((1020 + monthIndex * 25) * seasonalFactor * regionFactor + Math.random() * 60),
+      "LSTM神经网络": Math.round((1010 + monthIndex * 18) * seasonalFactor * regionFactor + Math.random() * 80),
+      "Prophet时间序列": Math.round((990 + monthIndex * 22) * seasonalFactor * regionFactor + Math.random() * 70)
+    };
+    
+    let weightedSum = 0;
+    enabledModels.forEach(model => {
+      const prediction = modelPredictions[model.name as keyof typeof modelPredictions] || 1000;
+      weightedSum += (prediction * model.weight) / 100;
+    });
+    
+    return Math.round(weightedSum);
+  };
+
+  // 验证权重配置
+  const validateWeightConfig = () => {
+    const enabledModels = weightConfig.models.filter(model => model.enabled);
+    const totalWeight = enabledModels.reduce((sum, model) => sum + model.weight, 0);
+    return {
+      isValid: totalWeight === 100,
+      totalWeight,
+      message: totalWeight === 100 ? "权重配置正确" : `权重总和应为100%，当前为${totalWeight}%`
+    };
+  };
+
+  // 自动调整权重
+  const autoAdjustWeights = () => {
+    const enabledModels = weightConfig.models.filter(model => model.enabled);
+    if (enabledModels.length === 0) return;
+    
+    const totalWeight = enabledModels.reduce((sum, model) => sum + model.weight, 0);
+    const adjustmentFactor = 100 / totalWeight;
+    
+    const newModels = weightConfig.models.map(model => {
+      if (model.enabled) {
+        return { ...model, weight: Math.round(model.weight * adjustmentFactor) };
+      }
+      return model;
+    });
+    
+    setWeightConfig(prev => ({ ...prev, models: newModels }));
+  };
+
+  // 执行预测
+  const executeForecast = () => {
+    setIsExecuting(true);
+    setExecutionLogs([]);
+    
+    // 模拟执行过程
+    const logs = [
+      "开始执行预测任务...",
+      "正在加载样本数据...",
+      "数据预处理完成，共处理 20 条记录",
+      "正在训练线性回归模型...",
+      "模型训练完成，R² = 0.85",
+      "正在生成预测结果...",
+      "预测完成，生成 12 个月预测数据",
+      "正在计算置信区间...",
+      "置信区间计算完成",
+      "预测任务执行成功！"
+    ];
+    
+    const startTime = Date.now();
+    
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      if (currentIndex < logs.length) {
+        setExecutionLogs(prev => [...prev, logs[currentIndex]!]);
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+        const endTime = Date.now();
+        const duration = Math.round((endTime - startTime) / 1000);
+        
+        // 添加历史记录
+        const newRecord = {
+          id: Date.now().toString(),
+          taskName: taskName || "未命名预测任务",
+          timestamp: new Date().toLocaleString(),
+          algorithm: "线性回归",
+          duration: `${duration}秒`,
+          status: "成功",
+          sampleCount: 20,
+          predictionMonths: 12,
+          accuracy: "85%"
+        };
+        
+        setExecutionHistory(prev => [newRecord, ...prev]);
+        setIsExecuting(false);
+        setForecastData(staticForecastData);
+        setActiveMenu("forecast-preview");
+      }
+    }, 800);
+  };
+
+  // 样本文件列表状态
+  const [sampleFiles, setSampleFiles] = useState([
+    {
+      id: "1",
+      name: "华东地区2024年1月样本数据.xlsx",
+      uploadTime: "2024-01-05 14:30:00",
+      timeRange: "2024-01-01 至 2024-01-31",
+      sampleType: "历史销售数据",
+      description: "华东地区冬季航空汽油销售数据，包含节假日和周末数据",
+      size: "2.5MB"
+    },
+    {
+      id: "2", 
+      name: "华南地区2023年样本数据.xlsx",
+      uploadTime: "2024-01-03 10:15:00",
+      timeRange: "2023-01-01 至 2023-12-31",
+      sampleType: "年度汇总数据",
+      description: "华南地区全年航空汽油销售汇总，按季度和月份统计",
+      size: "5.2MB"
+    }
+  ]);
+
+  // 上传表单状态
+  const [uploadForm, setUploadForm] = useState({
+    timeRange: "",
+    sampleType: "",
+    description: ""
+  });
+
+  // 处理文件上传
+  const handleFileUpload = () => {
+    const newFile = {
+      id: Date.now().toString(),
+      name: "新上传样本数据.xlsx",
+      uploadTime: new Date().toLocaleString(),
+      timeRange: uploadForm.timeRange,
+      sampleType: uploadForm.sampleType,
+      description: uploadForm.description,
+      size: "1.8MB"
+    };
+    
+    setSampleFiles([newFile, ...sampleFiles]);
+    setUploadForm({ timeRange: "", sampleType: "", description: "" });
+  };
+
+  // 删除文件
+  const handleDeleteFile = (fileId: string) => {
+    setSampleFiles(sampleFiles.filter(file => file.id !== fileId));
+  };
+
+  // 渲染内容区域
+  const renderContent = () => {
+    switch (activeMenu) {
+      case "upload":
+        return (
+          <div className="space-y-6">
+            {/* 上传表单 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UploadIcon className="w-5 h-5" />
+                  上传样本数据
+                </CardTitle>
+                <CardDescription>
+                  上传Excel文件并填写样本信息
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 文件上传区域 */}
+                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8">
+                  <div className="text-center">
+                    <UploadIcon className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                    <h3 className="text-lg font-medium mb-2">拖拽文件到此处或点击上传</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                      支持 .xlsx 和 .xls 格式，文件大小不超过 10MB
+                    </p>
+                    <Button>选择文件</Button>
+                  </div>
+                </div>
+
+                {/* 样本信息表单 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="timeRange">样本时间段</Label>
+                    <Input
+                      id="timeRange"
+                      placeholder="例如：2024-01-01 至 2024-12-31"
+                      value={uploadForm.timeRange}
+                      onChange={(e) => setUploadForm({...uploadForm, timeRange: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="sampleType">样本类型</Label>
+                    <Select 
+                      value={uploadForm.sampleType} 
+                      onValueChange={(value) => setUploadForm({...uploadForm, sampleType: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择样本类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="历史销售数据">历史销售数据</SelectItem>
+                        <SelectItem value="年度汇总数据">年度汇总数据</SelectItem>
+                        <SelectItem value="季度数据">季度数据</SelectItem>
+                        <SelectItem value="月度数据">月度数据</SelectItem>
+                        <SelectItem value="其他">其他</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">样本描述</Label>
+                  <Input
+                    id="description"
+                    placeholder="请描述样本数据的内容、来源、特点等"
+                    value={uploadForm.description}
+                    onChange={(e) => setUploadForm({...uploadForm, description: e.target.value})}
+                  />
+                </div>
+
+                <Button onClick={handleFileUpload} className="w-full">
+                  上传样本
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* 样本文件列表 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>样本文件列表</CardTitle>
+                <CardDescription>
+                  已上传的样本文件，支持下载和删除
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {sampleFiles.length > 0 ? (
+                  <div className="space-y-4">
+                    {sampleFiles.map((file) => (
+                      <div key={file.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileTextIcon className="w-5 h-5 text-blue-600" />
+                              <h4 className="font-medium">{file.name}</h4>
+                              <Badge variant="outline">{file.size}</Badge>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              <div><strong>上传时间：</strong>{file.uploadTime}</div>
+                              <div><strong>时间段：</strong>{file.timeRange}</div>
+                              <div><strong>类型：</strong>{file.sampleType}</div>
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              <strong>描述：</strong>{file.description}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 ml-4">
+                            <Button variant="outline" size="sm">
+                              <DownloadIcon className="w-4 h-4 mr-1" />
+                              下载
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteFile(file.id)}
+                            >
+                              <TrashIcon className="w-4 h-4 mr-1" />
+                              删除
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    暂无样本文件
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case "preview":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileTextIcon className="w-5 h-5" />
+                样本数据查询
+              </CardTitle>
+              <CardDescription>
+                按样本类型查看和管理销售数据
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 筛选条件 */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="space-y-2">
+                  <Label>样本类型</Label>
+                  <Select 
+                    value={filterSeason} 
+                    onValueChange={setFilterSeason}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择样本类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="历史销售数据">历史销售数据</SelectItem>
+                      <SelectItem value="年度汇总数据">年度汇总数据</SelectItem>
+                      <SelectItem value="季度数据">季度数据</SelectItem>
+                      <SelectItem value="月度数据">月度数据</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>地区筛选</Label>
+                  <Select value={filterRegion} onValueChange={setFilterRegion}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择地区" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部地区</SelectItem>
+                      {uniqueRegions.map(region => (
+                        <SelectItem key={region} value={region}>{region}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>开始时间</Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    placeholder="选择开始日期"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>结束时间</Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    placeholder="选择结束日期"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>&nbsp;</Label>
+                  <Button variant="default" className="w-full">
+                    <SearchIcon className="w-4 h-4 mr-2" />
+                    搜索
+                  </Button>
+                </div>
+              </div>
+
+              {/* 数据统计 */}
+              <div className="flex items-center gap-4">
+                <Badge variant="secondary">总记录数: {filteredData.length}</Badge>
+                <Badge variant="outline">当前页: 1/3</Badge>
+              </div>
+
+              {/* 数据表格 */}
+              {filteredData.length > 0 ? (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>日期</TableHead>
+                        <TableHead>销量(万升)</TableHead>
+                        <TableHead>价格(元/升)</TableHead>
+                        <TableHead>地区</TableHead>
+                        <TableHead>季节</TableHead>
+                        <TableHead>天气</TableHead>
+                        <TableHead>事件</TableHead>
+                        <TableHead>备注</TableHead>
+                        <TableHead>所属样本文件</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredData.slice(0, 10).map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.date}</TableCell>
+                          <TableCell>{item.sales_volume}</TableCell>
+                          <TableCell>{item.price}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{item.region}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{item.season}</Badge>
+                          </TableCell>
+                          <TableCell>{item.weather}</TableCell>
+                          <TableCell>{item.events}</TableCell>
+                          <TableCell className="max-w-xs truncate" title={item.notes}>
+                            {item.notes}
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate" title={item.sampleFile}>
+                            <div className="flex items-center gap-2">
+                              <FileTextIcon className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm">{item.sampleFile}</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  没有找到匹配的数据
+                </div>
+              )}
+
+              {/* 分页 */}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  显示 1-10 条，共 {filteredData.length} 条记录
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled>
+                    上一页
+                  </Button>
+                  <Button variant="default" size="sm">1</Button>
+                  <Button variant="outline" size="sm">2</Button>
+                  <Button variant="outline" size="sm">3</Button>
+                  <Button variant="outline" size="sm">
+                    下一页
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case "forecast":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUpIcon className="w-5 h-5" />
+                执行预测
+              </CardTitle>
+              <CardDescription>
+                选择算法和样本数据执行销售预测
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 任务名称 */}
+              <div className="space-y-2">
+                <Label htmlFor="taskName">任务名称</Label>
+                <Input
+                  id="taskName"
+                  placeholder="请输入预测任务名称，例如：华东地区2024年销售预测"
+                  value={taskName}
+                  onChange={(e) => setTaskName(e.target.value)}
+                />
+              </div>
+              
+              {/* 预测配置 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">预测配置</h3>
+                  
+                  <div className="space-y-2">
+                    <Label>预测算法</Label>
+                    <Select defaultValue="linear">
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择预测算法" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linear">线性回归</SelectItem>
+                        <SelectItem value="polynomial">多项式回归</SelectItem>
+                        <SelectItem value="exponential">指数平滑</SelectItem>
+                        <SelectItem value="arima">ARIMA模型</SelectItem>
+                        <SelectItem value="lstm">LSTM神经网络</SelectItem>
+                        <SelectItem value="prophet">Prophet时间序列</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>预测时长</Label>
+                    <Select defaultValue="12">
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择预测时长" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6">6个月</SelectItem>
+                        <SelectItem value="12">12个月</SelectItem>
+                        <SelectItem value="18">18个月</SelectItem>
+                        <SelectItem value="24">24个月</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>置信度水平</Label>
+                    <Select defaultValue="95">
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择置信度" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="90">90%</SelectItem>
+                        <SelectItem value="95">95%</SelectItem>
+                        <SelectItem value="99">99%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>季节性处理</Label>
+                    <Select defaultValue="auto">
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择季节性处理" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">无季节性</SelectItem>
+                        <SelectItem value="auto">自动检测</SelectItem>
+                        <SelectItem value="additive">加法季节性</SelectItem>
+                        <SelectItem value="multiplicative">乘法季节性</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">样本数据选择</h3>
+                  
+                  <div className="space-y-2">
+                    <Label>样本文件</Label>
+                    <Select defaultValue="all">
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择样本文件" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">使用所有样本数据</SelectItem>
+                        <SelectItem value="file1">华东地区2024年1月样本数据.xlsx</SelectItem>
+                        <SelectItem value="file2">华南地区2023年样本数据.xlsx</SelectItem>
+                        <SelectItem value="file3">华北地区2023年样本数据.xlsx</SelectItem>
+                        <SelectItem value="file4">华东地区2023年年度汇总.xlsx</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>数据时间范围</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="date"
+                        placeholder="开始日期"
+                        defaultValue="2023-01-01"
+                      />
+                      <Input
+                        type="date"
+                        placeholder="结束日期"
+                        defaultValue="2024-01-05"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>数据预处理</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="remove-outliers" defaultChecked />
+                        <Label htmlFor="remove-outliers">移除异常值</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="normalize" defaultChecked />
+                        <Label htmlFor="normalize">数据标准化</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="fill-missing" defaultChecked />
+                        <Label htmlFor="fill-missing">填充缺失值</Label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 执行按钮 */}
+              <div className="flex justify-center">
+                <Button 
+                  onClick={executeForecast} 
+                  size="lg" 
+                  className="px-8"
+                  disabled={isExecuting}
+                >
+                  {isExecuting ? (
+                    <>
+                      <div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      执行中...
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUpIcon className="w-5 h-5 mr-2" />
+                      开始执行预测
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {/* 执行日志和历史记录 */}
+              <div className="mt-6 space-y-6">
+                {/* 执行日志 */}
+                {(isExecuting || executionLogs.length > 0) && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">执行日志</h3>
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4 max-h-64 overflow-y-auto">
+                      {executionLogs.length === 0 ? (
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span>准备执行...</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {executionLogs.map((log, index) => (
+                            <div key={index} className="flex items-start gap-2 text-sm">
+                              <span className="text-slate-400 font-mono">
+                                [{new Date().toLocaleTimeString()}]
+                              </span>
+                              <span className="text-slate-700 dark:text-slate-300">
+                                {log}
+                              </span>
+                              {index === executionLogs.length - 1 && isExecuting && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* 执行状态 */}
+                    {!isExecuting && executionLogs.length > 0 && (
+                      <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="font-medium">预测执行完成</span>
+                        </div>
+                        <p className="text-sm text-green-600 dark:text-green-300 mt-1">
+                          已生成预测结果，可在"预测结果查询"中查看详细结果
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* 历史执行记录 */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium">历史执行记录</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowHistory(!showHistory)}
+                    >
+                      {showHistory ? "收起" : "展开"}
+                    </Button>
+                  </div>
+                  
+                  {showHistory && (
+                    <div className="space-y-4">
+                      <div className="border rounded-lg">
+                        <Table>
+                                                  <TableHeader>
+                          <TableRow>
+                            <TableHead>任务名称</TableHead>
+                            <TableHead>执行时间</TableHead>
+                            <TableHead>算法</TableHead>
+                            <TableHead>执行时长</TableHead>
+                            <TableHead>状态</TableHead>
+                            <TableHead>样本数</TableHead>
+                            <TableHead>预测月数</TableHead>
+                            <TableHead>准确率</TableHead>
+                            <TableHead>操作</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                          <TableBody>
+                            {currentPageData.map((record) => (
+                              <TableRow key={record.id}>
+                                <TableCell className="max-w-xs truncate" title={record.taskName}>
+                                  {record.taskName}
+                                </TableCell>
+                                <TableCell className="text-sm">{record.timestamp}</TableCell>
+                                <TableCell>{record.algorithm}</TableCell>
+                                <TableCell>{record.duration}</TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={record.status === "成功" ? "default" : "destructive"}
+                                  >
+                                    {record.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{record.sampleCount}</TableCell>
+                                <TableCell>{record.predictionMonths}</TableCell>
+                                <TableCell>{record.accuracy}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="sm">
+                                      <FileTextIcon className="w-4 h-4" />
+                                    </Button>
+                                    <Button variant="outline" size="sm">
+                                      <DownloadIcon className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      
+                      {/* 分页控件 */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                            显示 {startIndex + 1}-{Math.min(endIndex, executionHistory.length)} 条，共 {executionHistory.length} 条记录
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                            >
+                              上一页
+                            </Button>
+                            
+                            {/* 页码按钮 */}
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <Button
+                                  key={page}
+                                  variant={currentPage === page ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(page)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  {page}
+                                </Button>
+                              ))}
+                            </div>
+                            
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages}
+                            >
+                              下一页
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case "forecast-preview":
+        return (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3Icon className="w-5 h-5" />
+                    预测结果查询
+                  </CardTitle>
+                  <CardDescription>
+                    查看和管理预测结果数据
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant={showWeightedForecast ? "default" : "outline"}
+                    onClick={() => setShowWeightedForecast(!showWeightedForecast)}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    多模型加权预测
+                  </Button>
+                  <Button onClick={() => setActiveMenu("main" as MenuItem)}>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    返回
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            
+            {/* 数据说明 */}
+            <div className="px-6 py-3 bg-blue-50 border-b">
+              <div className="flex items-center gap-2 text-sm text-blue-700">
+                💡
+                <span>系统已预置示例预测数据，您可以直接查看、筛选和分析，无需先执行预测任务</span>
+              </div>
+            </div>
+            
+            <CardContent className="space-y-6">
+              {/* 筛选条件 */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label>任务名称</Label>
+                  <Select value={filterTaskName} onValueChange={setFilterTaskName}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择任务名称" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部任务</SelectItem>
+                      <SelectItem value="华东">华东地区</SelectItem>
+                      <SelectItem value="华南">华南地区</SelectItem>
+                      <SelectItem value="华北">华北地区</SelectItem>
+                      <SelectItem value="全国">全国销售</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>算法名称</Label>
+                  <Select value={filterAlgorithm} onValueChange={setFilterAlgorithm}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择算法" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部算法</SelectItem>
+                      <SelectItem value="线性回归">线性回归</SelectItem>
+                      <SelectItem value="ARIMA">ARIMA模型</SelectItem>
+                      <SelectItem value="指数平滑">指数平滑</SelectItem>
+                      <SelectItem value="LSTM">LSTM神经网络</SelectItem>
+                      <SelectItem value="Prophet">Prophet时间序列</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>开始时间</Label>
+                  <Input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    placeholder="选择开始日期"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>结束时间</Label>
+                  <Input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    placeholder="选择结束日期"
+                  />
+                </div>
+              </div>
+
+              {/* 权重配置面板 */}
+              {showWeightedForecast && (
+                <div className="border rounded-lg p-6 bg-slate-50">
+                  {/* 功能说明 */}
+                  <div className="mb-6 p-4 border rounded-lg bg-blue-50">
+                    <h4 className="text-sm font-medium text-blue-900 mb-2">多模型加权预测说明</h4>
+                    <div className="text-sm text-blue-800 space-y-1">
+                      <p>• 支持多个预测模型按权重组合，提高预测准确性</p>
+                      <p>• 权重配置可细化至地区/公司层级，不同区域可设置不同权重</p>
+                      <p>• 系统自动计算加权综合预测值，并在表格中显示</p>
+                      <p>• 提供预设模板（保守型、平衡型、激进型）快速配置</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium">多模型加权配置</h3>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={validateWeightConfig().isValid ? "default" : "destructive"}>
+                        总权重: {validateWeightConfig().totalWeight}%
+                      </Badge>
+                      <Select 
+                        onValueChange={(template) => {
+                          if (template && weightTemplates[template as keyof typeof weightTemplates]) {
+                            setWeightConfig(weightTemplates[template as keyof typeof weightTemplates]);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="选择模板" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="保守型">保守型</SelectItem>
+                          <SelectItem value="平衡型">平衡型</SelectItem>
+                          <SelectItem value="激进型">激进型</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select 
+                        onValueChange={(configId) => {
+                          const config = savedConfigs.find(c => c.id === configId);
+                          if (config) {
+                            setWeightConfig({
+                              region: config.region,
+                              company: config.company,
+                              models: config.models
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="选择保存的配置" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {savedConfigs.map((config) => (
+                            <SelectItem key={config.id} value={config.id}>
+                              {config.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* 权重验证提示 */}
+                  {!validateWeightConfig().isValid && (
+                    <div className="mb-4 p-3 border border-red-200 rounded-lg bg-red-50">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-red-600">
+                          ⚠️ {validateWeightConfig().message}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={autoAdjustWeights}
+                        >
+                          自动调整
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 地区公司配置 */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium">地区</Label>
+                        <Select 
+                          value={weightConfig.region} 
+                          onValueChange={(value) => setWeightConfig(prev => ({ ...prev, region: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="华东">华东地区</SelectItem>
+                            <SelectItem value="华南">华南地区</SelectItem>
+                            <SelectItem value="华北">华北地区</SelectItem>
+                            <SelectItem value="全国">全国</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-sm font-medium">公司</Label>
+                        <Select 
+                          value={weightConfig.company} 
+                          onValueChange={(value) => setWeightConfig(prev => ({ ...prev, company: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="华东航空燃料有限公司">华东航空燃料有限公司</SelectItem>
+                            <SelectItem value="华南航空燃料有限公司">华南航空燃料有限公司</SelectItem>
+                            <SelectItem value="华北航空燃料有限公司">华北航空燃料有限公司</SelectItem>
+                            <SelectItem value="全国航空燃料集团">全国航空燃料集团</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {/* 模型权重配置 */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">模型权重配置</Label>
+                      {weightConfig.models.map((model, index) => {
+                        const performance = modelPerformanceData[model.name as keyof typeof modelPerformanceData];
+                        return (
+                          <div key={model.name} className="p-3 border rounded-lg bg-white">
+                            <div className="flex items-center gap-3 mb-2">
+                              <input
+                                type="checkbox"
+                                checked={model.enabled}
+                                onChange={(e) => {
+                                  const newModels = [...weightConfig.models];
+                                  newModels[index] = { ...model, enabled: e.target.checked };
+                                  setWeightConfig(prev => ({ ...prev, models: newModels }));
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">{model.name}</div>
+                                {performance && (
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    准确率: {performance.accuracy}% | 训练时间: {performance.trainingTime}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={model.weight}
+                                onChange={(e) => {
+                                  const newModels = [...weightConfig.models];
+                                  newModels[index] = { ...model, weight: parseInt(e.target.value) };
+                                  setWeightConfig(prev => ({ ...prev, models: newModels }));
+                                }}
+                                className="flex-1"
+                                disabled={!model.enabled}
+                              />
+                              <span className="text-sm text-slate-600 w-12">{model.weight}%</span>
+                            </div>
+                            {performance && (
+                              <div className="mt-2 text-xs text-slate-600">
+                                <div>适用: {performance.bestFor}</div>
+                                <div>限制: {performance.limitations}</div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* 加权预测结果预览 */}
+                  <div className="mt-6 p-4 border rounded-lg bg-white">
+                    <h4 className="text-sm font-medium mb-3">加权预测结果预览</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {["2024-02", "2024-03", "2024-04", "2024-05"].map((month) => {
+                        const weightedValue = calculateWeightedForecast(month);
+                        return (
+                          <div key={month} className="text-center p-3 border rounded-lg">
+                            <div className="text-sm text-slate-600">{month}</div>
+                            <div className="text-lg font-bold text-blue-600">
+                              {weightedValue ? `${weightedValue}万升` : 'N/A'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* 详细模型预测对比 */}
+                    <div className="mt-4">
+                      <h5 className="text-sm font-medium mb-3">各模型预测对比 (2024-03)</h5>
+                      <div className="space-y-2">
+                        {weightConfig.models.filter(m => m.enabled).map((model) => {
+                          const monthParts = "2024-03".split('-');
+                          const monthIndex = monthParts[1] ? parseInt(monthParts[1]) - 1 : 0;
+                          const regionFactors: Record<string, number> = {
+                            "华东": 1.0, "华南": 0.85, "华北": 0.75, "全国": 1.2
+                          };
+                          const regionFactor = regionFactors[weightConfig.region] || 1.0;
+                          const seasonalFactors = [0.9, 0.85, 1.0, 1.1, 1.2, 1.3, 1.25, 1.2, 1.1, 1.0, 0.95, 0.9];
+                          const seasonalFactor = seasonalFactors[monthIndex] || 1.0;
+                          
+                          const modelPredictions: Record<string, number> = {
+                            "线性回归": Math.round((1000 + monthIndex * 20) * seasonalFactor * regionFactor + Math.random() * 50),
+                            "ARIMA模型": Math.round((980 + monthIndex * 15) * seasonalFactor * regionFactor + Math.random() * 40),
+                            "指数平滑": Math.round((1020 + monthIndex * 25) * seasonalFactor * regionFactor + Math.random() * 60),
+                            "LSTM神经网络": Math.round((1010 + monthIndex * 18) * seasonalFactor * regionFactor + Math.random() * 80),
+                            "Prophet时间序列": Math.round((990 + monthIndex * 22) * seasonalFactor * regionFactor + Math.random() * 70)
+                          };
+                          
+                          const prediction = modelPredictions[model.name] || 1000;
+                          const contribution = Math.round((prediction * model.weight) / 100);
+                          
+                          return (
+                            <div key={model.name} className="flex items-center justify-between p-2 border rounded bg-slate-50">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium">{model.name}</span>
+                                <span className="text-xs text-slate-500">权重: {model.weight}%</span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className="text-sm">预测: {prediction}万升</span>
+                                <span className="text-sm text-blue-600">贡献: {contribution}万升</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 配置列表 */}
+                  {showConfigList && (
+                    <div className="mt-4 p-4 border rounded-lg bg-slate-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="text-sm font-medium">保存的配置列表</h5>
+                        <div className="flex items-center gap-2">
+                          {selectedConfigs.length > 0 && (
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => {
+                                setSavedConfigs(prev => prev.filter(c => !selectedConfigs.includes(c.id)));
+                                setSelectedConfigs([]);
+                              }}
+                            >
+                              删除选中 ({selectedConfigs.length})
+                            </Button>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowConfigList(false)}
+                          >
+                            关闭
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="mb-3">
+                        <Input
+                          placeholder="搜索配置名称或描述..."
+                          value={configSearchTerm}
+                          onChange={(e) => setConfigSearchTerm(e.target.value)}
+                          className="w-full"
+                        />
+                        <div className="text-xs text-slate-500 mt-1">
+                          找到 {savedConfigs.filter(config => 
+                            config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                            config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                            config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                            config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
+                          ).length} 个配置
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {savedConfigs
+                          .filter(config => 
+                            config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                            config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                            config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                            config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
+                          )
+                          .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+                          .map((config) => (
+                            <div key={config.id} className="p-3 border rounded-lg bg-white">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedConfigs.includes(config.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedConfigs(prev => [...prev, config.id]);
+                                      } else {
+                                        setSelectedConfigs(prev => prev.filter(id => id !== config.id));
+                                      }
+                                    }}
+                                    className="w-4 h-4"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium">{config.name}</div>
+                                    <div className="text-xs text-slate-500 mt-1">{config.description}</div>
+                                    <div className="text-xs text-slate-400 mt-1">
+                                      {config.region} - {config.company} | 准确率: {config.accuracy}% | 更新: {config.lastUpdated}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setWeightConfig({
+                                      region: config.region,
+                                      company: config.company,
+                                      models: config.models
+                                    });
+                                    setShowConfigList(false);
+                                  }}
+                                >
+                                  选择
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingConfig(config.id);
+                                    setConfigName(config.name);
+                                    setConfigDescription(config.description);
+                                  }}
+                                >
+                                  编辑
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const newConfig = {
+                                      ...config,
+                                      id: Date.now().toString(),
+                                      name: `${config.name} - 副本`,
+                                      lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
+                                    };
+                                    setSavedConfigs(prev => [...prev, newConfig]);
+                                  }}
+                                >
+                                  复制
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const configData = JSON.stringify(config, null, 2);
+                                    const blob = new Blob([configData], { type: 'application/json' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `${config.name}.json`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                  }}
+                                >
+                                  导出
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSavedConfigs(prev => prev.filter(c => c.id !== config.id));
+                                  }}
+                                >
+                                  删除
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 保存配置对话框 */}
+                  {showSaveDialog && (
+                    <div className="mt-4 p-4 border rounded-lg bg-blue-50">
+                      <h5 className="text-sm font-medium mb-3">
+                        {editingConfig ? "编辑配置" : "保存当前配置"}
+                      </h5>
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-sm">配置名称</Label>
+                          <Input
+                            value={configName}
+                            onChange={(e) => setConfigName(e.target.value)}
+                            placeholder="请输入配置名称"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">配置描述</Label>
+                          <Input
+                            value={configDescription}
+                            onChange={(e) => setConfigDescription(e.target.value)}
+                            placeholder="请输入配置描述"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (configName.trim()) {
+                                if (editingConfig) {
+                                  // 编辑现有配置
+                                  setSavedConfigs(prev => prev.map(config => 
+                                    config.id === editingConfig 
+                                      ? {
+                                          ...config,
+                                          name: configName,
+                                          description: configDescription,
+                                          region: weightConfig.region,
+                                          company: weightConfig.company,
+                                          models: weightConfig.models,
+                                          accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                            const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                            return sum + (performance?.accuracy || 0) * m.weight / 100;
+                                          }, 0) * 10) / 10,
+                                          lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
+                                        }
+                                      : config
+                                  ));
+                                  setEditingConfig(null);
+                                } else {
+                                  // 保存新配置
+                                  const newConfig = {
+                                    id: Date.now().toString(),
+                                    name: configName,
+                                    description: configDescription,
+                                    region: weightConfig.region,
+                                    company: weightConfig.company,
+                                    models: weightConfig.models,
+                                    accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                      const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                      return sum + (performance?.accuracy || 0) * m.weight / 100;
+                                    }, 0) * 10) / 10,
+                                    lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
+                                  };
+                                  setSavedConfigs(prev => [...prev, newConfig]);
+                                }
+                                setConfigName("");
+                                setConfigDescription("");
+                                setShowSaveDialog(false);
+                              }
+                            }}
+                          >
+                            {editingConfig ? "更新" : "保存"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setConfigName("");
+                              setConfigDescription("");
+                              setEditingConfig(null);
+                              setShowSaveDialog(false);
+                            }}
+                          >
+                            取消
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 操作按钮 */}
+                  <div className="mt-6 flex items-center justify-between">
+                    <div className="text-sm text-slate-600">
+                      配置将自动保存到 {weightConfig.region} - {weightConfig.company}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowConfigList(!showConfigList)}
+                      >
+                        <FileTextIcon className="w-4 h-4 mr-2" />
+                        配置列表
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowSaveDialog(true)}
+                      >
+                        <UploadIcon className="w-4 h-4 mr-2" />
+                        保存配置
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* 配置统计信息 */}
+                  <div className="mt-4 p-4 border rounded-lg bg-blue-50">
+                    <h5 className="text-sm font-medium mb-3">配置统计信息</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-blue-600">
+                          {weightConfig.models.filter(m => m.enabled).length}
+                        </div>
+                        <div className="text-xs text-slate-600">启用模型数</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-600">
+                          {validateWeightConfig().totalWeight}%
+                        </div>
+                        <div className="text-xs text-slate-600">权重总和</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-600">
+                          {Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                            const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                            return sum + (performance?.accuracy || 0) * m.weight / 100;
+                          }, 0) * 10) / 10}%
+                        </div>
+                        <div className="text-xs text-slate-600">预期准确率</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-orange-600">
+                          {weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                            const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                            return sum + (parseInt(performance?.trainingTime.replace(/[^\d]/g, '') || '0') * m.weight / 100);
+                          }, 0).toFixed(0)}秒
+                        </div>
+                        <div className="text-xs text-slate-600">平均训练时间</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 配置状态提示 */}
+                  <div className="mt-4 p-3 border rounded-lg bg-green-50">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-green-700">
+                        ✅ 权重配置已就绪，可在下方表格中查看加权预测结果
+                      </div>
+                      <div className="text-sm text-green-600">
+                        已保存 {savedConfigs.length} 个配置
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 数据统计 */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Badge variant="secondary">总记录数: {filteredForecastData.length}</Badge>
+                  <Badge variant="outline">当前页: {forecastPreviewPage}/{forecastTotalPages}</Badge>
+                </div>
+                <div className="text-sm text-slate-500">
+                  💡 显示示例预测数据，支持筛选和分页查看
+                </div>
+              </div>
+
+
+
+
+
+              {/* 预测数据表格 */}
+              {filteredForecastData.length > 0 ? (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>任务名称</TableHead>
+                        <TableHead>预测月份</TableHead>
+                        <TableHead>预测销量(万升)</TableHead>
+                        {showWeightedForecast && <TableHead>加权预测(万升)</TableHead>}
+                        <TableHead>实际销量(万升)</TableHead>
+                        <TableHead>置信度(%)</TableHead>
+                        <TableHead>算法</TableHead>
+                        <TableHead>执行时间</TableHead>
+                        <TableHead>操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentForecastPageData.map((item, index) => {
+                        const globalIndex = forecastStartIndex + index;
+                        const taskIndex = Math.floor(globalIndex / 12);
+                        const taskNames = ["华东地区2024年销售预测", "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预测"];
+                        const algorithms = ["线性回归", "ARIMA模型", "指数平滑", "LSTM神经网络"];
+                        const executionTimes = ["2024-01-05 15:30", "2024-01-04 14:20", "2024-01-03 10:15", "2024-01-02 16:45"];
+                        
+                        const currentTaskName = taskNames[taskIndex] || taskNames[0]!;
+                        const currentAlgorithm = algorithms[taskIndex] || algorithms[0]!;
+                        const currentExecutionTime = executionTimes[taskIndex] || executionTimes[0]!;
+                        
+                        return (
+                          <TableRow key={globalIndex}>
+                            <TableCell className="max-w-xs truncate" title={currentTaskName}>
+                              {currentTaskName}
+                            </TableCell>
+                            <TableCell>{item.month}</TableCell>
+                            <TableCell>{item.predicted}</TableCell>
+                            {showWeightedForecast && (
+                              <TableCell>
+                                <span className="font-medium text-blue-600">
+                                  {calculateWeightedForecast(item.month)}
+                                </span>
+                              </TableCell>
+                            )}
+                            <TableCell>{item.actual || '-'}</TableCell>
+                            <TableCell>
+                              <Badge variant={item.confidence >= 90 ? "default" : item.confidence >= 80 ? "secondary" : "outline"}>
+                                {item.confidence}%
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{currentAlgorithm}</TableCell>
+                            <TableCell className="text-sm">{currentExecutionTime}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm">
+                                  <FileTextIcon className="w-4 h-4" />
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                  <DownloadIcon className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  暂无符合条件的预测数据
+                </div>
+              )}
+
+              {/* 分页 */}
+              {filteredForecastData.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                    显示 {forecastStartIndex + 1}-{Math.min(forecastEndIndex, filteredForecastData.length)} 条，共 {filteredForecastData.length} 条记录
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setForecastPreviewPage(prev => Math.max(1, prev - 1))}
+                      disabled={forecastPreviewPage === 1}
+                    >
+                      上一页
+                    </Button>
+                    
+                    {/* 页码按钮 */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(forecastTotalPages, 5) }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={forecastPreviewPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setForecastPreviewPage(page)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setForecastPreviewPage(prev => Math.min(forecastTotalPages, prev + 1))}
+                      disabled={forecastPreviewPage === forecastTotalPages}
+                    >
+                      下一页
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      case "analysis":
+        return <div>预测分析（静态占位）</div>;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="flex h-full w-full pt-12">
+      {/* 左侧菜单 */}
+      <div className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4">
+        <div className="space-y-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Button
+                key={item.id}
+                variant={activeMenu === item.id ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setActiveMenu(item.id as MenuItem)}
+              >
+                <Icon className="w-4 h-4 mr-2" />
+                {item.label}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 主内容区域 */}
+      <div className="flex-1 p-6 overflow-auto">
+        <div className="max-w-6xl mx-auto">
+          {renderContent()}
+        </div>
+      </div>
+    </div>
+  );
+}

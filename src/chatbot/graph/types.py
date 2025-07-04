@@ -1,7 +1,7 @@
 # Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 # SPDX-License-Identifier: MIT
 
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from langgraph.graph import MessagesState
 
 from src.rag import Resource
@@ -14,4 +14,9 @@ class State(MessagesState):
     locale: str
     resources: list[Resource]
     user_query: str
-    response: Optional[str] 
+    response: Optional[str]
+    
+    # Enhanced retrieval results
+    knowledge_base_results: Optional[List[Dict[str, Any]]] = None
+    web_search_results: Optional[List[Dict[str, Any]]] = None
+    fusion_enabled: bool = True  # Enable/disable fusion retrieval 

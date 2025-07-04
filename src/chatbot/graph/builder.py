@@ -5,7 +5,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.chatbot.graph.types import State
-from src.chatbot.graph.nodes import initialize_node, chatbot_node
+from src.chatbot.graph.nodes import initialize_node, chatbot_node, enhanced_chatbot_node
 
 
 def _build_base_graph():
@@ -24,6 +24,22 @@ def _build_base_graph():
     return builder
 
 
+def _build_enhanced_graph():
+    """Build and return the enhanced chatbot state graph with fusion retrieval."""
+    builder = StateGraph(State)
+    
+    # Add nodes
+    builder.add_node("initialize", initialize_node)
+    builder.add_node("enhanced_chatbot", enhanced_chatbot_node)
+    
+    # Add edges
+    builder.add_edge(START, "initialize")
+    builder.add_edge("initialize", "enhanced_chatbot")
+    builder.add_edge("enhanced_chatbot", END)
+    
+    return builder
+
+
 def build_graph_with_memory():
     """Build and return the chatbot workflow graph with memory."""
     # Use persistent memory to save conversation history
@@ -34,6 +50,16 @@ def build_graph_with_memory():
     return builder.compile(checkpointer=memory)
 
 
+def build_enhanced_graph_with_memory():
+    """Build and return the enhanced chatbot workflow graph with memory and fusion retrieval."""
+    # Use persistent memory to save conversation history
+    memory = MemorySaver()
+    
+    # Build enhanced state graph
+    builder = _build_enhanced_graph()
+    return builder.compile(checkpointer=memory)
+
+
 def build_graph():
     """Build and return the chatbot workflow graph without memory."""
     # Build state graph
@@ -41,5 +67,13 @@ def build_graph():
     return builder.compile()
 
 
-# Default graph instance
-graph = build_graph() 
+def build_enhanced_graph():
+    """Build and return the enhanced chatbot workflow graph without memory."""
+    # Build enhanced state graph
+    builder = _build_enhanced_graph()
+    return builder.compile()
+
+
+# Default graph instances
+graph = build_graph()
+enhanced_graph = build_enhanced_graph() 

@@ -1,6 +1,6 @@
 "use client";
 
-import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, ArrowLeft, BarChart3 } from "lucide-react";
+import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, ArrowLeft, BarChart3, Target as TargetIcon, Trophy as TrophyIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "~/components/ui/badge";
@@ -339,6 +339,158 @@ const staticForecastData: ForecastData[] = [
   { month: "2025-01", predicted: 4850, confidence: 64 }
 ];
 
+// 预测分析数据 - 多维度层级数据
+const analysisData = {
+  regions: {
+    "华东": {
+      companies: {
+        "华东航空燃料有限公司": {
+          airports: {
+            "上海浦东机场": {
+              data: [
+                {
+                  month: "2024-01",
+                  actual: 1200,
+                  predicted: 1250,
+                  predictedYoy: 0.08, // 同比
+                  predictedMom: 0.05, // 环比
+                  lastYearSame: 1110,
+                  deviation: 0.042, // 偏差率
+                  iteration: 3, // 第几次迭代
+                  algorithm: "线性回归"
+                },
+                {
+                  month: "2024-02",
+                  actual: 1150,
+                  predicted: 1180,
+                  predictedYoy: 0.06,
+                  predictedMom: -0.056,
+                  lastYearSame: 1080,
+                  deviation: 0.026,
+                  iteration: 3,
+                  algorithm: "线性回归"
+                },
+                {
+                  month: "2024-03",
+                  actual: 1280,
+                  predicted: 1320,
+                  predictedYoy: 0.12,
+                  predictedMom: 0.119,
+                  lastYearSame: 1140,
+                  deviation: 0.031,
+                  iteration: 3,
+                  algorithm: "线性回归"
+                },
+                {
+                  month: "2024-04",
+                  actual: 1350,
+                  predicted: 1400,
+                  predictedYoy: 0.15,
+                  predictedMom: 0.061,
+                  lastYearSame: 1170,
+                  deviation: 0.037,
+                  iteration: 3,
+                  algorithm: "线性回归"
+                },
+                {
+                  month: "2024-05",
+                  actual: 1420,
+                  predicted: 1450,
+                  predictedYoy: 0.18,
+                  predictedMom: 0.036,
+                  lastYearSame: 1200,
+                  deviation: 0.021,
+                  iteration: 3,
+                  algorithm: "线性回归"
+                },
+                {
+                  month: "2024-06",
+                  actual: 1360,
+                  predicted: 1380,
+                  predictedYoy: 0.14,
+                  predictedMom: -0.062,
+                  lastYearSame: 1190,
+                  deviation: 0.015,
+                  iteration: 3,
+                  algorithm: "线性回归"
+                }
+              ]
+            },
+            "上海虹桥机场": {
+              data: [
+                {
+                  month: "2024-01",
+                  actual: 850,
+                  predicted: 880,
+                  predictedYoy: 0.07,
+                  predictedMom: 0.04,
+                  lastYearSame: 820,
+                  deviation: 0.035,
+                  iteration: 2,
+                  algorithm: "随机森林"
+                },
+                {
+                  month: "2024-02",
+                  actual: 820,
+                  predicted: 850,
+                  predictedYoy: 0.05,
+                  predictedMom: -0.034,
+                  lastYearSame: 780,
+                  deviation: 0.037,
+                  iteration: 2,
+                  algorithm: "随机森林"
+                }
+              ]
+            }
+          }
+        },
+        "江苏航空燃料公司": {
+          airports: {
+            "南京禄口机场": {
+              data: [
+                {
+                  month: "2024-01",
+                  actual: 680,
+                  predicted: 720,
+                  predictedYoy: 0.09,
+                  predictedMom: 0.06,
+                  lastYearSame: 660,
+                  deviation: 0.059,
+                  iteration: 1,
+                  algorithm: "XGBoost"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "华南": {
+      companies: {
+        "华南航空燃料有限公司": {
+          airports: {
+            "广州白云机场": {
+              data: [
+                {
+                  month: "2024-01",
+                  actual: 1100,
+                  predicted: 1150,
+                  predictedYoy: 0.10,
+                  predictedMom: 0.05,
+                  lastYearSame: 1040,
+                  deviation: 0.045,
+                  iteration: 2,
+                  algorithm: "神经网络"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
 type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis";
 
 export default function SalesForecastMain() {
@@ -572,6 +724,15 @@ export default function SalesForecastMain() {
   const [configSearchTerm, setConfigSearchTerm] = useState("");
   const [selectedConfigs, setSelectedConfigs] = useState<string[]>([]);
   
+  // 预测分析相关状态
+  const [analysisLevel, setAnalysisLevel] = useState("region"); // region, company, airport
+  const [selectedRegion, setSelectedRegion] = useState("华东");
+  const [selectedCompany, setSelectedCompany] = useState("华东航空燃料有限公司");
+  const [selectedAirport, setSelectedAirport] = useState("上海浦东机场");
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState("all");
+  const [analysisTimeRange, setAnalysisTimeRange] = useState("12"); // 12, 24, 36 months
+  const [showTrendChart, setShowTrendChart] = useState(true);
+  
   // 历史执行记录
   const [executionHistory, setExecutionHistory] = useState([
     {
@@ -795,6 +956,87 @@ export default function SalesForecastMain() {
       totalWeight,
       message: totalWeight === 100 ? "权重配置正确" : `权重总和应为100%，当前为${totalWeight}%`
     };
+  };
+
+  // 获取当前分析数据
+  const getCurrentAnalysisData = () => {
+    const regionData = (analysisData.regions as any)[selectedRegion];
+    if (!regionData) return [];
+    
+    if (analysisLevel === "region") {
+      // 返回该地区所有数据
+      const allData: any[] = [];
+      Object.values(regionData.companies).forEach((company: any) => {
+        Object.values(company.airports).forEach((airport: any) => {
+          allData.push(...airport.data);
+        });
+      });
+      return allData;
+    } else if (analysisLevel === "company") {
+      const companyData = (regionData.companies as any)[selectedCompany];
+      if (!companyData) return [];
+      
+      const allData: any[] = [];
+      Object.values(companyData.airports).forEach((airport: any) => {
+        allData.push(...airport.data);
+      });
+      return allData;
+    } else if (analysisLevel === "airport") {
+      const companyData = (regionData.companies as any)[selectedCompany];
+      if (!companyData) return [];
+      
+      const airportData = (companyData.airports as any)[selectedAirport];
+      return airportData ? airportData.data : [];
+    }
+    
+    return [];
+  };
+
+  // 过滤分析数据
+  const getFilteredAnalysisData = () => {
+    let data = getCurrentAnalysisData();
+    
+    // 如果启用了多模型加权分析，则按启用的模型算法过滤
+    if (showWeightedForecast) {
+      const enabledAlgorithms = weightConfig.models
+        .filter(model => model.enabled)
+        .map(model => model.name);
+      data = data.filter((item: any) => enabledAlgorithms.includes(item.algorithm));
+    }
+    
+    // 按时间范围过滤
+    const months = parseInt(analysisTimeRange);
+    if (months > 0) {
+      const cutoffDate = new Date();
+      cutoffDate.setMonth(cutoffDate.getMonth() - months);
+      data = data.filter((item: any) => {
+        const itemDate = new Date(item.month + "-01");
+        return itemDate >= cutoffDate;
+      });
+    }
+    
+    return data;
+  };
+
+  // 导出分析数据
+  const exportAnalysisData = () => {
+    const data = getFilteredAnalysisData();
+    const csvContent = [
+      "月份,实际完成值,预测值,预测值同比,预测值环比,去年同期,预测偏差率,迭代次数,算法",
+      ...data.map((item: any) => 
+        `${item.month},${item.actual},${item.predicted},${(item.predictedYoy * 100).toFixed(2)}%,${(item.predictedMom * 100).toFixed(2)}%,${item.lastYearSame},${(item.deviation * 100).toFixed(2)}%,${item.iteration},${item.algorithm}`
+      )
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `预测分析数据_${selectedRegion}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // 自动调整权重
@@ -1742,34 +1984,129 @@ export default function SalesForecastMain() {
         );
       case "analysis":
         return (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChartIcon className="w-5 h-5" />
-                    预测分析
-                  </CardTitle>
-                  <CardDescription>
-                    依托模型算法输出，支持地区/合资公司、分公司、机场等层级的多维度预测结果分析
-                  </CardDescription>
+          <div className="space-y-6">
+            {/* 页面标题和层级选择 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PieChartIcon className="w-5 h-5" />
+                  预测分析
+                </CardTitle>
+                <CardDescription>
+                  依托模型算法输出，支持地区/合资公司、分公司、机场等层级的多维度预测结果分析
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* 层级和筛选控制 */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="space-y-2">
+                    <Label>分析层级</Label>
+                    <Select value={analysisLevel} onValueChange={setAnalysisLevel}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="region">地区层级</SelectItem>
+                        <SelectItem value="company">合资公司层级</SelectItem>
+                        <SelectItem value="airport">机场层级</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>地区</Label>
+                    <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="华东">华东地区</SelectItem>
+                        <SelectItem value="华南">华南地区</SelectItem>
+                        <SelectItem value="华北">华北地区</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {(analysisLevel === "company" || analysisLevel === "airport") && (
+                    <div className="space-y-2">
+                      <Label>合资公司</Label>
+                      <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="华东航空燃料有限公司">华东航空燃料有限公司</SelectItem>
+                          <SelectItem value="江苏航空燃料公司">江苏航空燃料公司</SelectItem>
+                          <SelectItem value="华南航空燃料有限公司">华南航空燃料有限公司</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {analysisLevel === "airport" && (
+                    <div className="space-y-2">
+                      <Label>机场</Label>
+                      <Select value={selectedAirport} onValueChange={setSelectedAirport}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="上海浦东机场">上海浦东机场</SelectItem>
+                          <SelectItem value="上海虹桥机场">上海虹桥机场</SelectItem>
+                          <SelectItem value="南京禄口机场">南京禄口机场</SelectItem>
+                          <SelectItem value="广州白云机场">广州白云机场</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <Button 
-                    variant={showWeightedForecast ? "default" : "outline"}
-                    onClick={() => setShowWeightedForecast(!showWeightedForecast)}
-                  >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    多模型加权分析配置
-                  </Button>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>时间范围</Label>
+                    <Select value={analysisTimeRange} onValueChange={setAnalysisTimeRange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">近3个月</SelectItem>
+                        <SelectItem value="6">近6个月</SelectItem>
+                        <SelectItem value="12">近12个月</SelectItem>
+                        <SelectItem value="24">近24个月</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>显示选项</Label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="showTrendChart"
+                        checked={showTrendChart}
+                        onChange={(e) => setShowTrendChart(e.target.checked)}
+                        className="rounded"
+                      />
+                      <Label htmlFor="showTrendChart" className="text-sm">显示趋势图</Label>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>多模型加权分析</Label>
+                    <Button 
+                      variant={showWeightedForecast ? "default" : "outline"}
+                      onClick={() => setShowWeightedForecast(!showWeightedForecast)}
+                      className="w-full"
+                    >
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      {showWeightedForecast ? "关闭配置" : "开启配置"}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {showWeightedForecast ? (
-                <>
-                  {/* 权重配置面板（与原预测结果查询页面一致） */}
-                  <div className="border rounded-lg p-6 bg-slate-50">
+                
+                {/* 多模型加权分析配置面板 */}
+                {showWeightedForecast && (
+                  <div className="mt-6 border rounded-lg p-6 bg-slate-50">
                     {/* 功能说明 */}
                     <div className="mb-6 p-4 border rounded-lg bg-blue-50">
                       <h4 className="text-sm font-medium text-blue-900 mb-2">多模型加权分析配置说明</h4>
@@ -1780,53 +2117,55 @@ export default function SalesForecastMain() {
                         <p>• 提供预设模板（保守型、平衡型、激进型）快速配置</p>
                       </div>
                     </div>
+                    
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium">多模型加权配置</h3>
                       <div className="flex items-center gap-3">
                         <Badge variant={validateWeightConfig().isValid ? "default" : "destructive"}>
                           总权重: {validateWeightConfig().totalWeight}%
                         </Badge>
-                        <Select 
-                          onValueChange={(template) => {
-                            if (template && weightTemplates[template as keyof typeof weightTemplates]) {
-                              setWeightConfig(weightTemplates[template as keyof typeof weightTemplates]);
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue placeholder="选择模板" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="保守型">保守型</SelectItem>
-                            <SelectItem value="平衡型">平衡型</SelectItem>
-                            <SelectItem value="激进型">激进型</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select 
-                          onValueChange={(configId) => {
-                            const config = savedConfigs.find(c => c.id === configId);
-                            if (config) {
-                              setWeightConfig({
-                                region: config.region,
-                                company: config.company,
-                                models: config.models
-                              });
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-40">
-                            <SelectValue placeholder="选择保存的配置" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {savedConfigs.map((config) => (
-                              <SelectItem key={config.id} value={config.id}>
-                                {config.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                                                 <Select 
+                           onValueChange={(template) => {
+                             if (template && weightTemplates[template as keyof typeof weightTemplates]) {
+                               setWeightConfig(weightTemplates[template as keyof typeof weightTemplates]);
+                             }
+                           }}
+                         >
+                           <SelectTrigger className="w-32">
+                             <SelectValue placeholder="选择模板" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="保守型">保守型</SelectItem>
+                             <SelectItem value="平衡型">平衡型</SelectItem>
+                             <SelectItem value="激进型">激进型</SelectItem>
+                           </SelectContent>
+                         </Select>
+                         <Select 
+                           onValueChange={(configId) => {
+                             const config = savedConfigs.find(c => c.id === configId);
+                             if (config) {
+                               setWeightConfig({
+                                 region: config.region,
+                                 company: config.company,
+                                 models: config.models
+                               });
+                             }
+                           }}
+                         >
+                           <SelectTrigger className="w-40">
+                             <SelectValue placeholder="选择保存的配置" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             {savedConfigs.map((config) => (
+                               <SelectItem key={config.id} value={config.id}>
+                                 {config.name}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
                       </div>
                     </div>
+                    
                     {/* 权重验证提示 */}
                     {!validateWeightConfig().isValid && (
                       <div className="mb-4 p-3 border border-red-200 rounded-lg bg-red-50">
@@ -1844,11 +2183,12 @@ export default function SalesForecastMain() {
                         </div>
                       </div>
                     )}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* 地区公司配置 */}
                       <div className="space-y-4">
                         <div>
-                          <Label className="text-sm font-medium">地区</Label>
+                          <Label className="text-sm font-medium">权重配置地区</Label>
                           <Select 
                             value={weightConfig.region} 
                             onValueChange={(value) => setWeightConfig(prev => ({ ...prev, region: value }))}
@@ -1865,7 +2205,7 @@ export default function SalesForecastMain() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium">公司</Label>
+                          <Label className="text-sm font-medium">权重配置公司</Label>
                           <Select 
                             value={weightConfig.company} 
                             onValueChange={(value) => setWeightConfig(prev => ({ ...prev, company: value }))}
@@ -1882,6 +2222,7 @@ export default function SalesForecastMain() {
                           </Select>
                         </div>
                       </div>
+                      
                       {/* 模型权重配置 */}
                       <div className="space-y-3">
                         <Label className="text-sm font-medium">模型权重配置</Label>
@@ -1941,332 +2282,641 @@ export default function SalesForecastMain() {
                         })}
                       </div>
                     </div>
-                    {/* 配置列表 */}
-                    {showConfigList && (
-                      <div className="mt-4 p-4 border rounded-lg bg-slate-50">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="text-sm font-medium">保存的配置列表</h5>
-                          <div className="flex items-center gap-2">
-                            {selectedConfigs.length > 0 && (
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => {
-                                  setSavedConfigs(prev => prev.filter(c => !selectedConfigs.includes(c.id)));
-                                  setSelectedConfigs([]);
-                                }}
-                              >
-                                删除选中 ({selectedConfigs.length})
-                              </Button>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => setShowConfigList(false)}
-                            >
-                              关闭
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="mb-3">
-                          <Input
-                            placeholder="搜索配置名称或描述..."
-                            value={configSearchTerm}
-                            onChange={(e) => setConfigSearchTerm(e.target.value)}
-                            className="w-full"
-                          />
-                          <div className="text-xs text-slate-500 mt-1">
-                            找到 {savedConfigs.filter(config => 
-                              config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                              config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                              config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                              config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
-                            ).length} 个配置
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          {savedConfigs
-                            .filter(config => 
-                              config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                              config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                              config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                              config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
-                            )
-                            .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
-                            .map((config) => (
-                              <div key={config.id} className="p-3 border rounded-lg bg-white">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedConfigs.includes(config.id)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setSelectedConfigs(prev => [...prev, config.id]);
-                                        } else {
-                                          setSelectedConfigs(prev => prev.filter(id => id !== config.id));
-                                        }
-                                      }}
-                                      className="w-4 h-4"
-                                    />
-                                    <div className="flex-1">
-                                      <div className="text-sm font-medium">{config.name}</div>
-                                      <div className="text-xs text-slate-500 mt-1">{config.description}</div>
-                                      <div className="text-xs text-slate-400 mt-1">
-                                        {config.region} - {config.company} | 准确率: {config.accuracy}% | 更新: {config.lastUpdated}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setWeightConfig({
-                                          region: config.region,
-                                          company: config.company,
-                                          models: config.models
-                                        });
-                                        setShowConfigList(false);
-                                      }}
-                                    >
-                                      选择
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditingConfig(config.id);
-                                        setConfigName(config.name);
-                                        setConfigDescription(config.description);
-                                      }}
-                                    >
-                                      编辑
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        const newConfig = {
-                                          ...config,
-                                          id: Date.now().toString(),
-                                          name: `${config.name} - 副本`,
-                                          lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                        };
-                                        setSavedConfigs(prev => [...prev, newConfig]);
-                                      }}
-                                    >
-                                      复制
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        const configData = JSON.stringify(config, null, 2);
-                                        const blob = new Blob([configData], { type: 'application/json' });
-                                        const url = URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = `${config.name}.json`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        document.body.removeChild(a);
-                                        URL.revokeObjectURL(url);
-                                      }}
-                                    >
-                                      导出
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSavedConfigs(prev => prev.filter(c => c.id !== config.id));
-                                      }}
-                                    >
-                                      删除
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                    {/* 保存配置对话框 */}
-                    {showSaveDialog && (
-                      <div className="mt-4 p-4 border rounded-lg bg-blue-50">
-                        <h5 className="text-sm font-medium mb-3">
-                          {editingConfig ? "编辑配置" : "保存当前配置"}
-                        </h5>
-                        <div className="space-y-3">
-                          <div>
-                            <Label className="text-sm">配置名称</Label>
-                            <Input
-                              value={configName}
-                              onChange={(e) => setConfigName(e.target.value)}
-                              placeholder="请输入配置名称"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-sm">配置描述</Label>
-                            <Input
-                              value={configDescription}
-                              onChange={(e) => setConfigDescription(e.target.value)}
-                              placeholder="请输入配置描述"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                if (configName.trim()) {
-                                  if (editingConfig) {
-                                    // 编辑现有配置
-                                    setSavedConfigs(prev => prev.map(config => 
-                                      config.id === editingConfig 
-                                        ? {
-                                            ...config,
-                                            name: configName,
-                                            description: configDescription,
-                                            region: weightConfig.region,
-                                            company: weightConfig.company,
-                                            models: weightConfig.models,
-                                            accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                                              const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                                              return sum + (performance?.accuracy || 0) * m.weight / 100;
-                                            }, 0) * 10) / 10,
-                                            lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                          }
-                                        : config
-                                    ));
-                                    setEditingConfig(null);
-                                  } else {
-                                    // 保存新配置
-                                    const newConfig = {
-                                      id: Date.now().toString(),
-                                      name: configName,
-                                      description: configDescription,
-                                      region: weightConfig.region,
-                                      company: weightConfig.company,
-                                      models: weightConfig.models,
-                                      accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                                        const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                                        return sum + (performance?.accuracy || 0) * m.weight / 100;
-                                      }, 0) * 10) / 10,
-                                      lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                    };
-                                    setSavedConfigs(prev => [...prev, newConfig]);
-                                  }
-                                  setConfigName("");
-                                  setConfigDescription("");
-                                  setShowSaveDialog(false);
-                                }
-                              }}
-                            >
-                              {editingConfig ? "更新" : "保存"}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setConfigName("");
-                                setConfigDescription("");
-                                setEditingConfig(null);
-                                setShowSaveDialog(false);
-                              }}
-                            >
-                              取消
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {/* 操作按钮 */}
-                    <div className="mt-6 flex items-center justify-between">
-                      <div className="text-sm text-slate-600">
-                        配置将自动保存到 {weightConfig.region} - {weightConfig.company}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setShowConfigList(!showConfigList)}
-                        >
-                          <FileTextIcon className="w-4 h-4 mr-2" />
-                          配置列表
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setShowSaveDialog(true)}
-                        >
-                          <UploadIcon className="w-4 h-4 mr-2" />
-                          保存配置
-                        </Button>
-                      </div>
-                    </div>
-                    {/* 配置统计信息 */}
-                    <div className="mt-4 p-4 border rounded-lg bg-blue-50">
-                      <h5 className="text-sm font-medium mb-3">配置统计信息</h5>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-blue-600">
-                            {weightConfig.models.filter(m => m.enabled).length}
-                          </div>
-                          <div className="text-xs text-slate-600">启用模型数</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-green-600">
-                            {validateWeightConfig().totalWeight}%
-                          </div>
-                          <div className="text-xs text-slate-600">权重总和</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-purple-600">
-                            {Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                              const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                              return sum + (performance?.accuracy || 0) * m.weight / 100;
-                            }, 0) * 10) / 10}%
-                          </div>
-                          <div className="text-xs text-slate-600">预期准确率</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold text-orange-600">
-                            {weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                              const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                              return sum + (parseInt(performance?.trainingTime.replace(/[^-\d]/g, '') || '0') * m.weight / 100);
-                            }, 0).toFixed(0)}秒
-                          </div>
-                          <div className="text-xs text-slate-600">平均训练时间</div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* 配置状态提示 */}
-                    <div className="mt-4 p-3 border rounded-lg bg-green-50">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-green-700">
-                          ✅ 权重配置已就绪，可在下方表格中查看加权预测结果
-                        </div>
-                        <div className="text-sm text-green-600">
-                          已保存 {savedConfigs.length} 个配置
-                        </div>
+                    
+                                         {/* 配置列表 */}
+                     {showConfigList && (
+                       <div className="mt-4 p-4 border rounded-lg bg-slate-50">
+                         <div className="flex items-center justify-between mb-3">
+                           <h5 className="text-sm font-medium">保存的配置列表</h5>
+                           <div className="flex items-center gap-2">
+                             {selectedConfigs.length > 0 && (
+                               <Button 
+                                 variant="destructive" 
+                                 size="sm"
+                                 onClick={() => {
+                                   setSavedConfigs(prev => prev.filter(c => !selectedConfigs.includes(c.id)));
+                                   setSelectedConfigs([]);
+                                 }}
+                               >
+                                 删除选中 ({selectedConfigs.length})
+                               </Button>
+                             )}
+                             <Button 
+                               variant="outline" 
+                               size="sm"
+                               onClick={() => setShowConfigList(false)}
+                             >
+                               关闭
+                             </Button>
+                           </div>
+                         </div>
+                         <div className="mb-3">
+                           <Input
+                             placeholder="搜索配置名称或描述..."
+                             value={configSearchTerm}
+                             onChange={(e) => setConfigSearchTerm(e.target.value)}
+                             className="w-full"
+                           />
+                           <div className="text-xs text-slate-500 mt-1">
+                             找到 {savedConfigs.filter(config => 
+                               config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                               config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                               config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                               config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
+                             ).length} 个配置
+                           </div>
+                         </div>
+                         <div className="space-y-2">
+                           {savedConfigs
+                             .filter(config => 
+                               config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                               config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                               config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                               config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
+                             )
+                             .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+                             .map((config) => (
+                               <div key={config.id} className="p-3 border rounded-lg bg-white">
+                                 <div className="flex items-center justify-between">
+                                   <div className="flex items-center gap-3">
+                                     <input
+                                       type="checkbox"
+                                       checked={selectedConfigs.includes(config.id)}
+                                       onChange={(e) => {
+                                         if (e.target.checked) {
+                                           setSelectedConfigs(prev => [...prev, config.id]);
+                                         } else {
+                                           setSelectedConfigs(prev => prev.filter(id => id !== config.id));
+                                         }
+                                       }}
+                                       className="w-4 h-4"
+                                     />
+                                     <div className="flex-1">
+                                       <div className="text-sm font-medium">{config.name}</div>
+                                       <div className="text-xs text-slate-500 mt-1">{config.description}</div>
+                                       <div className="text-xs text-slate-400 mt-1">
+                                         {config.region} - {config.company} | 准确率: {config.accuracy}% | 更新: {config.lastUpdated}
+                                       </div>
+                                     </div>
+                                   </div>
+                                   <div className="flex items-center gap-2">
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => {
+                                         setWeightConfig({
+                                           region: config.region,
+                                           company: config.company,
+                                           models: config.models
+                                         });
+                                         setShowConfigList(false);
+                                       }}
+                                     >
+                                       选择
+                                     </Button>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => {
+                                         setEditingConfig(config.id);
+                                         setConfigName(config.name);
+                                         setConfigDescription(config.description);
+                                       }}
+                                     >
+                                       编辑
+                                     </Button>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => {
+                                         const newConfig = {
+                                           ...config,
+                                           id: Date.now().toString(),
+                                           name: `${config.name} - 副本`,
+                                           lastUpdated: new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString()
+                                         };
+                                         setSavedConfigs(prev => [...prev, newConfig]);
+                                       }}
+                                     >
+                                       复制
+                                     </Button>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => {
+                                         const configData = JSON.stringify(config, null, 2);
+                                         const blob = new Blob([configData], { type: 'application/json' });
+                                         const url = URL.createObjectURL(blob);
+                                         const a = document.createElement('a');
+                                         a.href = url;
+                                         a.download = `${config.name}.json`;
+                                         document.body.appendChild(a);
+                                         a.click();
+                                         document.body.removeChild(a);
+                                         URL.revokeObjectURL(url);
+                                       }}
+                                     >
+                                       导出
+                                     </Button>
+                                     <Button
+                                       variant="outline"
+                                       size="sm"
+                                       onClick={() => {
+                                         setSavedConfigs(prev => prev.filter(c => c.id !== config.id));
+                                       }}
+                                     >
+                                       删除
+                                     </Button>
+                                   </div>
+                                 </div>
+                               </div>
+                             ))}
+                         </div>
+                       </div>
+                     )}
+                     
+                     {/* 保存配置对话框 */}
+                     {showSaveDialog && (
+                       <div className="mt-4 p-4 border rounded-lg bg-blue-50">
+                         <h5 className="text-sm font-medium mb-3">
+                           {editingConfig ? "编辑配置" : "保存当前配置"}
+                         </h5>
+                         <div className="space-y-3">
+                           <div>
+                             <Label className="text-sm">配置名称</Label>
+                             <Input
+                               value={configName}
+                               onChange={(e) => setConfigName(e.target.value)}
+                               placeholder="请输入配置名称"
+                               className="mt-1"
+                             />
+                           </div>
+                           <div>
+                             <Label className="text-sm">配置描述</Label>
+                             <Input
+                               value={configDescription}
+                               onChange={(e) => setConfigDescription(e.target.value)}
+                               placeholder="请输入配置描述"
+                               className="mt-1"
+                             />
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <Button
+                               size="sm"
+                               onClick={() => {
+                                 if (configName.trim()) {
+                                   if (editingConfig) {
+                                     // 编辑现有配置
+                                     setSavedConfigs(prev => prev.map(config => 
+                                       config.id === editingConfig 
+                                         ? {
+                                             ...config,
+                                             name: configName,
+                                             description: configDescription,
+                                             region: weightConfig.region,
+                                             company: weightConfig.company,
+                                             models: weightConfig.models,
+                                             accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                               const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                               return sum + (performance?.accuracy ?? 0) * m.weight / 100;
+                                             }, 0) * 10) / 10,
+                                             lastUpdated: new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString()
+                                           }
+                                         : config
+                                     ));
+                                     setEditingConfig(null);
+                                   } else {
+                                     // 保存新配置
+                                     const newConfig = {
+                                       id: Date.now().toString(),
+                                       name: configName,
+                                       description: configDescription,
+                                       region: weightConfig.region,
+                                       company: weightConfig.company,
+                                       models: weightConfig.models,
+                                       accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                         const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                         return sum + (performance?.accuracy ?? 0) * m.weight / 100;
+                                       }, 0) * 10) / 10,
+                                       lastUpdated: new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString()
+                                     };
+                                     setSavedConfigs(prev => [...prev, newConfig]);
+                                   }
+                                   setConfigName("");
+                                   setConfigDescription("");
+                                   setShowSaveDialog(false);
+                                 }
+                               }}
+                             >
+                               {editingConfig ? "更新" : "保存"}
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => {
+                                 setConfigName("");
+                                 setConfigDescription("");
+                                 setEditingConfig(null);
+                                 setShowSaveDialog(false);
+                               }}
+                             >
+                               取消
+                             </Button>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                     
+                     {/* 操作按钮 */}
+                     <div className="mt-6 flex items-center justify-between">
+                       <div className="text-sm text-slate-600">
+                         配置将自动保存到 {weightConfig.region} - {weightConfig.company}
+                       </div>
+                       <div className="flex items-center gap-3">
+                         <Button 
+                           variant="outline" 
+                           size="sm"
+                           onClick={() => setShowConfigList(!showConfigList)}
+                         >
+                           <FileTextIcon className="w-4 h-4 mr-2" />
+                           配置列表
+                         </Button>
+                         <Button 
+                           variant="outline" 
+                           size="sm"
+                           onClick={() => setShowSaveDialog(true)}
+                         >
+                           <UploadIcon className="w-4 h-4 mr-2" />
+                           保存配置
+                         </Button>
+                       </div>
+                     </div>
+                     
+                     {/* 配置统计信息 */}
+                     <div className="mt-4 p-4 border rounded-lg bg-blue-50">
+                       <h5 className="text-sm font-medium mb-3">配置统计信息</h5>
+                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                         <div className="text-center">
+                           <div className="text-lg font-bold text-blue-600">
+                             {weightConfig.models.filter(m => m.enabled).length}
+                           </div>
+                           <div className="text-xs text-slate-600">启用模型数</div>
+                         </div>
+                         <div className="text-center">
+                           <div className="text-lg font-bold text-green-600">
+                             {validateWeightConfig().totalWeight}%
+                           </div>
+                           <div className="text-xs text-slate-600">权重总和</div>
+                         </div>
+                         <div className="text-center">
+                           <div className="text-lg font-bold text-purple-600">
+                             {Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                               const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                               return sum + (performance?.accuracy ?? 0) * m.weight / 100;
+                             }, 0) * 10) / 10}%
+                           </div>
+                           <div className="text-xs text-slate-600">预期准确率</div>
+                         </div>
+                         <div className="text-center">
+                           <div className="text-lg font-bold text-orange-600">
+                             {weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                               const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                               return sum + (parseInt(performance?.trainingTime.replace(/[^-\d]/g, '') ?? '0') * m.weight / 100);
+                             }, 0).toFixed(0)}秒
+                           </div>
+                           <div className="text-xs text-slate-600">平均训练时间</div>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     {/* 配置状态提示 */}
+                     <div className="mt-4 p-3 border rounded-lg bg-green-50">
+                       <div className="flex items-center justify-between">
+                         <div className="text-sm text-green-700">
+                           ✅ 权重配置已就绪，可在下方表格中查看加权预测结果
+                         </div>
+                         <div className="text-sm text-green-600">
+                           已保存 {savedConfigs.length} 个配置
+                         </div>
+                       </div>
+                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 1. 预测结果偏差分析 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUpIcon className="w-5 h-5" />
+                      预测结果偏差分析
+                    </CardTitle>
+                    <CardDescription>
+                      整合各公司上月预测与实际偏差及本月预测数据，多维呈现关键指标
+                    </CardDescription>
+                  </div>
+                  <Button onClick={exportAnalysisData} variant="outline">
+                    <DownloadIcon className="w-4 h-4 mr-2" />
+                    导出数据
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {showTrendChart && (
+                  <div className="mb-6 p-4 border rounded-lg">
+                    <h4 className="text-sm font-medium mb-4">实际与预测趋势对比图</h4>
+                    <div className="h-64 bg-slate-50 rounded flex items-center justify-center">
+                      <div className="text-center text-slate-500">
+                        <TrendingUpIcon className="w-12 h-12 mx-auto mb-2" />
+                        <p>趋势图表区域</p>
+                        <p className="text-xs">显示实际值与预测值的曲线对比</p>
                       </div>
                     </div>
                   </div>
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  <PieChartIcon className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                  <h3 className="text-lg font-medium text-slate-600 mb-2">预测分析</h3>
-                  <p className="text-sm text-slate-500 mb-4">
-                    点击"多模型加权分析配置"按钮开始配置和分析
-                  </p>
+                )}
+                
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                                             <TableRow>
+                         <TableHead>月份</TableHead>
+                         <TableHead>实际完成值</TableHead>
+                         <TableHead>预测值</TableHead>
+                         {showWeightedForecast && <TableHead>加权预测值</TableHead>}
+                         <TableHead>预测值同比</TableHead>
+                         <TableHead>预测值环比</TableHead>
+                         <TableHead>去年同期</TableHead>
+                         <TableHead>预测偏差率</TableHead>
+                         <TableHead>迭代次数</TableHead>
+                         <TableHead>算法</TableHead>
+                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getFilteredAnalysisData().map((item: any, index: number) => (
+                                                 <TableRow key={index}>
+                           <TableCell className="font-medium">{item.month}</TableCell>
+                           <TableCell>{item.actual?.toLocaleString()}</TableCell>
+                           <TableCell>{item.predicted?.toLocaleString()}</TableCell>
+                           {showWeightedForecast && (
+                             <TableCell className="font-medium text-blue-600">
+                               {calculateWeightedForecast(item.month).toLocaleString()}
+                             </TableCell>
+                           )}
+                           <TableCell className={item.predictedYoy >= 0 ? "text-green-600" : "text-red-600"}>
+                             {(item.predictedYoy * 100).toFixed(2)}%
+                           </TableCell>
+                          <TableCell className={item.predictedMom >= 0 ? "text-green-600" : "text-red-600"}>
+                            {(item.predictedMom * 100).toFixed(2)}%
+                          </TableCell>
+                          <TableCell>{item.lastYearSame?.toLocaleString()}</TableCell>
+                          <TableCell className={item.deviation <= 0.05 ? "text-green-600" : item.deviation <= 0.1 ? "text-yellow-600" : "text-red-600"}>
+                            {(item.deviation * 100).toFixed(2)}%
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">第{item.iteration}次</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{item.algorithm}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* 2. 预测完成率分析 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <TargetIcon className="w-5 h-5" />
+                      预测完成率分析
+                    </CardTitle>
+                    <CardDescription>
+                      源自各公司当月销售量统计及累计销量完成率汇报内容
+                    </CardDescription>
+                  </div>
+                  <Button onClick={exportAnalysisData} variant="outline">
+                    <DownloadIcon className="w-4 h-4 mr-2" />
+                    导出数据
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>月份</TableHead>
+                        <TableHead>实际完成值</TableHead>
+                        <TableHead>本月同比</TableHead>
+                        <TableHead>本年累计</TableHead>
+                        <TableHead>本年同比</TableHead>
+                        <TableHead>本年销售预测</TableHead>
+                        <TableHead>预测完成率</TableHead>
+                        <TableHead>去年同期</TableHead>
+                        <TableHead>去年截止同期</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getFilteredAnalysisData().map((item: any, index: number) => {
+                        const yearToDateActual = getFilteredAnalysisData()
+                          .filter((d: any) => d.month <= item.month && d.month.startsWith('2024'))
+                          .reduce((sum: number, d: any) => sum + d.actual, 0);
+                        const yearToDatePredicted = yearToDateActual * 1.15; // 模拟年度预测
+                        const completionRate = (yearToDateActual / yearToDatePredicted) * 100;
+                        const lastYearToDate = yearToDateActual * 0.92; // 模拟去年同期累计
+                        
+                        return (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{item.month}</TableCell>
+                            <TableCell>{item.actual?.toLocaleString()}</TableCell>
+                            <TableCell className={item.predictedYoy >= 0 ? "text-green-600" : "text-red-600"}>
+                              {(item.predictedYoy * 100).toFixed(2)}%
+                            </TableCell>
+                            <TableCell>{yearToDateActual.toLocaleString()}</TableCell>
+                            <TableCell className="text-green-600">
+                              {((yearToDateActual / lastYearToDate - 1) * 100).toFixed(2)}%
+                            </TableCell>
+                            <TableCell>{yearToDatePredicted.toLocaleString()}</TableCell>
+                            <TableCell className={completionRate >= 90 ? "text-green-600" : completionRate >= 80 ? "text-yellow-600" : "text-red-600"}>
+                              {completionRate.toFixed(1)}%
+                            </TableCell>
+                            <TableCell>{item.lastYearSame?.toLocaleString()}</TableCell>
+                            <TableCell>{lastYearToDate.toLocaleString()}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. 加油量排名分析 */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrophyIcon className="w-5 h-5" />
+                      加油量排名分析
+                    </CardTitle>
+                    <CardDescription>
+                      源自上月与上上月排名前十机场汇报内容，支持TopX排名对比分析
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select defaultValue="10">
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">Top5</SelectItem>
+                        <SelectItem value="10">Top10</SelectItem>
+                        <SelectItem value="15">Top15</SelectItem>
+                        <SelectItem value="20">Top20</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={exportAnalysisData} variant="outline">
+                      <DownloadIcon className="w-4 h-4 mr-2" />
+                      导出数据
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {showTrendChart && (
+                  <div className="mb-6 p-4 border rounded-lg">
+                    <h4 className="text-sm font-medium mb-4">加油量排名趋势图</h4>
+                    <div className="h-64 bg-slate-50 rounded flex items-center justify-center">
+                      <div className="text-center text-slate-500">
+                        <TrophyIcon className="w-12 h-12 mx-auto mb-2" />
+                        <p>排名趋势图表区域</p>
+                        <p className="text-xs">显示Top机场加油量变化趋势</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">排名</TableHead>
+                        <TableHead>机场名称</TableHead>
+                        <TableHead>地区</TableHead>
+                        <TableHead>当月加油量</TableHead>
+                        <TableHead>上月加油量</TableHead>
+                        <TableHead>环比变化</TableHead>
+                        <TableHead>同比变化</TableHead>
+                        <TableHead>市场占比</TableHead>
+                        <TableHead>排名变化</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[
+                        {
+                          rank: 1,
+                          airport: "上海浦东机场",
+                          region: "华东",
+                          current: 1250,
+                          lastMonth: 1200,
+                          mom: 0.042,
+                          yoy: 0.08,
+                          marketShare: 15.2,
+                          rankChange: 0
+                        },
+                        {
+                          rank: 2,
+                          airport: "广州白云机场",
+                          region: "华南",
+                          current: 1150,
+                          lastMonth: 1180,
+                          mom: -0.025,
+                          yoy: 0.06,
+                          marketShare: 14.1,
+                          rankChange: 1
+                        },
+                        {
+                          rank: 3,
+                          airport: "北京首都机场",
+                          region: "华北",
+                          current: 1100,
+                          lastMonth: 1050,
+                          mom: 0.048,
+                          yoy: 0.12,
+                          marketShare: 13.5,
+                          rankChange: -1
+                        },
+                        {
+                          rank: 4,
+                          airport: "上海虹桥机场",
+                          region: "华东",
+                          current: 880,
+                          lastMonth: 850,
+                          mom: 0.035,
+                          yoy: 0.07,
+                          marketShare: 10.8,
+                          rankChange: 0
+                        },
+                        {
+                          rank: 5,
+                          airport: "南京禄口机场",
+                          region: "华东",
+                          current: 720,
+                          lastMonth: 680,
+                          mom: 0.059,
+                          yoy: 0.09,
+                          marketShare: 8.8,
+                          rankChange: 2
+                        }
+                      ].map((item) => (
+                        <TableRow key={item.rank}>
+                          <TableCell className="font-bold">
+                            <div className="flex items-center">
+                              {item.rank <= 3 && (
+                                <TrophyIcon className={`w-4 h-4 mr-1 ${item.rank === 1 ? 'text-yellow-500' : item.rank === 2 ? 'text-gray-400' : 'text-amber-600'}`} />
+                              )}
+                              {item.rank}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">{item.airport}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{item.region}</Badge>
+                          </TableCell>
+                          <TableCell>{item.current.toLocaleString()}</TableCell>
+                          <TableCell>{item.lastMonth.toLocaleString()}</TableCell>
+                          <TableCell className={item.mom >= 0 ? "text-green-600" : "text-red-600"}>
+                            {(item.mom * 100).toFixed(2)}%
+                          </TableCell>
+                          <TableCell className={item.yoy >= 0 ? "text-green-600" : "text-red-600"}>
+                            {(item.yoy * 100).toFixed(2)}%
+                          </TableCell>
+                          <TableCell>{item.marketShare.toFixed(1)}%</TableCell>
+                          <TableCell>
+                            {item.rankChange === 0 ? (
+                              <Badge variant="secondary">-</Badge>
+                            ) : item.rankChange > 0 ? (
+                              <Badge variant="default" className="text-red-600">↓{item.rankChange}</Badge>
+                            ) : (
+                              <Badge variant="default" className="text-green-600">↑{Math.abs(item.rankChange)}</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+                     </div>
         );
       default:
         return null;

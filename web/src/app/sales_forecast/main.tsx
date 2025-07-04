@@ -1549,17 +1549,7 @@ export default function SalesForecastMain() {
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Button 
-                    variant={showWeightedForecast ? "default" : "outline"}
-                    onClick={() => setShowWeightedForecast(!showWeightedForecast)}
-                  >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    多模型加权预测
-                  </Button>
-                  <Button onClick={() => setActiveMenu("main" as MenuItem)}>
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    返回
-                  </Button>
+                  {/* 预测结果查询页面不再包含多模型加权预测功能 */}
                 </div>
               </div>
             </CardHeader>
@@ -1629,559 +1619,6 @@ export default function SalesForecastMain() {
                 </div>
               </div>
 
-              {/* 权重配置面板 */}
-              {showWeightedForecast && (
-                <div className="border rounded-lg p-6 bg-slate-50">
-                  {/* 功能说明 */}
-                  <div className="mb-6 p-4 border rounded-lg bg-blue-50">
-                    <h4 className="text-sm font-medium text-blue-900 mb-2">多模型加权预测说明</h4>
-                    <div className="text-sm text-blue-800 space-y-1">
-                      <p>• 支持多个预测模型按权重组合，提高预测准确性</p>
-                      <p>• 权重配置可细化至地区/公司层级，不同区域可设置不同权重</p>
-                      <p>• 系统自动计算加权综合预测值，并在表格中显示</p>
-                      <p>• 提供预设模板（保守型、平衡型、激进型）快速配置</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium">多模型加权配置</h3>
-                    <div className="flex items-center gap-3">
-                      <Badge variant={validateWeightConfig().isValid ? "default" : "destructive"}>
-                        总权重: {validateWeightConfig().totalWeight}%
-                      </Badge>
-                      <Select 
-                        onValueChange={(template) => {
-                          if (template && weightTemplates[template as keyof typeof weightTemplates]) {
-                            setWeightConfig(weightTemplates[template as keyof typeof weightTemplates]);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue placeholder="选择模板" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="保守型">保守型</SelectItem>
-                          <SelectItem value="平衡型">平衡型</SelectItem>
-                          <SelectItem value="激进型">激进型</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select 
-                        onValueChange={(configId) => {
-                          const config = savedConfigs.find(c => c.id === configId);
-                          if (config) {
-                            setWeightConfig({
-                              region: config.region,
-                              company: config.company,
-                              models: config.models
-                            });
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue placeholder="选择保存的配置" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {savedConfigs.map((config) => (
-                            <SelectItem key={config.id} value={config.id}>
-                              {config.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  {/* 权重验证提示 */}
-                  {!validateWeightConfig().isValid && (
-                    <div className="mb-4 p-3 border border-red-200 rounded-lg bg-red-50">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-red-600">
-                          ⚠️ {validateWeightConfig().message}
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={autoAdjustWeights}
-                        >
-                          自动调整
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* 地区公司配置 */}
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-sm font-medium">地区</Label>
-                        <Select 
-                          value={weightConfig.region} 
-                          onValueChange={(value) => setWeightConfig(prev => ({ ...prev, region: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="华东">华东地区</SelectItem>
-                            <SelectItem value="华南">华南地区</SelectItem>
-                            <SelectItem value="华北">华北地区</SelectItem>
-                            <SelectItem value="全国">全国</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-sm font-medium">公司</Label>
-                        <Select 
-                          value={weightConfig.company} 
-                          onValueChange={(value) => setWeightConfig(prev => ({ ...prev, company: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="华东航空燃料有限公司">华东航空燃料有限公司</SelectItem>
-                            <SelectItem value="华南航空燃料有限公司">华南航空燃料有限公司</SelectItem>
-                            <SelectItem value="华北航空燃料有限公司">华北航空燃料有限公司</SelectItem>
-                            <SelectItem value="全国航空燃料集团">全国航空燃料集团</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
-                    {/* 模型权重配置 */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">模型权重配置</Label>
-                      {weightConfig.models.map((model, index) => {
-                        const performance = modelPerformanceData[model.name as keyof typeof modelPerformanceData];
-                        return (
-                          <div key={model.name} className="p-3 border rounded-lg bg-white">
-                            <div className="flex items-center gap-3 mb-2">
-                              <input
-                                type="checkbox"
-                                checked={model.enabled}
-                                onChange={(e) => {
-                                  const newModels = [...weightConfig.models];
-                                  newModels[index] = { ...model, enabled: e.target.checked };
-                                  setWeightConfig(prev => ({ ...prev, models: newModels }));
-                                }}
-                                className="w-4 h-4"
-                              />
-                              <div className="flex-1">
-                                <div className="text-sm font-medium">{model.name}</div>
-                                {performance && (
-                                  <div className="text-xs text-slate-500 mt-1">
-                                    准确率: {performance.accuracy}% | 训练时间: {performance.trainingTime}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={model.weight}
-                                onChange={(e) => {
-                                  const newModels = [...weightConfig.models];
-                                  newModels[index] = { ...model, weight: parseInt(e.target.value) };
-                                  setWeightConfig(prev => ({ ...prev, models: newModels }));
-                                }}
-                                className="flex-1"
-                                disabled={!model.enabled}
-                              />
-                              <span className="text-sm text-slate-600 w-12">{model.weight}%</span>
-                            </div>
-                            {performance && (
-                              <div className="mt-2 text-xs text-slate-600">
-                                <div>适用: {performance.bestFor}</div>
-                                <div>限制: {performance.limitations}</div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  
-                  {/* 加权预测结果预览 */}
-                  <div className="mt-6 p-4 border rounded-lg bg-white">
-                    <h4 className="text-sm font-medium mb-3">加权预测结果预览</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {["2024-02", "2024-03", "2024-04", "2024-05"].map((month) => {
-                        const weightedValue = calculateWeightedForecast(month);
-                        return (
-                          <div key={month} className="text-center p-3 border rounded-lg">
-                            <div className="text-sm text-slate-600">{month}</div>
-                            <div className="text-lg font-bold text-blue-600">
-                              {weightedValue ? `${weightedValue}万升` : 'N/A'}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* 详细模型预测对比 */}
-                    <div className="mt-4">
-                      <h5 className="text-sm font-medium mb-3">各模型预测对比 (2024-03)</h5>
-                      <div className="space-y-2">
-                        {weightConfig.models.filter(m => m.enabled).map((model) => {
-                          const monthParts = "2024-03".split('-');
-                          const monthIndex = monthParts[1] ? parseInt(monthParts[1]) - 1 : 0;
-                          const regionFactors: Record<string, number> = {
-                            "华东": 1.0, "华南": 0.85, "华北": 0.75, "全国": 1.2
-                          };
-                          const regionFactor = regionFactors[weightConfig.region] || 1.0;
-                          const seasonalFactors = [0.9, 0.85, 1.0, 1.1, 1.2, 1.3, 1.25, 1.2, 1.1, 1.0, 0.95, 0.9];
-                          const seasonalFactor = seasonalFactors[monthIndex] || 1.0;
-                          
-                          const modelPredictions: Record<string, number> = {
-                            "线性回归": Math.round((1000 + monthIndex * 20) * seasonalFactor * regionFactor + Math.random() * 50),
-                            "ARIMA模型": Math.round((980 + monthIndex * 15) * seasonalFactor * regionFactor + Math.random() * 40),
-                            "指数平滑": Math.round((1020 + monthIndex * 25) * seasonalFactor * regionFactor + Math.random() * 60),
-                            "LSTM神经网络": Math.round((1010 + monthIndex * 18) * seasonalFactor * regionFactor + Math.random() * 80),
-                            "Prophet时间序列": Math.round((990 + monthIndex * 22) * seasonalFactor * regionFactor + Math.random() * 70)
-                          };
-                          
-                          const prediction = modelPredictions[model.name] || 1000;
-                          const contribution = Math.round((prediction * model.weight) / 100);
-                          
-                          return (
-                            <div key={model.name} className="flex items-center justify-between p-2 border rounded bg-slate-50">
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium">{model.name}</span>
-                                <span className="text-xs text-slate-500">权重: {model.weight}%</span>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <span className="text-sm">预测: {prediction}万升</span>
-                                <span className="text-sm text-blue-600">贡献: {contribution}万升</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* 配置列表 */}
-                  {showConfigList && (
-                    <div className="mt-4 p-4 border rounded-lg bg-slate-50">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="text-sm font-medium">保存的配置列表</h5>
-                        <div className="flex items-center gap-2">
-                          {selectedConfigs.length > 0 && (
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => {
-                                setSavedConfigs(prev => prev.filter(c => !selectedConfigs.includes(c.id)));
-                                setSelectedConfigs([]);
-                              }}
-                            >
-                              删除选中 ({selectedConfigs.length})
-                            </Button>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setShowConfigList(false)}
-                          >
-                            关闭
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="mb-3">
-                        <Input
-                          placeholder="搜索配置名称或描述..."
-                          value={configSearchTerm}
-                          onChange={(e) => setConfigSearchTerm(e.target.value)}
-                          className="w-full"
-                        />
-                        <div className="text-xs text-slate-500 mt-1">
-                          找到 {savedConfigs.filter(config => 
-                            config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                            config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                            config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                            config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
-                          ).length} 个配置
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        {savedConfigs
-                          .filter(config => 
-                            config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                            config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                            config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-                            config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
-                          )
-                          .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
-                          .map((config) => (
-                            <div key={config.id} className="p-3 border rounded-lg bg-white">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedConfigs.includes(config.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedConfigs(prev => [...prev, config.id]);
-                                      } else {
-                                        setSelectedConfigs(prev => prev.filter(id => id !== config.id));
-                                      }
-                                    }}
-                                    className="w-4 h-4"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="text-sm font-medium">{config.name}</div>
-                                    <div className="text-xs text-slate-500 mt-1">{config.description}</div>
-                                    <div className="text-xs text-slate-400 mt-1">
-                                      {config.region} - {config.company} | 准确率: {config.accuracy}% | 更新: {config.lastUpdated}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setWeightConfig({
-                                      region: config.region,
-                                      company: config.company,
-                                      models: config.models
-                                    });
-                                    setShowConfigList(false);
-                                  }}
-                                >
-                                  选择
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingConfig(config.id);
-                                    setConfigName(config.name);
-                                    setConfigDescription(config.description);
-                                  }}
-                                >
-                                  编辑
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const newConfig = {
-                                      ...config,
-                                      id: Date.now().toString(),
-                                      name: `${config.name} - 副本`,
-                                      lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                    };
-                                    setSavedConfigs(prev => [...prev, newConfig]);
-                                  }}
-                                >
-                                  复制
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const configData = JSON.stringify(config, null, 2);
-                                    const blob = new Blob([configData], { type: 'application/json' });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `${config.name}.json`;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    URL.revokeObjectURL(url);
-                                  }}
-                                >
-                                  导出
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSavedConfigs(prev => prev.filter(c => c.id !== config.id));
-                                  }}
-                                >
-                                  删除
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 保存配置对话框 */}
-                  {showSaveDialog && (
-                    <div className="mt-4 p-4 border rounded-lg bg-blue-50">
-                      <h5 className="text-sm font-medium mb-3">
-                        {editingConfig ? "编辑配置" : "保存当前配置"}
-                      </h5>
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="text-sm">配置名称</Label>
-                          <Input
-                            value={configName}
-                            onChange={(e) => setConfigName(e.target.value)}
-                            placeholder="请输入配置名称"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">配置描述</Label>
-                          <Input
-                            value={configDescription}
-                            onChange={(e) => setConfigDescription(e.target.value)}
-                            placeholder="请输入配置描述"
-                            className="mt-1"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              if (configName.trim()) {
-                                if (editingConfig) {
-                                  // 编辑现有配置
-                                  setSavedConfigs(prev => prev.map(config => 
-                                    config.id === editingConfig 
-                                      ? {
-                                          ...config,
-                                          name: configName,
-                                          description: configDescription,
-                                          region: weightConfig.region,
-                                          company: weightConfig.company,
-                                          models: weightConfig.models,
-                                          accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                                            const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                                            return sum + (performance?.accuracy || 0) * m.weight / 100;
-                                          }, 0) * 10) / 10,
-                                          lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                        }
-                                      : config
-                                  ));
-                                  setEditingConfig(null);
-                                } else {
-                                  // 保存新配置
-                                  const newConfig = {
-                                    id: Date.now().toString(),
-                                    name: configName,
-                                    description: configDescription,
-                                    region: weightConfig.region,
-                                    company: weightConfig.company,
-                                    models: weightConfig.models,
-                                    accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                                      const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                                      return sum + (performance?.accuracy || 0) * m.weight / 100;
-                                    }, 0) * 10) / 10,
-                                    lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                  };
-                                  setSavedConfigs(prev => [...prev, newConfig]);
-                                }
-                                setConfigName("");
-                                setConfigDescription("");
-                                setShowSaveDialog(false);
-                              }
-                            }}
-                          >
-                            {editingConfig ? "更新" : "保存"}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setConfigName("");
-                              setConfigDescription("");
-                              setEditingConfig(null);
-                              setShowSaveDialog(false);
-                            }}
-                          >
-                            取消
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 操作按钮 */}
-                  <div className="mt-6 flex items-center justify-between">
-                    <div className="text-sm text-slate-600">
-                      配置将自动保存到 {weightConfig.region} - {weightConfig.company}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowConfigList(!showConfigList)}
-                      >
-                        <FileTextIcon className="w-4 h-4 mr-2" />
-                        配置列表
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowSaveDialog(true)}
-                      >
-                        <UploadIcon className="w-4 h-4 mr-2" />
-                        保存配置
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* 配置统计信息 */}
-                  <div className="mt-4 p-4 border rounded-lg bg-blue-50">
-                    <h5 className="text-sm font-medium mb-3">配置统计信息</h5>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-blue-600">
-                          {weightConfig.models.filter(m => m.enabled).length}
-                        </div>
-                        <div className="text-xs text-slate-600">启用模型数</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">
-                          {validateWeightConfig().totalWeight}%
-                        </div>
-                        <div className="text-xs text-slate-600">权重总和</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-purple-600">
-                          {Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                            const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                            return sum + (performance?.accuracy || 0) * m.weight / 100;
-                          }, 0) * 10) / 10}%
-                        </div>
-                        <div className="text-xs text-slate-600">预期准确率</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-orange-600">
-                          {weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                            const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                            return sum + (parseInt(performance?.trainingTime.replace(/[^\d]/g, '') || '0') * m.weight / 100);
-                          }, 0).toFixed(0)}秒
-                        </div>
-                        <div className="text-xs text-slate-600">平均训练时间</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 配置状态提示 */}
-                  <div className="mt-4 p-3 border rounded-lg bg-green-50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-green-700">
-                        ✅ 权重配置已就绪，可在下方表格中查看加权预测结果
-                      </div>
-                      <div className="text-sm text-green-600">
-                        已保存 {savedConfigs.length} 个配置
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* 数据统计 */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -2193,10 +1630,6 @@ export default function SalesForecastMain() {
                 </div>
               </div>
 
-
-
-
-
               {/* 预测数据表格 */}
               {filteredForecastData.length > 0 ? (
                 <div className="border rounded-lg">
@@ -2206,7 +1639,6 @@ export default function SalesForecastMain() {
                         <TableHead>任务名称</TableHead>
                         <TableHead>预测月份</TableHead>
                         <TableHead>预测销量(万升)</TableHead>
-                        {showWeightedForecast && <TableHead>加权预测(万升)</TableHead>}
                         <TableHead>实际销量(万升)</TableHead>
                         <TableHead>置信度(%)</TableHead>
                         <TableHead>算法</TableHead>
@@ -2233,13 +1665,6 @@ export default function SalesForecastMain() {
                             </TableCell>
                             <TableCell>{item.month}</TableCell>
                             <TableCell>{item.predicted}</TableCell>
-                            {showWeightedForecast && (
-                              <TableCell>
-                                <span className="font-medium text-blue-600">
-                                  {calculateWeightedForecast(item.month)}
-                                </span>
-                              </TableCell>
-                            )}
                             <TableCell>{item.actual || '-'}</TableCell>
                             <TableCell>
                               <Badge variant={item.confidence >= 90 ? "default" : item.confidence >= 80 ? "secondary" : "outline"}>
@@ -2316,7 +1741,533 @@ export default function SalesForecastMain() {
           </Card>
         );
       case "analysis":
-        return <div>预测分析（静态占位）</div>;
+        return (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChartIcon className="w-5 h-5" />
+                    预测分析
+                  </CardTitle>
+                  <CardDescription>
+                    依托模型算法输出，支持地区/合资公司、分公司、机场等层级的多维度预测结果分析
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant={showWeightedForecast ? "default" : "outline"}
+                    onClick={() => setShowWeightedForecast(!showWeightedForecast)}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    多模型加权分析配置
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {showWeightedForecast ? (
+                <>
+                  {/* 权重配置面板（与原预测结果查询页面一致） */}
+                  <div className="border rounded-lg p-6 bg-slate-50">
+                    {/* 功能说明 */}
+                    <div className="mb-6 p-4 border rounded-lg bg-blue-50">
+                      <h4 className="text-sm font-medium text-blue-900 mb-2">多模型加权分析配置说明</h4>
+                      <div className="text-sm text-blue-800 space-y-1">
+                        <p>• 支持多个预测模型按权重组合，提高预测准确性</p>
+                        <p>• 权重配置可细化至地区/公司层级，不同区域可设置不同权重</p>
+                        <p>• 系统自动计算加权综合预测值，并在表格中显示</p>
+                        <p>• 提供预设模板（保守型、平衡型、激进型）快速配置</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium">多模型加权配置</h3>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={validateWeightConfig().isValid ? "default" : "destructive"}>
+                          总权重: {validateWeightConfig().totalWeight}%
+                        </Badge>
+                        <Select 
+                          onValueChange={(template) => {
+                            if (template && weightTemplates[template as keyof typeof weightTemplates]) {
+                              setWeightConfig(weightTemplates[template as keyof typeof weightTemplates]);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue placeholder="选择模板" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="保守型">保守型</SelectItem>
+                            <SelectItem value="平衡型">平衡型</SelectItem>
+                            <SelectItem value="激进型">激进型</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select 
+                          onValueChange={(configId) => {
+                            const config = savedConfigs.find(c => c.id === configId);
+                            if (config) {
+                              setWeightConfig({
+                                region: config.region,
+                                company: config.company,
+                                models: config.models
+                              });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-40">
+                            <SelectValue placeholder="选择保存的配置" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {savedConfigs.map((config) => (
+                              <SelectItem key={config.id} value={config.id}>
+                                {config.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {/* 权重验证提示 */}
+                    {!validateWeightConfig().isValid && (
+                      <div className="mb-4 p-3 border border-red-200 rounded-lg bg-red-50">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-red-600">
+                            ⚠️ {validateWeightConfig().message}
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={autoAdjustWeights}
+                          >
+                            自动调整
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* 地区公司配置 */}
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium">地区</Label>
+                          <Select 
+                            value={weightConfig.region} 
+                            onValueChange={(value) => setWeightConfig(prev => ({ ...prev, region: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="华东">华东地区</SelectItem>
+                              <SelectItem value="华南">华南地区</SelectItem>
+                              <SelectItem value="华北">华北地区</SelectItem>
+                              <SelectItem value="全国">全国</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium">公司</Label>
+                          <Select 
+                            value={weightConfig.company} 
+                            onValueChange={(value) => setWeightConfig(prev => ({ ...prev, company: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="华东航空燃料有限公司">华东航空燃料有限公司</SelectItem>
+                              <SelectItem value="华南航空燃料有限公司">华南航空燃料有限公司</SelectItem>
+                              <SelectItem value="华北航空燃料有限公司">华北航空燃料有限公司</SelectItem>
+                              <SelectItem value="全国航空燃料集团">全国航空燃料集团</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {/* 模型权重配置 */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">模型权重配置</Label>
+                        {weightConfig.models.map((model, index) => {
+                          const performance = modelPerformanceData[model.name as keyof typeof modelPerformanceData];
+                          return (
+                            <div key={model.name} className="p-3 border rounded-lg bg-white">
+                              <div className="flex items-center gap-3 mb-2">
+                                <input
+                                  type="checkbox"
+                                  checked={model.enabled}
+                                  onChange={(e) => {
+                                    const newModels = [...weightConfig.models];
+                                    newModels[index] = { ...model, enabled: e.target.checked };
+                                    setWeightConfig(prev => ({ ...prev, models: newModels }));
+                                  }}
+                                  className="w-4 h-4"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium">{model.name}</div>
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    准确率: {performance?.accuracy}% | 训练时间: {performance?.trainingTime}
+                                  </div>
+                                </div>
+                                <div className="text-sm font-medium">{model.weight}%</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  value={model.weight}
+                                  onChange={(e) => {
+                                    const newModels = [...weightConfig.models];
+                                    newModels[index] = { ...model, weight: parseInt(e.target.value) };
+                                    setWeightConfig(prev => ({ ...prev, models: newModels }));
+                                  }}
+                                  className="flex-1"
+                                  disabled={!model.enabled}
+                                />
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={model.weight}
+                                  onChange={(e) => {
+                                    const newModels = [...weightConfig.models];
+                                    newModels[index] = { ...model, weight: parseInt(e.target.value) || 0 };
+                                    setWeightConfig(prev => ({ ...prev, models: newModels }));
+                                  }}
+                                  className="w-16 text-sm border rounded px-2 py-1"
+                                  disabled={!model.enabled}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* 配置列表 */}
+                    {showConfigList && (
+                      <div className="mt-4 p-4 border rounded-lg bg-slate-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="text-sm font-medium">保存的配置列表</h5>
+                          <div className="flex items-center gap-2">
+                            {selectedConfigs.length > 0 && (
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => {
+                                  setSavedConfigs(prev => prev.filter(c => !selectedConfigs.includes(c.id)));
+                                  setSelectedConfigs([]);
+                                }}
+                              >
+                                删除选中 ({selectedConfigs.length})
+                              </Button>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setShowConfigList(false)}
+                            >
+                              关闭
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="mb-3">
+                          <Input
+                            placeholder="搜索配置名称或描述..."
+                            value={configSearchTerm}
+                            onChange={(e) => setConfigSearchTerm(e.target.value)}
+                            className="w-full"
+                          />
+                          <div className="text-xs text-slate-500 mt-1">
+                            找到 {savedConfigs.filter(config => 
+                              config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                              config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                              config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                              config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
+                            ).length} 个配置
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {savedConfigs
+                            .filter(config => 
+                              config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                              config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                              config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                              config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
+                            )
+                            .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+                            .map((config) => (
+                              <div key={config.id} className="p-3 border rounded-lg bg-white">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedConfigs.includes(config.id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedConfigs(prev => [...prev, config.id]);
+                                        } else {
+                                          setSelectedConfigs(prev => prev.filter(id => id !== config.id));
+                                        }
+                                      }}
+                                      className="w-4 h-4"
+                                    />
+                                    <div className="flex-1">
+                                      <div className="text-sm font-medium">{config.name}</div>
+                                      <div className="text-xs text-slate-500 mt-1">{config.description}</div>
+                                      <div className="text-xs text-slate-400 mt-1">
+                                        {config.region} - {config.company} | 准确率: {config.accuracy}% | 更新: {config.lastUpdated}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setWeightConfig({
+                                          region: config.region,
+                                          company: config.company,
+                                          models: config.models
+                                        });
+                                        setShowConfigList(false);
+                                      }}
+                                    >
+                                      选择
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingConfig(config.id);
+                                        setConfigName(config.name);
+                                        setConfigDescription(config.description);
+                                      }}
+                                    >
+                                      编辑
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newConfig = {
+                                          ...config,
+                                          id: Date.now().toString(),
+                                          name: `${config.name} - 副本`,
+                                          lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
+                                        };
+                                        setSavedConfigs(prev => [...prev, newConfig]);
+                                      }}
+                                    >
+                                      复制
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const configData = JSON.stringify(config, null, 2);
+                                        const blob = new Blob([configData], { type: 'application/json' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `${config.name}.json`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(url);
+                                      }}
+                                    >
+                                      导出
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSavedConfigs(prev => prev.filter(c => c.id !== config.id));
+                                      }}
+                                    >
+                                      删除
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* 保存配置对话框 */}
+                    {showSaveDialog && (
+                      <div className="mt-4 p-4 border rounded-lg bg-blue-50">
+                        <h5 className="text-sm font-medium mb-3">
+                          {editingConfig ? "编辑配置" : "保存当前配置"}
+                        </h5>
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-sm">配置名称</Label>
+                            <Input
+                              value={configName}
+                              onChange={(e) => setConfigName(e.target.value)}
+                              placeholder="请输入配置名称"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm">配置描述</Label>
+                            <Input
+                              value={configDescription}
+                              onChange={(e) => setConfigDescription(e.target.value)}
+                              placeholder="请输入配置描述"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                if (configName.trim()) {
+                                  if (editingConfig) {
+                                    // 编辑现有配置
+                                    setSavedConfigs(prev => prev.map(config => 
+                                      config.id === editingConfig 
+                                        ? {
+                                            ...config,
+                                            name: configName,
+                                            description: configDescription,
+                                            region: weightConfig.region,
+                                            company: weightConfig.company,
+                                            models: weightConfig.models,
+                                            accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                              const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                              return sum + (performance?.accuracy || 0) * m.weight / 100;
+                                            }, 0) * 10) / 10,
+                                            lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
+                                          }
+                                        : config
+                                    ));
+                                    setEditingConfig(null);
+                                  } else {
+                                    // 保存新配置
+                                    const newConfig = {
+                                      id: Date.now().toString(),
+                                      name: configName,
+                                      description: configDescription,
+                                      region: weightConfig.region,
+                                      company: weightConfig.company,
+                                      models: weightConfig.models,
+                                      accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                        const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                        return sum + (performance?.accuracy || 0) * m.weight / 100;
+                                      }, 0) * 10) / 10,
+                                      lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
+                                    };
+                                    setSavedConfigs(prev => [...prev, newConfig]);
+                                  }
+                                  setConfigName("");
+                                  setConfigDescription("");
+                                  setShowSaveDialog(false);
+                                }
+                              }}
+                            >
+                              {editingConfig ? "更新" : "保存"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setConfigName("");
+                                setConfigDescription("");
+                                setEditingConfig(null);
+                                setShowSaveDialog(false);
+                              }}
+                            >
+                              取消
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* 操作按钮 */}
+                    <div className="mt-6 flex items-center justify-between">
+                      <div className="text-sm text-slate-600">
+                        配置将自动保存到 {weightConfig.region} - {weightConfig.company}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowConfigList(!showConfigList)}
+                        >
+                          <FileTextIcon className="w-4 h-4 mr-2" />
+                          配置列表
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowSaveDialog(true)}
+                        >
+                          <UploadIcon className="w-4 h-4 mr-2" />
+                          保存配置
+                        </Button>
+                      </div>
+                    </div>
+                    {/* 配置统计信息 */}
+                    <div className="mt-4 p-4 border rounded-lg bg-blue-50">
+                      <h5 className="text-sm font-medium mb-3">配置统计信息</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-blue-600">
+                            {weightConfig.models.filter(m => m.enabled).length}
+                          </div>
+                          <div className="text-xs text-slate-600">启用模型数</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-green-600">
+                            {validateWeightConfig().totalWeight}%
+                          </div>
+                          <div className="text-xs text-slate-600">权重总和</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-purple-600">
+                            {Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                              const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                              return sum + (performance?.accuracy || 0) * m.weight / 100;
+                            }, 0) * 10) / 10}%
+                          </div>
+                          <div className="text-xs text-slate-600">预期准确率</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-orange-600">
+                            {weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                              const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                              return sum + (parseInt(performance?.trainingTime.replace(/[^-\d]/g, '') || '0') * m.weight / 100);
+                            }, 0).toFixed(0)}秒
+                          </div>
+                          <div className="text-xs text-slate-600">平均训练时间</div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* 配置状态提示 */}
+                    <div className="mt-4 p-3 border rounded-lg bg-green-50">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-green-700">
+                          ✅ 权重配置已就绪，可在下方表格中查看加权预测结果
+                        </div>
+                        <div className="text-sm text-green-600">
+                          已保存 {savedConfigs.length} 个配置
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <PieChartIcon className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                  <h3 className="text-lg font-medium text-slate-600 mb-2">预测分析</h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    点击"多模型加权分析配置"按钮开始配置和分析
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
       default:
         return null;
     }

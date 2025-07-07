@@ -681,10 +681,9 @@ export default function SalesForecastMain() {
     company: "华东航空燃料有限公司",
     models: [
       { name: "线性回归", weight: 30, enabled: true },
-      { name: "ARIMA模型", weight: 25, enabled: true },
-      { name: "指数平滑", weight: 20, enabled: true },
-      { name: "LSTM神经网络", weight: 15, enabled: true },
-      { name: "Prophet时间序列", weight: 10, enabled: false }
+      { name: "ARIMA模型", weight: 30, enabled: true },
+      { name: "指数平滑", weight: 25, enabled: true },
+      { name: "LSTM神经网络", weight: 15, enabled: true }
     ]
   });
 
@@ -694,11 +693,10 @@ export default function SalesForecastMain() {
       region: "华东",
       company: "华东航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 40, enabled: true },
+        { name: "线性回归", weight: 50, enabled: true },
         { name: "ARIMA模型", weight: 30, enabled: true },
         { name: "指数平滑", weight: 20, enabled: true },
-        { name: "LSTM神经网络", weight: 10, enabled: true },
-        { name: "Prophet时间序列", weight: 0, enabled: false }
+        { name: "LSTM神经网络", weight: 0, enabled: false }
       ]
     },
     "平衡型": {
@@ -706,10 +704,9 @@ export default function SalesForecastMain() {
       company: "华东航空燃料有限公司",
       models: [
         { name: "线性回归", weight: 30, enabled: true },
-        { name: "ARIMA模型", weight: 25, enabled: true },
-        { name: "指数平滑", weight: 20, enabled: true },
-        { name: "LSTM神经网络", weight: 15, enabled: true },
-        { name: "Prophet时间序列", weight: 10, enabled: true }
+        { name: "ARIMA模型", weight: 30, enabled: true },
+        { name: "指数平滑", weight: 25, enabled: true },
+        { name: "LSTM神经网络", weight: 15, enabled: true }
       ]
     },
     "激进型": {
@@ -717,10 +714,9 @@ export default function SalesForecastMain() {
       company: "华东航空燃料有限公司",
       models: [
         { name: "线性回归", weight: 20, enabled: true },
-        { name: "ARIMA模型", weight: 15, enabled: true },
-        { name: "指数平滑", weight: 15, enabled: true },
-        { name: "LSTM神经网络", weight: 30, enabled: true },
-        { name: "Prophet时间序列", weight: 20, enabled: true }
+        { name: "ARIMA模型", weight: 20, enabled: true },
+        { name: "指数平滑", weight: 20, enabled: true },
+        { name: "LSTM神经网络", weight: 40, enabled: true }
       ]
     }
   };
@@ -758,19 +754,10 @@ export default function SalesForecastMain() {
       accuracy: 91.3,
       mape: 8.9,
       rmse: 32.4,
-      trainingTime: "8分钟",
+            trainingTime: "8分钟",
       predictionTime: "10秒",
       bestFor: "复杂非线性关系",
       limitations: "需要大量训练数据"
-    },
-    "Prophet时间序列": {
-      accuracy: 87.5,
-      mape: 11.6,
-      rmse: 41.2,
-      trainingTime: "1分钟",
-      predictionTime: "3秒",
-      bestFor: "季节性数据",
-      limitations: "对异常值敏感"
     }
   };
 
@@ -782,11 +769,10 @@ export default function SalesForecastMain() {
       region: "华东",
       company: "华东航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 35, enabled: true },
-        { name: "ARIMA模型", weight: 25, enabled: true },
+        { name: "线性回归", weight: 40, enabled: true },
+        { name: "ARIMA模型", weight: 30, enabled: true },
         { name: "指数平滑", weight: 20, enabled: true },
-        { name: "LSTM神经网络", weight: 15, enabled: true },
-        { name: "Prophet时间序列", weight: 5, enabled: false }
+        { name: "LSTM神经网络", weight: 10, enabled: true }
       ],
       accuracy: 87.2,
       lastUpdated: "2024-01-05",
@@ -798,11 +784,10 @@ export default function SalesForecastMain() {
       region: "华南",
       company: "华南航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 25, enabled: true },
-        { name: "ARIMA模型", weight: 30, enabled: true },
-        { name: "指数平滑", weight: 15, enabled: true },
-        { name: "LSTM神经网络", weight: 20, enabled: true },
-        { name: "Prophet时间序列", weight: 10, enabled: true }
+        { name: "线性回归", weight: 30, enabled: true },
+        { name: "ARIMA模型", weight: 35, enabled: true },
+        { name: "指数平滑", weight: 20, enabled: true },
+        { name: "LSTM神经网络", weight: 15, enabled: true }
       ],
       accuracy: 89.1,
       lastUpdated: "2024-01-03",
@@ -814,11 +799,10 @@ export default function SalesForecastMain() {
       region: "华北",
       company: "华北航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 40, enabled: true },
+        { name: "线性回归", weight: 50, enabled: true },
         { name: "ARIMA模型", weight: 30, enabled: true },
         { name: "指数平滑", weight: 20, enabled: true },
-        { name: "LSTM神经网络", weight: 10, enabled: true },
-        { name: "Prophet时间序列", weight: 0, enabled: false }
+        { name: "LSTM神经网络", weight: 0, enabled: false }
       ],
       accuracy: 85.8,
       lastUpdated: "2023-12-15",
@@ -2419,16 +2403,7 @@ export default function SalesForecastMain() {
                 {/* 多模型加权分析配置面板 */}
                 {showWeightedForecast && (
                   <div className="mt-6 border rounded-lg p-6 bg-slate-50">
-                    {/* 功能说明 */}
-                    <div className="mb-6 p-4 border rounded-lg bg-blue-50">
-                      <h4 className="text-sm font-medium text-blue-900 mb-2">多模型加权分析配置说明</h4>
-                      <div className="text-sm text-blue-800 space-y-1">
-                        <p>• 支持多个预测模型按权重组合，提高预测准确性</p>
-                        <p>• 权重配置可细化至地区/公司层级，不同区域可设置不同权重</p>
-                        <p>• 系统自动计算加权综合预测值，并在表格中显示</p>
-                        <p>• 提供预设模板（保守型、平衡型、激进型）快速配置</p>
-                      </div>
-                    </div>
+                    
                     
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium">多模型加权配置</h3>
@@ -2497,43 +2472,7 @@ export default function SalesForecastMain() {
                     )}
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* 地区公司配置 */}
-                      <div className="space-y-4">
-                        <div>
-                          <Label className="text-sm font-medium">权重配置地区</Label>
-                          <Select 
-                            value={weightConfig.region} 
-                            onValueChange={(value) => setWeightConfig(prev => ({ ...prev, region: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="华东">华东地区</SelectItem>
-                              <SelectItem value="华南">华南地区</SelectItem>
-                              <SelectItem value="华北">华北地区</SelectItem>
-                              <SelectItem value="全国">全国</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium">权重配置公司</Label>
-                          <Select 
-                            value={weightConfig.company} 
-                            onValueChange={(value) => setWeightConfig(prev => ({ ...prev, company: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="华东航空燃料有限公司">华东航空燃料有限公司</SelectItem>
-                              <SelectItem value="华南航空燃料有限公司">华南航空燃料有限公司</SelectItem>
-                              <SelectItem value="华北航空燃料有限公司">华北航空燃料有限公司</SelectItem>
-                              <SelectItem value="全国航空燃料集团">全国航空燃料集团</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
+
                       
                       {/* 模型权重配置 */}
                       <div className="space-y-3">
@@ -3100,7 +3039,7 @@ export default function SalesForecastMain() {
                           添加配置
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>
                             {editingConfig ? "编辑配置" : "添加新配置"}
@@ -3109,25 +3048,99 @@ export default function SalesForecastMain() {
                             配置多个预测模型的权重组合，创建自定义的加权预测方案
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-sm">配置名称</Label>
-                            <Input
-                              value={configName}
-                              onChange={(e) => setConfigName(e.target.value)}
-                              placeholder="请输入配置名称"
-                              className="mt-1"
-                            />
+                        
+                        <div className="space-y-6">
+                          {/* 基本信息配置 */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-sm">配置名称</Label>
+                              <Input
+                                value={configName}
+                                onChange={(e) => setConfigName(e.target.value)}
+                                placeholder="请输入配置名称"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-sm">配置描述</Label>
+                              <Input
+                                value={configDescription}
+                                onChange={(e) => setConfigDescription(e.target.value)}
+                                placeholder="请输入配置描述"
+                                className="mt-1"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <Label className="text-sm">配置描述</Label>
-                            <Input
-                              value={configDescription}
-                              onChange={(e) => setConfigDescription(e.target.value)}
-                              placeholder="请输入配置描述"
-                              className="mt-1"
-                            />
+                          
+                          {/* 快速模板选择 */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-medium">快速配置模板</Label>
+                              <Badge variant={validateWeightConfig().isValid ? "default" : "destructive"}>
+                                总权重: {validateWeightConfig().totalWeight}%
+                              </Badge>
+                            </div>
+                            <div className="flex gap-3">
+                              <Select 
+                                onValueChange={(template) => {
+                                  if (template && weightTemplates[template as keyof typeof weightTemplates]) {
+                                    setWeightConfig(weightTemplates[template as keyof typeof weightTemplates]);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-40">
+                                  <SelectValue placeholder="选择模板" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="保守型">保守型</SelectItem>
+                                  <SelectItem value="平衡型">平衡型</SelectItem>
+                                  <SelectItem value="激进型">激进型</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Select 
+                                onValueChange={(configId) => {
+                                  const config = savedConfigs.find(c => c.id === configId);
+                                  if (config) {
+                                    setWeightConfig({
+                                      region: config.region,
+                                      company: config.company,
+                                      models: config.models
+                                    });
+                                    setConfigCascaderValue([config.region, config.company]);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-48">
+                                  <SelectValue placeholder="选择已保存配置" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {savedConfigs.map((config) => (
+                                    <SelectItem key={config.id} value={config.id}>
+                                      {config.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
+                          
+                          {/* 权重验证提示 */}
+                          {!validateWeightConfig().isValid && (
+                            <div className="p-3 border border-red-200 rounded-lg bg-red-50">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-red-600">
+                                  ⚠️ {validateWeightConfig().message}
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={autoAdjustWeights}
+                                >
+                                  自动调整
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                           
                           {/* 地区选择 */}
                           <div>
@@ -3149,11 +3162,11 @@ export default function SalesForecastMain() {
                           {/* 模型权重配置 */}
                           <div className="space-y-3">
                             <Label className="text-sm font-medium">模型权重配置</Label>
-                            <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
+                            <div className="space-y-3">
                               {weightConfig.models.map((model, index) => {
                                 const performance = modelPerformanceData[model.name as keyof typeof modelPerformanceData];
                                 return (
-                                  <div key={model.name} className="p-3 border rounded-lg bg-slate-50">
+                                  <div key={model.name} className="p-3 border rounded-lg bg-white">
                                     <div className="flex items-center gap-3 mb-2">
                                       <input
                                         type="checkbox"
@@ -3205,14 +3218,54 @@ export default function SalesForecastMain() {
                                 );
                               })}
                             </div>
-                            
-                            {/* 权重验证信息 */}
-                            <div className={`p-3 rounded-lg text-sm ${
-                              validateWeightConfig().isValid 
-                                ? "bg-green-50 text-green-700 border border-green-200" 
-                                : "bg-red-50 text-red-700 border border-red-200"
-                            }`}>
-                              {validateWeightConfig().message}
+                          </div>
+                          
+                          {/* 配置统计信息 */}
+                          <div className="p-4 border rounded-lg bg-blue-50">
+                            <h5 className="text-sm font-medium mb-3">配置统计信息</h5>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="text-center">
+                                <div className="text-lg font-bold text-blue-600">
+                                  {weightConfig.models.filter(m => m.enabled).length}
+                                </div>
+                                <div className="text-xs text-slate-600">启用模型数</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-lg font-bold text-green-600">
+                                  {validateWeightConfig().totalWeight}%
+                                </div>
+                                <div className="text-xs text-slate-600">权重总和</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-lg font-bold text-purple-600">
+                                  {Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                    const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                    return sum + (performance?.accuracy ?? 0) * m.weight / 100;
+                                  }, 0) * 10) / 10}%
+                                </div>
+                                <div className="text-xs text-slate-600">预期准确率</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-lg font-bold text-orange-600">
+                                  {weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
+                                    const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
+                                    return sum + (parseInt(performance?.trainingTime.replace(/[^-\d]/g, '') ?? '0') * m.weight / 100);
+                                  }, 0).toFixed(0)}秒
+                                </div>
+                                <div className="text-xs text-slate-600">平均训练时间</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* 配置状态提示 */}
+                          <div className="p-3 border rounded-lg bg-green-50">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-green-700">
+                                ✅ 权重配置已就绪，可保存为新的配置方案
+                              </div>
+                              <div className="text-sm text-green-600">
+                                已保存 {savedConfigs.length} 个配置
+                              </div>
                             </div>
                           </div>
                         </div>

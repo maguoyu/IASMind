@@ -13,6 +13,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { CascaderPro } from "~/components/ui/cascader-pro";
+import type { CascaderOption } from "~/components/ui/cascader-pro";
 
 import { SampleTemplate } from "./sample-template";
 
@@ -38,7 +40,98 @@ export function SampleManager({ onSampleDataChange }: SampleManagerProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRegion, setFilterRegion] = useState("");
   const [filterSeason, setFilterSeason] = useState("");
+  const [cascaderValue, setCascaderValue] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 级联选择器选项数据 - 地区、省级公司、地市级公司
+  const cascaderOptions: CascaderOption[] = [
+    {
+      value: "华东",
+      label: "华东地区",
+      children: [
+        {
+          value: "华东航空燃料有限公司",
+          label: "华东航空燃料有限公司",
+          children: [
+            { value: "上海浦东机场", label: "上海浦东机场" },
+            { value: "上海虹桥机场", label: "上海虹桥机场" },
+            { value: "南京禄口机场", label: "南京禄口机场" },
+            { value: "杭州萧山机场", label: "杭州萧山机场" },
+            { value: "宁波栎社机场", label: "宁波栎社机场" }
+          ]
+        },
+        {
+          value: "江苏航空燃料公司",
+          label: "江苏航空燃料公司",
+          children: [
+            { value: "南京禄口机场", label: "南京禄口机场" },
+            { value: "无锡硕放机场", label: "无锡硕放机场" },
+            { value: "常州奔牛机场", label: "常州奔牛机场" },
+            { value: "南通兴东机场", label: "南通兴东机场" }
+          ]
+        },
+        {
+          value: "浙江航空燃料公司",
+          label: "浙江航空燃料公司",
+          children: [
+            { value: "杭州萧山机场", label: "杭州萧山机场" },
+            { value: "宁波栎社机场", label: "宁波栎社机场" },
+            { value: "温州龙湾机场", label: "温州龙湾机场" },
+            { value: "义乌机场", label: "义乌机场" }
+          ]
+        }
+      ]
+    },
+    {
+      value: "华南",
+      label: "华南地区",
+      children: [
+        {
+          value: "华南航空燃料有限公司",
+          label: "华南航空燃料有限公司",
+          children: [
+            { value: "广州白云机场", label: "广州白云机场" },
+            { value: "深圳宝安机场", label: "深圳宝安机场" },
+            { value: "珠海金湾机场", label: "珠海金湾机场" },
+            { value: "佛山沙堤机场", label: "佛山沙堤机场" }
+          ]
+        },
+        {
+          value: "广东航空燃料公司",
+          label: "广东航空燃料公司",
+          children: [
+            { value: "广州白云机场", label: "广州白云机场" },
+            { value: "深圳宝安机场", label: "深圳宝安机场" },
+            { value: "珠海金湾机场", label: "珠海金湾机场" }
+          ]
+        }
+      ]
+    },
+    {
+      value: "华北",
+      label: "华北地区",
+      children: [
+        {
+          value: "华北航空燃料有限公司",
+          label: "华北航空燃料有限公司",
+          children: [
+            { value: "北京首都机场", label: "北京首都机场" },
+            { value: "北京大兴机场", label: "北京大兴机场" },
+            { value: "天津滨海机场", label: "天津滨海机场" },
+            { value: "石家庄正定机场", label: "石家庄正定机场" }
+          ]
+        },
+        {
+          value: "北京航空燃料公司",
+          label: "北京航空燃料公司",
+          children: [
+            { value: "北京首都机场", label: "北京首都机场" },
+            { value: "北京大兴机场", label: "北京大兴机场" }
+          ]
+        }
+      ]
+    }
+  ];
 
   // 模拟上传Excel文件
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +162,7 @@ export function SampleManager({ onSampleDataChange }: SampleManagerProps) {
       
       alert(`成功上传 ${newData.length} 条样本数据`);
     } catch (error) {
-      console.error('上传错误:', error);
+              console.error('上传错误:', error);
       alert('文件上传失败，请检查文件格式或稍后重试');
     } finally {
       setIsUploading(false);
@@ -77,6 +170,31 @@ export function SampleManager({ onSampleDataChange }: SampleManagerProps) {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  // 级联筛选逻辑
+  const matchesCascaderFilter = (item: SampleData) => {
+    if (cascaderValue.length === 0) return true;
+    
+    // 根据级联选择的值进行过滤
+    const [selectedRegion, selectedCompany, selectedAirport] = cascaderValue;
+    
+    // 如果选择了地区，检查地区是否匹配
+    if (selectedRegion && item.region !== selectedRegion) {
+      return false;
+    }
+    
+    // 如果选择了公司，检查样本文件是否包含该公司信息
+    if (selectedCompany && !item.notes.includes(selectedCompany)) {
+      return false;
+    }
+    
+    // 如果选择了机场，检查样本文件是否包含该机场信息
+    if (selectedAirport && !item.notes.includes(selectedAirport)) {
+      return false;
+    }
+    
+    return true;
   };
 
   // 搜索和过滤数据
@@ -87,10 +205,17 @@ export function SampleManager({ onSampleDataChange }: SampleManagerProps) {
       item.season.includes(searchTerm) ||
       item.notes.includes(searchTerm);
     
+    // 级联筛选
+    const matchesCascader = matchesCascaderFilter(item);
+    
+    // 传统地区筛选（保持向后兼容）
     const matchesRegion = filterRegion === "" || item.region === filterRegion;
     const matchesSeason = filterSeason === "" || item.season === filterSeason;
     
-    return matchesSearch && matchesRegion && matchesSeason;
+    // 优先使用级联筛选，如果没有级联选择则使用传统筛选
+    const regionMatch = cascaderValue.length > 0 ? matchesCascader : matchesRegion;
+    
+    return matchesSearch && regionMatch && matchesSeason;
   });
 
   // 获取唯一区域和季节
@@ -165,7 +290,7 @@ export function SampleManager({ onSampleDataChange }: SampleManagerProps) {
             <UploadIcon className="w-8 h-8 mx-auto mb-2 text-slate-400" />
             <Label htmlFor="file-upload" className="cursor-pointer">
               <span className="text-sm text-slate-600 dark:text-slate-400">
-                点击上传Excel文件或拖拽文件到此处
+                                 点击上传Excel文件或拖拽文件到此处
               </span>
             </Label>
             <input
@@ -199,18 +324,13 @@ export function SampleManager({ onSampleDataChange }: SampleManagerProps) {
           </div>
           
           <div className="space-y-2">
-            <Label>地区筛选</Label>
-            <Select value={filterRegion} onValueChange={setFilterRegion}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择地区" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">全部地区</SelectItem>
-                {uniqueRegions.map(region => (
-                  <SelectItem key={region} value={region}>{region}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>地区</Label>
+            <CascaderPro
+              options={cascaderOptions}
+              value={cascaderValue}
+              onChange={setCascaderValue}
+              placeholder="选择地区/公司/机场"
+            />
           </div>
           
           <div className="space-y-2">

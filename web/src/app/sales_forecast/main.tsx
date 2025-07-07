@@ -1,7 +1,9 @@
 "use client";
 
-import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, ArrowLeft, BarChart3, Target as TargetIcon, Trophy as TrophyIcon } from "lucide-react";
+import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, BarChart3, Target as TargetIcon, Trophy as TrophyIcon } from "lucide-react";
 import { useState } from "react";
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -10,7 +12,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { CascaderPro } from "~/components/ui/cascader-pro";
+import type { CascaderOption } from "~/components/ui/cascader-pro";
 
 interface SampleData {
   id: string;
@@ -553,6 +556,105 @@ export default function SalesForecastMain() {
   const [filterSeason, setFilterSeason] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  
+  // 级联筛选相关状态
+  const [cascaderValue, setCascaderValue] = useState<string[]>([]);
+  
+  // 预测结果查询页面的级联筛选状态
+  const [forecastCascaderValue, setForecastCascaderValue] = useState<string[]>([]);
+  
+  // 搜索状态
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // 级联选择器选项数据 - 地区、省级公司、地市级公司
+  const cascaderOptions: CascaderOption[] = [
+    {
+      value: "华东",
+      label: "华东地区",
+      children: [
+        {
+          value: "华东航空燃料有限公司",
+          label: "华东航空燃料有限公司",
+          children: [
+            { value: "上海浦东机场", label: "上海浦东机场" },
+            { value: "上海虹桥机场", label: "上海虹桥机场" },
+            { value: "南京禄口机场", label: "南京禄口机场" },
+            { value: "杭州萧山机场", label: "杭州萧山机场" },
+            { value: "宁波栎社机场", label: "宁波栎社机场" }
+          ]
+        },
+        {
+          value: "江苏航空燃料公司",
+          label: "江苏航空燃料公司",
+          children: [
+            { value: "南京禄口机场", label: "南京禄口机场" },
+            { value: "无锡硕放机场", label: "无锡硕放机场" },
+            { value: "常州奔牛机场", label: "常州奔牛机场" },
+            { value: "南通兴东机场", label: "南通兴东机场" }
+          ]
+        },
+        {
+          value: "浙江航空燃料公司",
+          label: "浙江航空燃料公司",
+          children: [
+            { value: "杭州萧山机场", label: "杭州萧山机场" },
+            { value: "宁波栎社机场", label: "宁波栎社机场" },
+            { value: "温州龙湾机场", label: "温州龙湾机场" },
+            { value: "义乌机场", label: "义乌机场" }
+          ]
+        }
+      ]
+    },
+    {
+      value: "华南",
+      label: "华南地区",
+      children: [
+        {
+          value: "华南航空燃料有限公司",
+          label: "华南航空燃料有限公司",
+          children: [
+            { value: "广州白云机场", label: "广州白云机场" },
+            { value: "深圳宝安机场", label: "深圳宝安机场" },
+            { value: "珠海金湾机场", label: "珠海金湾机场" },
+            { value: "佛山沙堤机场", label: "佛山沙堤机场" }
+          ]
+        },
+        {
+          value: "广东航空燃料公司",
+          label: "广东航空燃料公司",
+          children: [
+            { value: "广州白云机场", label: "广州白云机场" },
+            { value: "深圳宝安机场", label: "深圳宝安机场" },
+            { value: "珠海金湾机场", label: "珠海金湾机场" }
+          ]
+        }
+      ]
+    },
+    {
+      value: "华北",
+      label: "华北地区",
+      children: [
+        {
+          value: "华北航空燃料有限公司",
+          label: "华北航空燃料有限公司",
+          children: [
+            { value: "北京首都机场", label: "北京首都机场" },
+            { value: "北京大兴机场", label: "北京大兴机场" },
+            { value: "天津滨海机场", label: "天津滨海机场" },
+            { value: "石家庄正定机场", label: "石家庄正定机场" }
+          ]
+        },
+        {
+          value: "北京航空燃料公司",
+          label: "北京航空燃料公司",
+          children: [
+            { value: "北京首都机场", label: "北京首都机场" },
+            { value: "北京大兴机场", label: "北京大兴机场" }
+          ]
+        }
+      ]
+    }
+  ];
   const [executionLogs, setExecutionLogs] = useState<string[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -849,15 +951,44 @@ export default function SalesForecastMain() {
 
   // 菜单项配置
   const menuItems = [
-    { id: "upload", label: "样本上传", icon: UploadIcon },
+    { id: "upload", label: "样本管理", icon: UploadIcon },
     { id: "preview", label: "样本数据查询", icon: FileTextIcon },
-    { id: "forecast", label: "执行预测", icon: TrendingUpIcon },
+    { id: "forecast", label: "预测管理", icon: TrendingUpIcon },
     { id: "forecast-preview", label: "预测结果查询", icon: BarChart3Icon },
     { id: "analysis", label: "预测分析", icon: PieChartIcon }
   ];
 
+  // 级联筛选逻辑
+  const matchesCascaderFilter = (item: SampleData) => {
+    if (cascaderValue.length === 0) return true;
+    
+    // 根据级联选择的值进行过滤
+    const [selectedRegion, selectedCompany, selectedAirport] = cascaderValue;
+    
+    // 如果选择了地区，检查地区是否匹配
+    if (selectedRegion && item.region !== selectedRegion) {
+      return false;
+    }
+    
+    // 如果选择了公司，检查样本文件是否包含该公司信息
+    if (selectedCompany && !item.sampleFile.includes(selectedCompany)) {
+      return false;
+    }
+    
+    // 如果选择了机场，检查样本文件是否包含该机场信息
+    if (selectedAirport && !item.sampleFile.includes(selectedAirport)) {
+      return false;
+    }
+    
+    return true;
+  };
+
   // 过滤数据
   const filteredData = sampleData.filter(item => {
+    // 级联筛选
+    const matchesCascader = matchesCascaderFilter(item);
+    
+    // 传统地区筛选（保持向后兼容）
     const matchesRegion = filterRegion === "" || item.region === filterRegion;
     
     // 根据样本类型过滤（通过notes字段判断）
@@ -871,7 +1002,10 @@ export default function SalesForecastMain() {
     const matchesDateRange = (!startDate || item.date >= startDate) && 
                             (!endDate || item.date <= endDate);
     
-    return matchesRegion && matchesSampleType && matchesDateRange;
+    // 优先使用级联筛选，如果没有级联选择则使用传统筛选
+    const regionMatch = cascaderValue.length > 0 ? matchesCascader : matchesRegion;
+    
+    return regionMatch && matchesSampleType && matchesDateRange;
   });
 
   // 获取唯一区域和季节
@@ -884,6 +1018,40 @@ export default function SalesForecastMain() {
   const endIndex = startIndex + pageSize;
   const currentPageData = executionHistory.slice(startIndex, endIndex);
   
+  // 预测结果级联筛选逻辑
+  const matchesForecastCascaderFilter = (item: ForecastData, index: number) => {
+    if (forecastCascaderValue.length === 0) return true;
+    
+    // 根据索引确定任务信息
+    const taskIndex = Math.floor(index / 12);
+    const taskNames = ["华东地区2024年销售预测", "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预测"];
+    const regions = ["华东", "华南", "华北", "全国"];
+    const companies = ["华东航空燃料有限公司", "华南航空燃料有限公司", "华北航空燃料有限公司", "全国航空燃料集团"];
+    
+    const currentTaskName = taskNames[taskIndex] || taskNames[0]!;
+    const currentRegion = regions[taskIndex] || regions[0]!;
+    const currentCompany = companies[taskIndex] || companies[0]!;
+    
+    const [selectedRegion, selectedCompany, selectedAirport] = forecastCascaderValue;
+    
+    // 如果选择了地区，检查地区是否匹配
+    if (selectedRegion && currentRegion !== selectedRegion) {
+      return false;
+    }
+    
+    // 如果选择了公司，检查公司是否匹配
+    if (selectedCompany && !currentCompany.includes(selectedCompany)) {
+      return false;
+    }
+    
+    // 如果选择了机场，检查任务名称是否包含该机场信息
+    if (selectedAirport && !currentTaskName.includes(selectedAirport)) {
+      return false;
+    }
+    
+    return true;
+  };
+
   // 预测数据筛选和分页
   const filteredForecastData = forecastData.filter((item, index) => {
     // 根据索引确定任务名称和算法（简化逻辑）
@@ -894,12 +1062,19 @@ export default function SalesForecastMain() {
     const currentTaskName = taskNames[taskIndex] || taskNames[0]!;
     const currentAlgorithm = algorithms[taskIndex] || algorithms[0]!;
     
+    // 级联筛选
+    const matchesCascader = matchesForecastCascaderFilter(item, index);
+    
+    // 传统筛选
     const matchesTaskName = !filterTaskName || filterTaskName === "all" || currentTaskName.includes(filterTaskName);
     const matchesAlgorithm = !filterAlgorithm || filterAlgorithm === "all" || currentAlgorithm.includes(filterAlgorithm);
     const matchesDateRange = (!filterStartDate || item.month >= filterStartDate) && 
                             (!filterEndDate || item.month <= filterEndDate);
     
-    return matchesTaskName && matchesAlgorithm && matchesDateRange;
+    // 优先使用级联筛选，如果没有级联选择则使用传统筛选
+    const taskNameMatch = forecastCascaderValue.length > 0 ? matchesCascader : matchesTaskName;
+    
+    return taskNameMatch && matchesAlgorithm && matchesDateRange;
   });
   
   const forecastTotalPages = Math.ceil(filteredForecastData.length / forecastPreviewPageSize);
@@ -1159,6 +1334,33 @@ export default function SalesForecastMain() {
     setSampleFiles(sampleFiles.filter(file => file.id !== fileId));
   };
 
+  // 处理预测结果搜索
+  const handleForecastSearch = () => {
+    setIsSearching(true);
+    
+    // 模拟搜索过程
+    setTimeout(() => {
+      setIsSearching(false);
+      // 这里可以添加实际的搜索逻辑，比如调用API
+      console.log("搜索条件:", {
+        cascader: forecastCascaderValue,
+        taskName: filterTaskName,
+        algorithm: filterAlgorithm,
+        startDate: filterStartDate,
+        endDate: filterEndDate
+      });
+    }, 500);
+  };
+
+  // 重置预测结果筛选条件
+  const handleForecastReset = () => {
+    setForecastCascaderValue([]);
+    setFilterTaskName("");
+    setFilterAlgorithm("");
+    setFilterStartDate("");
+    setFilterEndDate("");
+  };
+
   // 渲染内容区域
   const renderContent = () => {
     switch (activeMenu) {
@@ -1328,18 +1530,13 @@ export default function SalesForecastMain() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>地区筛选</Label>
-                  <Select value={filterRegion} onValueChange={setFilterRegion}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择地区" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">全部地区</SelectItem>
-                      {uniqueRegions.map(region => (
-                        <SelectItem key={region} value={region}>{region}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>地区</Label>
+                  <CascaderPro
+                    options={cascaderOptions}
+                    value={cascaderValue}
+                    onChange={setCascaderValue}
+                    placeholder="选择地区/公司/机场"
+                  />
                 </div>
                 
                 <div className="space-y-2">
@@ -1806,7 +2003,17 @@ export default function SalesForecastMain() {
             
             <CardContent className="space-y-6">
               {/* 筛选条件 */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                <div className="space-y-2">
+                  <Label>地区</Label>
+                  <CascaderPro
+                    options={cascaderOptions}
+                    value={forecastCascaderValue}
+                    onChange={setForecastCascaderValue}
+                    placeholder="选择地区/公司/机场"
+                  />
+                </div>
+                
                 <div className="space-y-2">
                   <Label>任务名称</Label>
                   <Select value={filterTaskName} onValueChange={setFilterTaskName}>
@@ -1859,6 +2066,38 @@ export default function SalesForecastMain() {
                     placeholder="选择结束日期"
                   />
                 </div>
+                
+                <div className="space-y-2">
+                  <Label>&nbsp;</Label>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="default" 
+                      className="flex-1"
+                      onClick={handleForecastSearch}
+                      disabled={isSearching}
+                    >
+                      {isSearching ? (
+                        <>
+                          <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          搜索中...
+                        </>
+                      ) : (
+                        <>
+                          <SearchIcon className="w-4 h-4 mr-2" />
+                          搜索
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleForecastReset}
+                      title="重置筛选条件"
+                    >
+                      重置
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               {/* 数据统计 */}
@@ -1884,6 +2123,7 @@ export default function SalesForecastMain() {
                         <TableHead>实际销量(万升)</TableHead>
                         <TableHead>置信度(%)</TableHead>
                         <TableHead>算法</TableHead>
+                        <TableHead>地区公司</TableHead>
                         <TableHead>执行时间</TableHead>
                         <TableHead>操作</TableHead>
                       </TableRow>
@@ -1895,10 +2135,12 @@ export default function SalesForecastMain() {
                         const taskNames = ["华东地区2024年销售预测", "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预测"];
                         const algorithms = ["线性回归", "ARIMA模型", "指数平滑", "LSTM神经网络"];
                         const executionTimes = ["2024-01-05 15:30", "2024-01-04 14:20", "2024-01-03 10:15", "2024-01-02 16:45"];
+                        const regionCompanies = ["华东", "青岛", "烟台", "华南", "华北", "大连", "济南", "天津", "上海", "南京", "杭州", "广州"];
                         
                         const currentTaskName = taskNames[taskIndex] || taskNames[0]!;
                         const currentAlgorithm = algorithms[taskIndex] || algorithms[0]!;
                         const currentExecutionTime = executionTimes[taskIndex] || executionTimes[0]!;
+                        const currentRegionCompany = regionCompanies[globalIndex % regionCompanies.length] || regionCompanies[0]!;
                         
                         return (
                           <TableRow key={globalIndex}>
@@ -1914,6 +2156,9 @@ export default function SalesForecastMain() {
                               </Badge>
                             </TableCell>
                             <TableCell>{currentAlgorithm}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{currentRegionCompany}</Badge>
+                            </TableCell>
                             <TableCell className="text-sm">{currentExecutionTime}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">

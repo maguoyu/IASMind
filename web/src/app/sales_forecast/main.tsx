@@ -1,8 +1,7 @@
 "use client";
 
-import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, BarChart3, Target as TargetIcon, Trophy as TrophyIcon } from "lucide-react";
-import { useState } from "react";
-
+import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, BarChart3, Target as TargetIcon, Trophy as TrophyIcon, ChevronDown, ChevronRight, Settings, Database, Users, Calendar, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 import { Badge } from "~/components/ui/badge";
@@ -494,10 +493,18 @@ const analysisData = {
   }
 };
 
-type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis";
+type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis" | "data-management" | "model-config" | "system-settings" | "reports" | "user-management" | "data-import" | "data-export" | "data-validation" | "data-backup" | "algorithm-config" | "parameter-tuning" | "model-validation" | "monthly-report" | "quarterly-report" | "annual-report" | "custom-report" | "role-management" | "region-management" | "system-config";
+
+interface MenuItemType {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+  children?: MenuItemType[];
+}
 
 export default function SalesForecastMain() {
   const [activeMenu, setActiveMenu] = useState<MenuItem>("upload");
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(["data-management", "model-config", "reports", "system-settings"]));
   const [sampleData, setSampleData] = useState<SampleData[]>(staticSampleData);
   const [forecastData, setForecastData] = useState<ForecastData[]>([
     { month: "2024-01", predicted: 1250, actual: 1280, confidence: 92 },
@@ -952,14 +959,73 @@ export default function SalesForecastMain() {
     }
   ]);
 
-  // 菜单项配置
-  const menuItems = [
+  // 菜单项配置 - 多级菜单结构
+  const menuItems: MenuItemType[] = [
     { id: "upload", label: "样本管理", icon: UploadIcon },
     { id: "preview", label: "样本数据查询", icon: FileTextIcon },
     { id: "forecast", label: "预测管理", icon: TrendingUpIcon },
     { id: "forecast-preview", label: "预测结果查询", icon: BarChart3Icon },
-    { id: "analysis", label: "预测分析", icon: PieChartIcon }
+    { id: "analysis", label: "预测分析", icon: PieChartIcon },
+    {
+      id: "data-management",
+      label: "数据管理",
+      icon: Database,
+      children: [
+        { id: "data-import", label: "数据导入", icon: UploadIcon },
+        { id: "data-export", label: "数据导出", icon: DownloadIcon },
+        { id: "data-validation", label: "数据验证", icon: SearchIcon },
+        { id: "data-backup", label: "数据备份", icon: Database }
+      ]
+    },
+    {
+      id: "model-config",
+      label: "模型配置",
+      icon: Settings,
+      children: [
+        { id: "algorithm-config", label: "算法配置", icon: Settings },
+        { id: "parameter-tuning", label: "参数调优", icon: TrendingUpIcon },
+        { id: "model-validation", label: "模型验证", icon: BarChart3Icon }
+      ]
+    },
+    {
+      id: "reports",
+      label: "报表中心",
+      icon: FileTextIcon,
+      children: [
+        { id: "monthly-report", label: "月度报表", icon: Calendar },
+        { id: "quarterly-report", label: "季度报表", icon: Calendar },
+        { id: "annual-report", label: "年度报表", icon: Calendar },
+        { id: "custom-report", label: "自定义报表", icon: FileTextIcon }
+      ]
+    },
+    {
+      id: "system-settings",
+      label: "系统设置",
+      icon: Settings,
+      children: [
+        { id: "user-management", label: "用户管理", icon: Users },
+        { id: "role-management", label: "角色管理", icon: Users },
+        { id: "region-management", label: "区域管理", icon: MapPin },
+        { id: "system-config", label: "系统配置", icon: Settings }
+      ]
+    }
   ];
+
+  // 初始化时自动选择已展开菜单的第一个子菜单
+  useEffect(() => {
+    const expandedMenuIds = Array.from(expandedMenus);
+    if (expandedMenuIds.length > 0) {
+      // 找到第一个展开的菜单
+      const firstExpandedMenu = menuItems.find(item => expandedMenuIds.includes(item.id));
+             if (firstExpandedMenu?.children?.length) {
+         // 如果当前activeMenu不是任何子菜单，则设置为第一个子菜单
+         const allChildIds = firstExpandedMenu.children.map(child => child.id);
+         if (!allChildIds.includes(activeMenu)) {
+           setActiveMenu(firstExpandedMenu.children[0]!.id as MenuItem);
+         }
+       }
+    }
+  }, []);
 
   // 级联筛选逻辑
   const matchesCascaderFilter = (item: SampleData) => {
@@ -1362,6 +1428,19 @@ export default function SalesForecastMain() {
     setFilterAlgorithm("");
     setFilterStartDate("");
     setFilterEndDate("");
+  };
+
+  // 处理菜单展开/收缩
+  const toggleMenuExpansion = (menuId: string) => {
+    setExpandedMenus(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(menuId)) {
+        newSet.delete(menuId);
+      } else {
+        newSet.add(menuId);
+      }
+      return newSet;
+    });
   };
 
   // 渲染内容区域
@@ -3105,9 +3184,167 @@ export default function SalesForecastMain() {
             </Card>
                      </div>
         );
+      
+      // 新增菜单项的内容渲染
+      case "data-import":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UploadIcon className="w-5 h-5" />
+                数据导入
+              </CardTitle>
+              <CardDescription>
+                从外部系统导入销售数据、市场数据等
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <UploadIcon className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-lg font-medium mb-2">数据导入功能</h3>
+                <p className="text-slate-600">支持批量导入Excel、CSV等格式的数据文件</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      
+      case "data-export":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DownloadIcon className="w-5 h-5" />
+                数据导出
+              </CardTitle>
+              <CardDescription>
+                导出预测结果、分析报告等数据
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <DownloadIcon className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-lg font-medium mb-2">数据导出功能</h3>
+                <p className="text-slate-600">支持导出为Excel、PDF、CSV等多种格式</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      
+      case "algorithm-config":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                算法配置
+              </CardTitle>
+              <CardDescription>
+                配置预测算法参数和模型设置
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <Settings className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-lg font-medium mb-2">算法配置中心</h3>
+                <p className="text-slate-600">调整机器学习模型的超参数和训练配置</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      
+      case "monthly-report":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                月度报表
+              </CardTitle>
+              <CardDescription>
+                生成和查看月度销售预测报表
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-lg font-medium mb-2">月度报表中心</h3>
+                <p className="text-slate-600">自动生成月度销售分析和预测报告</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      
+      case "user-management":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                用户管理
+              </CardTitle>
+              <CardDescription>
+                管理系统用户权限和角色分配
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                <h3 className="text-lg font-medium mb-2">用户管理系统</h3>
+                <p className="text-slate-600">创建、编辑和管理系统用户账户</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
       default:
         return null;
     }
+  };
+
+  // 递归渲染菜单项
+  const renderMenuItem = (item: MenuItemType, level: number = 0) => {
+    const Icon = item.icon;
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedMenus.has(item.id);
+    const isActive = activeMenu === item.id;
+    
+    return (
+      <div key={item.id}>
+        <Button
+          variant={isActive ? "default" : "ghost"}
+          className={`w-full justify-start ${level > 0 ? 'ml-4 w-[calc(100%-1rem)]' : ''}`}
+          onClick={() => {
+            if (hasChildren) {
+              toggleMenuExpansion(item.id);
+              // 如果菜单正在展开，自动选择第一个子菜单
+              if (!isExpanded && item.children && item.children.length > 0) {
+                setActiveMenu(item.children[0]!.id as MenuItem);
+              }
+            } else {
+              setActiveMenu(item.id as MenuItem);
+            }
+          }}
+        >
+          <Icon className="w-4 h-4 mr-2" />
+          {item.label}
+          {hasChildren && (
+            <div className="ml-auto">
+              {isExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </div>
+          )}
+        </Button>
+        
+        {hasChildren && isExpanded && (
+          <div className="mt-1 space-y-1">
+            {item.children!.map((child) => renderMenuItem(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -3115,20 +3352,7 @@ export default function SalesForecastMain() {
       {/* 左侧菜单 */}
       <div className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4">
         <div className="space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Button
-                key={item.id}
-                variant={activeMenu === item.id ? "default" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => setActiveMenu(item.id as MenuItem)}
-              >
-                <Icon className="w-4 h-4 mr-2" />
-                {item.label}
-              </Button>
-            );
-          })}
+          {menuItems.map((item) => renderMenuItem(item))}
         </div>
       </div>
 

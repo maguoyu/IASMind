@@ -7,7 +7,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
@@ -35,9 +34,9 @@ interface ForecastData {
   confidence: number;
 }
 
-// 静态样本数据
+// 静态样本数�?
 const staticSampleData: SampleData[] = [
-  // 历史销售数据
+  // 历史销售数�?
   {
     id: "1",
     date: "2024-01-01",
@@ -47,8 +46,8 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "晴天",
     events: "元旦假期",
-    notes: "节假日期间销量增加",
-    sampleFile: "华东地区2024年1月样本数据.xlsx"
+    notes: "节假日期间销量增�?,
+    sampleFile: "华东地区2024�?月样本数�?xlsx"
   },
   {
     id: "2",
@@ -59,8 +58,8 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "多云",
     events: "",
-    notes: "工作日正常销量",
-    sampleFile: "华东地区2024年1月样本数据.xlsx"
+    notes: "工作日正常销�?,
+    sampleFile: "华东地区2024�?月样本数�?xlsx"
   },
   {
     id: "3",
@@ -71,8 +70,8 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "晴天",
     events: "",
-    notes: "南方地区需求稳定",
-    sampleFile: "华南地区2023年样本数据.xlsx"
+    notes: "南方地区需求稳�?,
+    sampleFile: "华南地区2023年样本数�?xlsx"
   },
   {
     id: "4",
@@ -83,8 +82,8 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "阴天",
     events: "",
-    notes: "北方地区需求稳定",
-    sampleFile: "华北地区2023年样本数据.xlsx"
+    notes: "北方地区需求稳�?,
+    sampleFile: "华北地区2023年样本数�?xlsx"
   },
   {
     id: "5",
@@ -95,10 +94,10 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "晴天",
     events: "周末",
-    notes: "周末出行需求增加",
-    sampleFile: "华东地区2024年1月样本数据.xlsx"
+    notes: "周末出行需求增�?,
+    sampleFile: "华东地区2024�?月样本数�?xlsx"
   },
-  // 年度汇总数据
+  // 年度汇总数�?
   {
     id: "6",
     date: "2023-12-31",
@@ -108,8 +107,8 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "晴天",
     events: "年终总结",
-    notes: "2023年华东地区年度汇总数据",
-    sampleFile: "华东地区2023年年度汇总.xlsx"
+    notes: "2023年华东地区年度汇总数�?,
+    sampleFile: "华东地区2023年年度汇�?xlsx"
   },
   {
     id: "7",
@@ -120,8 +119,8 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "晴天",
     events: "年终总结",
-    notes: "2023年华南地区年度汇总数据",
-    sampleFile: "华南地区2023年样本数据.xlsx"
+    notes: "2023年华南地区年度汇总数�?,
+    sampleFile: "华南地区2023年样本数�?xlsx"
   },
   {
     id: "8",
@@ -132,8 +131,8 @@ const staticSampleData: SampleData[] = [
     season: "冬季",
     weather: "晴天",
     events: "年终总结",
-    notes: "2023年华北地区年度汇总数据",
-    sampleFile: "华北地区2023年样本数据.xlsx"
+    notes: "2023年华北地区年度汇总数�?,
+    sampleFile: "华北地区2023年样本数�?xlsx"
   },
   // 季度数据
   {
@@ -144,8 +143,8 @@ const staticSampleData: SampleData[] = [
     region: "华东",
     season: "秋季",
     weather: "晴天",
-    events: "Q4季度开始",
-    notes: "2023年第四季度华东地区数据",
+    events: "Q4季度开�?,
+    notes: "2023年第四季度华东地区数�?,
     sampleFile: "华东地区2023年Q4季度数据.xlsx"
   },
   {
@@ -156,9 +155,9 @@ const staticSampleData: SampleData[] = [
     region: "华南",
     season: "秋季",
     weather: "晴天",
-    events: "Q4季度开始",
-    notes: "2023年第四季度华南地区数据",
-    sampleFile: "华南地区2023年样本数据.xlsx"
+    events: "Q4季度开�?,
+    notes: "2023年第四季度华南地区数�?,
+    sampleFile: "华南地区2023年样本数�?xlsx"
   },
   {
     id: "11",
@@ -168,9 +167,9 @@ const staticSampleData: SampleData[] = [
     region: "华北",
     season: "秋季",
     weather: "晴天",
-    events: "Q4季度开始",
-    notes: "2023年第四季度华北地区数据",
-    sampleFile: "华北地区2023年样本数据.xlsx"
+    events: "Q4季度开�?,
+    notes: "2023年第四季度华北地区数�?,
+    sampleFile: "华北地区2023年样本数�?xlsx"
   },
   // 月度数据
   {
@@ -181,9 +180,9 @@ const staticSampleData: SampleData[] = [
     region: "华东",
     season: "冬季",
     weather: "多云",
-    events: "12月月度统计",
-    notes: "2023年12月华东地区月度数据",
-    sampleFile: "华东地区2023年12月数据.xlsx"
+    events: "12月月度统�?,
+    notes: "2023�?2月华东地区月度数�?,
+    sampleFile: "华东地区2023�?2月数�?xlsx"
   },
   {
     id: "13",
@@ -193,9 +192,9 @@ const staticSampleData: SampleData[] = [
     region: "华南",
     season: "冬季",
     weather: "多云",
-    events: "12月月度统计",
-    notes: "2023年12月华南地区月度数据",
-    sampleFile: "华南地区2023年样本数据.xlsx"
+    events: "12月月度统�?,
+    notes: "2023�?2月华南地区月度数�?,
+    sampleFile: "华南地区2023年样本数�?xlsx"
   },
   {
     id: "14",
@@ -205,9 +204,9 @@ const staticSampleData: SampleData[] = [
     region: "华北",
     season: "冬季",
     weather: "多云",
-    events: "12月月度统计",
-    notes: "2023年12月华北地区月度数据",
-    sampleFile: "华北地区2023年样本数据.xlsx"
+    events: "12月月度统�?,
+    notes: "2023�?2月华北地区月度数�?,
+    sampleFile: "华北地区2023年样本数�?xlsx"
   },
   {
     id: "15",
@@ -217,9 +216,9 @@ const staticSampleData: SampleData[] = [
     region: "华东",
     season: "秋季",
     weather: "晴天",
-    events: "11月月度统计",
-    notes: "2023年11月华东地区月度数据",
-    sampleFile: "华东地区2023年11月数据.xlsx"
+    events: "11月月度统�?,
+    notes: "2023�?1月华东地区月度数�?,
+    sampleFile: "华东地区2023�?1月数�?xlsx"
   },
   {
     id: "16",
@@ -229,9 +228,9 @@ const staticSampleData: SampleData[] = [
     region: "华南",
     season: "秋季",
     weather: "晴天",
-    events: "11月月度统计",
-    notes: "2023年11月华南地区月度数据",
-    sampleFile: "华南地区2023年样本数据.xlsx"
+    events: "11月月度统�?,
+    notes: "2023�?1月华南地区月度数�?,
+    sampleFile: "华南地区2023年样本数�?xlsx"
   },
   {
     id: "17",
@@ -241,9 +240,9 @@ const staticSampleData: SampleData[] = [
     region: "华北",
     season: "秋季",
     weather: "晴天",
-    events: "11月月度统计",
-    notes: "2023年11月华北地区月度数据",
-    sampleFile: "华北地区2023年样本数据.xlsx"
+    events: "11月月度统�?,
+    notes: "2023�?1月华北地区月度数�?,
+    sampleFile: "华北地区2023年样本数�?xlsx"
   },
   {
     id: "18",
@@ -253,9 +252,9 @@ const staticSampleData: SampleData[] = [
     region: "华东",
     season: "秋季",
     weather: "晴天",
-    events: "10月月度统计",
-    notes: "2023年10月华东地区月度数据",
-    sampleFile: "华东地区2023年10月数据.xlsx"
+    events: "10月月度统�?,
+    notes: "2023�?0月华东地区月度数�?,
+    sampleFile: "华东地区2023�?0月数�?xlsx"
   },
   {
     id: "19",
@@ -265,9 +264,9 @@ const staticSampleData: SampleData[] = [
     region: "华南",
     season: "秋季",
     weather: "晴天",
-    events: "10月月度统计",
-    notes: "2023年10月华南地区月度数据",
-    sampleFile: "华南地区2023年样本数据.xlsx"
+    events: "10月月度统�?,
+    notes: "2023�?0月华南地区月度数�?,
+    sampleFile: "华南地区2023年样本数�?xlsx"
   },
   {
     id: "20",
@@ -277,15 +276,15 @@ const staticSampleData: SampleData[] = [
     region: "华北",
     season: "秋季",
     weather: "晴天",
-    events: "10月月度统计",
-    notes: "2023年10月华北地区月度数据",
-    sampleFile: "华北地区2023年样本数据.xlsx"
+    events: "10月月度统�?,
+    notes: "2023�?0月华北地区月度数�?,
+    sampleFile: "华北地区2023年样本数�?xlsx"
   }
 ];
 
-// 静态预测数据
+// 静态预测数�?
 const staticForecastData: ForecastData[] = [
-  // 华东地区2024年销售预测 - 线性回归
+  // 华东地区2024年销售预�?- 线性回�?
   { month: "2024-02", predicted: 1050, actual: 1020, confidence: 95 },
   { month: "2024-03", predicted: 1100, actual: 1080, confidence: 92 },
   { month: "2024-04", predicted: 1150, confidence: 88 },
@@ -327,7 +326,7 @@ const staticForecastData: ForecastData[] = [
   { month: "2024-12", predicted: 1180, confidence: 61 },
   { month: "2025-01", predicted: 1220, confidence: 58 },
   
-  // 全国销售深度预测 - LSTM神经网络
+  // 全国销售深度预�?- LSTM神经网络
   { month: "2024-02", predicted: 3200, actual: 3150, confidence: 96 },
   { month: "2024-03", predicted: 3350, actual: 3300, confidence: 93 },
   { month: "2024-04", predicted: 3500, confidence: 90 },
@@ -342,7 +341,7 @@ const staticForecastData: ForecastData[] = [
   { month: "2025-01", predicted: 4850, confidence: 64 }
 ];
 
-// 预测分析数据 - 多维度层级数据
+// 预测分析数据 - 多维度层级数�?
 const analysisData = {
   regions: {
     "华东": {
@@ -358,9 +357,9 @@ const analysisData = {
                   predictedYoy: 0.08, // 同比
                   predictedMom: 0.05, // 环比
                   lastYearSame: 1110,
-                  deviation: 0.042, // 偏差率
-                  iteration: 3, // 第几次迭代
-                  algorithm: "线性回归"
+                  deviation: 0.042, // 偏差�?
+                  iteration: 3, // 第几次迭�?
+                  algorithm: "线性回�?
                 },
                 {
                   month: "2024-02",
@@ -371,7 +370,7 @@ const analysisData = {
                   lastYearSame: 1080,
                   deviation: 0.026,
                   iteration: 3,
-                  algorithm: "线性回归"
+                  algorithm: "线性回�?
                 },
                 {
                   month: "2024-03",
@@ -382,7 +381,7 @@ const analysisData = {
                   lastYearSame: 1140,
                   deviation: 0.031,
                   iteration: 3,
-                  algorithm: "线性回归"
+                  algorithm: "线性回�?
                 },
                 {
                   month: "2024-04",
@@ -393,7 +392,7 @@ const analysisData = {
                   lastYearSame: 1170,
                   deviation: 0.037,
                   iteration: 3,
-                  algorithm: "线性回归"
+                  algorithm: "线性回�?
                 },
                 {
                   month: "2024-05",
@@ -404,7 +403,7 @@ const analysisData = {
                   lastYearSame: 1200,
                   deviation: 0.021,
                   iteration: 3,
-                  algorithm: "线性回归"
+                  algorithm: "线性回�?
                 },
                 {
                   month: "2024-06",
@@ -415,7 +414,7 @@ const analysisData = {
                   lastYearSame: 1190,
                   deviation: 0.015,
                   iteration: 3,
-                  algorithm: "线性回归"
+                  algorithm: "线性回�?
                 }
               ]
             },
@@ -520,7 +519,7 @@ export default function SalesForecastMain() {
     { month: "2024-10", predicted: 1350, actual: 1380, confidence: 89 },
     { month: "2024-11", predicted: 1280, actual: 1250, confidence: 86 },
     { month: "2024-12", predicted: 1450, actual: 1420, confidence: 92 },
-    // 第二组数据
+    // 第二组数�?
     { month: "2024-01", predicted: 980, actual: 950, confidence: 85 },
     { month: "2024-02", predicted: 920, actual: 900, confidence: 82 },
     { month: "2024-03", predicted: 1050, actual: 1080, confidence: 88 },
@@ -533,7 +532,7 @@ export default function SalesForecastMain() {
     { month: "2024-10", predicted: 1050, actual: 1080, confidence: 88 },
     { month: "2024-11", predicted: 980, actual: 950, confidence: 84 },
     { month: "2024-12", predicted: 1150, actual: 1120, confidence: 91 },
-    // 第三组数据
+    // 第三组数�?
     { month: "2024-01", predicted: 850, actual: 880, confidence: 83 },
     { month: "2024-02", predicted: 780, actual: 750, confidence: 80 },
     { month: "2024-03", predicted: 920, actual: 950, confidence: 86 },
@@ -546,7 +545,7 @@ export default function SalesForecastMain() {
     { month: "2024-10", predicted: 920, actual: 950, confidence: 86 },
     { month: "2024-11", predicted: 850, actual: 820, confidence: 82 },
     { month: "2024-12", predicted: 1020, actual: 980, confidence: 89 },
-    // 第四组数据
+    // 第四组数�?
     { month: "2024-01", predicted: 2200, actual: 2250, confidence: 94 },
     { month: "2024-02", predicted: 2100, actual: 2050, confidence: 91 },
     { month: "2024-03", predicted: 2350, actual: 2380, confidence: 93 },
@@ -565,13 +564,13 @@ export default function SalesForecastMain() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   
-  // 级联筛选相关状态
+  // 级联筛选相关状�?
   const [cascaderValue, setCascaderValue] = useState<string[]>([]);
   
-  // 预测结果查询页面的级联筛选状态
+  // 预测结果查询页面的级联筛选状�?
   const [forecastCascaderValue, setForecastCascaderValue] = useState<string[]>([]);
   
-  // 搜索状态
+  // 搜索状�?
   const [isSearching, setIsSearching] = useState(false);
   
   // 级联选择器选项数据 - 地区、省级公司、地市级公司
@@ -598,7 +597,7 @@ export default function SalesForecastMain() {
             { value: "南京禄口机场", label: "南京禄口机场" },
             { value: "无锡硕放机场", label: "无锡硕放机场" },
             { value: "常州奔牛机场", label: "常州奔牛机场" },
-            { value: "南通兴东机场", label: "南通兴东机场" }
+            { value: "南通兴东机�?, label: "南通兴东机�? }
           ]
         },
         {
@@ -649,7 +648,7 @@ export default function SalesForecastMain() {
             { value: "北京首都机场", label: "北京首都机场" },
             { value: "北京大兴机场", label: "北京大兴机场" },
             { value: "天津滨海机场", label: "天津滨海机场" },
-            { value: "石家庄正定机场", label: "石家庄正定机场" }
+            { value: "石家庄正定机�?, label: "石家庄正定机�? }
           ]
         },
         {
@@ -680,7 +679,7 @@ export default function SalesForecastMain() {
     region: "华东",
     company: "华东航空燃料有限公司",
     models: [
-      { name: "线性回归", weight: 30, enabled: true },
+      { name: "线性回�?, weight: 30, enabled: true },
       { name: "ARIMA模型", weight: 25, enabled: true },
       { name: "指数平滑", weight: 20, enabled: true },
       { name: "LSTM神经网络", weight: 15, enabled: true },
@@ -690,22 +689,22 @@ export default function SalesForecastMain() {
 
   // 预设权重配置模板
   const weightTemplates = {
-    "保守型": {
+    "保守�?: {
       region: "华东",
       company: "华东航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 40, enabled: true },
+        { name: "线性回�?, weight: 40, enabled: true },
         { name: "ARIMA模型", weight: 30, enabled: true },
         { name: "指数平滑", weight: 20, enabled: true },
         { name: "LSTM神经网络", weight: 10, enabled: true },
         { name: "Prophet时间序列", weight: 0, enabled: false }
       ]
     },
-    "平衡型": {
+    "平衡�?: {
       region: "华东",
       company: "华东航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 30, enabled: true },
+        { name: "线性回�?, weight: 30, enabled: true },
         { name: "ARIMA模型", weight: 25, enabled: true },
         { name: "指数平滑", weight: 20, enabled: true },
         { name: "LSTM神经网络", weight: 15, enabled: true },
@@ -716,7 +715,7 @@ export default function SalesForecastMain() {
       region: "华东",
       company: "华东航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 20, enabled: true },
+        { name: "线性回�?, weight: 20, enabled: true },
         { name: "ARIMA模型", weight: 15, enabled: true },
         { name: "指数平滑", weight: 15, enabled: true },
         { name: "LSTM神经网络", weight: 30, enabled: true },
@@ -727,21 +726,21 @@ export default function SalesForecastMain() {
 
   // 模型性能测试数据
   const modelPerformanceData = {
-    "线性回归": {
+    "线性回�?: {
       accuracy: 85.2,
       mape: 12.3,
       rmse: 45.6,
-      trainingTime: "30秒",
-      predictionTime: "2秒",
+      trainingTime: "30�?,
+      predictionTime: "2�?,
       bestFor: "线性趋势明显的数据",
-      limitations: "对非线性关系敏感"
+      limitations: "对非线性关系敏�?
     },
     "ARIMA模型": {
       accuracy: 88.7,
       mape: 10.8,
       rmse: 38.9,
       trainingTime: "2分钟",
-      predictionTime: "5秒",
+      predictionTime: "5�?,
       bestFor: "时间序列数据",
       limitations: "需要足够的历史数据"
     },
@@ -749,32 +748,32 @@ export default function SalesForecastMain() {
       accuracy: 82.1,
       mape: 15.2,
       rmse: 52.1,
-      trainingTime: "15秒",
-      predictionTime: "1秒",
+      trainingTime: "15�?,
+      predictionTime: "1�?,
       bestFor: "短期预测",
-      limitations: "对长期趋势把握不足"
+      limitations: "对长期趋势把握不�?
     },
     "LSTM神经网络": {
       accuracy: 91.3,
       mape: 8.9,
       rmse: 32.4,
       trainingTime: "8分钟",
-      predictionTime: "10秒",
-      bestFor: "复杂非线性关系",
-      limitations: "需要大量训练数据"
+      predictionTime: "10�?,
+      bestFor: "复杂非线性关�?,
+      limitations: "需要大量训练数�?
     },
     "Prophet时间序列": {
       accuracy: 87.5,
       mape: 11.6,
       rmse: 41.2,
       trainingTime: "1分钟",
-      predictionTime: "3秒",
-      bestFor: "季节性数据",
-      limitations: "对异常值敏感"
+      predictionTime: "3�?,
+      bestFor: "季节性数�?,
+      limitations: "对异常值敏�?
     }
   };
 
-  // 保存的权重配置列表
+  // 保存的权重配置列�?
   const [savedConfigs, setSavedConfigs] = useState([
     {
       id: "1",
@@ -782,7 +781,7 @@ export default function SalesForecastMain() {
       region: "华东",
       company: "华东航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 35, enabled: true },
+        { name: "线性回�?, weight: 35, enabled: true },
         { name: "ARIMA模型", weight: 25, enabled: true },
         { name: "指数平滑", weight: 20, enabled: true },
         { name: "LSTM神经网络", weight: 15, enabled: true },
@@ -798,7 +797,7 @@ export default function SalesForecastMain() {
       region: "华南",
       company: "华南航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 25, enabled: true },
+        { name: "线性回�?, weight: 25, enabled: true },
         { name: "ARIMA模型", weight: 30, enabled: true },
         { name: "指数平滑", weight: 15, enabled: true },
         { name: "LSTM神经网络", weight: 20, enabled: true },
@@ -806,7 +805,7 @@ export default function SalesForecastMain() {
       ],
       accuracy: 89.1,
       lastUpdated: "2024-01-03",
-      description: "华南地区优化配置，提高预测准确性"
+      description: "华南地区优化配置，提高预测准确�?
     },
     {
       id: "3",
@@ -814,7 +813,7 @@ export default function SalesForecastMain() {
       region: "华北",
       company: "华北航空燃料有限公司",
       models: [
-        { name: "线性回归", weight: 40, enabled: true },
+        { name: "线性回�?, weight: 40, enabled: true },
         { name: "ARIMA模型", weight: 30, enabled: true },
         { name: "指数平滑", weight: 20, enabled: true },
         { name: "LSTM神经网络", weight: 10, enabled: true },
@@ -828,17 +827,13 @@ export default function SalesForecastMain() {
 
   const [configName, setConfigName] = useState("");
   const [configDescription, setConfigDescription] = useState("");
-  const [configCascaderValue, setConfigCascaderValue] = useState<string[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showConfigList, setShowConfigList] = useState(false);
   const [editingConfig, setEditingConfig] = useState<string | null>(null);
   const [configSearchTerm, setConfigSearchTerm] = useState("");
-  const [configFilterCascaderValue, setConfigFilterCascaderValue] = useState<string[]>([]);
-  const [configCurrentPage, setConfigCurrentPage] = useState(1);
-  const [configPageSize, setConfigPageSize] = useState(10);
   const [selectedConfigs, setSelectedConfigs] = useState<string[]>([]);
   
-  // 预测分析相关状态
+  // 预测分析相关状�?
   const [analysisLevel, setAnalysisLevel] = useState("region"); // region, company, airport
   const [selectedRegion, setSelectedRegion] = useState("华东");
   const [selectedCompany, setSelectedCompany] = useState("华东航空燃料有限公司");
@@ -854,10 +849,10 @@ export default function SalesForecastMain() {
   const [executionHistory, setExecutionHistory] = useState([
     {
       id: "1",
-      taskName: "华东地区2024年销售预测",
+      taskName: "华东地区2024年销售预�?,
       timestamp: "2024-01-05 15:30:00",
-      algorithm: "线性回归",
-      duration: "45秒",
+      algorithm: "线性回�?,
+      duration: "45�?,
       status: "成功",
       sampleCount: 20,
       predictionMonths: 12,
@@ -868,7 +863,7 @@ export default function SalesForecastMain() {
       taskName: "华南地区年度预测分析",
       timestamp: "2024-01-04 14:20:00",
       algorithm: "ARIMA模型",
-      duration: "2分30秒",
+      duration: "2�?0�?,
       status: "成功",
       sampleCount: 18,
       predictionMonths: 18,
@@ -879,7 +874,7 @@ export default function SalesForecastMain() {
       taskName: "华北地区季度预测",
       timestamp: "2024-01-03 10:15:00",
       algorithm: "指数平滑",
-      duration: "1分15秒",
+      duration: "1�?5�?,
       status: "成功",
       sampleCount: 15,
       predictionMonths: 6,
@@ -887,10 +882,10 @@ export default function SalesForecastMain() {
     },
     {
       id: "4",
-      taskName: "全国销售深度预测",
+      taskName: "全国销售深度预�?,
       timestamp: "2024-01-02 16:45:00",
       algorithm: "LSTM神经网络",
-      duration: "5分20秒",
+      duration: "5�?0�?,
       status: "失败",
       sampleCount: 25,
       predictionMonths: 24,
@@ -901,7 +896,7 @@ export default function SalesForecastMain() {
       taskName: "华东地区月度预测",
       timestamp: "2024-01-01 09:30:00",
       algorithm: "Prophet时间序列",
-      duration: "3分15秒",
+      duration: "3�?5�?,
       status: "成功",
       sampleCount: 22,
       predictionMonths: 12,
@@ -911,8 +906,8 @@ export default function SalesForecastMain() {
       id: "6",
       taskName: "华南地区短期预测",
       timestamp: "2023-12-31 11:20:00",
-      algorithm: "多项式回归",
-      duration: "1分45秒",
+      algorithm: "多项式回�?,
+      duration: "1�?5�?,
       status: "成功",
       sampleCount: 16,
       predictionMonths: 6,
@@ -922,8 +917,8 @@ export default function SalesForecastMain() {
       id: "7",
       taskName: "华北地区年度预测",
       timestamp: "2023-12-30 14:10:00",
-      algorithm: "线性回归",
-      duration: "50秒",
+      algorithm: "线性回�?,
+      duration: "50�?,
       status: "成功",
       sampleCount: 19,
       predictionMonths: 12,
@@ -934,7 +929,7 @@ export default function SalesForecastMain() {
       taskName: "华东地区长期预测",
       timestamp: "2023-12-29 16:30:00",
       algorithm: "ARIMA模型",
-      duration: "2分45秒",
+      duration: "2�?5�?,
       status: "成功",
       sampleCount: 21,
       predictionMonths: 18,
@@ -945,7 +940,7 @@ export default function SalesForecastMain() {
       taskName: "华南地区季度预测",
       timestamp: "2023-12-28 10:45:00",
       algorithm: "指数平滑",
-      duration: "1分20秒",
+      duration: "1�?0�?,
       status: "成功",
       sampleCount: 14,
       predictionMonths: 6,
@@ -956,7 +951,7 @@ export default function SalesForecastMain() {
       taskName: "全国销售AI预测",
       timestamp: "2023-12-27 13:15:00",
       algorithm: "LSTM神经网络",
-      duration: "4分30秒",
+      duration: "4�?0�?,
       status: "成功",
       sampleCount: 23,
       predictionMonths: 24,
@@ -964,7 +959,7 @@ export default function SalesForecastMain() {
     }
   ]);
 
-  // 菜单项配置 - 多级菜单结构
+  // 菜单项配�?- 多级菜单结构
   const menuItems: MenuItemType[] = [
     { id: "upload", label: "样本管理", icon: UploadIcon },
     { id: "preview", label: "样本数据查询", icon: FileTextIcon },
@@ -976,8 +971,8 @@ export default function SalesForecastMain() {
       icon: PieChartIcon,
       children: [
         { id: "deviation-analysis", label: "偏差分析", icon: TrendingUpIcon },
-        { id: "completion-analysis", label: "完成率分析", icon: TargetIcon },
-        { id: "multi-model-config", label: "多模型分析配置", icon: Settings }
+        { id: "completion-analysis", label: "完成率分�?, icon: TargetIcon },
+        { id: "multi-model-config", label: "多模型分析配�?, icon: Settings }
       ]
     },
     {
@@ -1009,7 +1004,7 @@ export default function SalesForecastMain() {
         { id: "monthly-report", label: "月度报表", icon: Calendar },
         { id: "quarterly-report", label: "季度报表", icon: Calendar },
         { id: "annual-report", label: "年度报表", icon: Calendar },
-        { id: "custom-report", label: "自定义报表", icon: FileTextIcon }
+        { id: "custom-report", label: "自定义报�?, icon: FileTextIcon }
       ]
     },
     {
@@ -1029,7 +1024,7 @@ export default function SalesForecastMain() {
   useEffect(() => {
     const expandedMenuIds = Array.from(expandedMenus);
     if (expandedMenuIds.length > 0) {
-      // 找到第一个展开的菜单
+      // 找到第一个展开的菜�?
       const firstExpandedMenu = menuItems.find(item => expandedMenuIds.includes(item.id));
              if (firstExpandedMenu?.children?.length) {
          // 如果当前activeMenu不是任何子菜单，则设置为第一个子菜单
@@ -1045,10 +1040,10 @@ export default function SalesForecastMain() {
   const matchesCascaderFilter = (item: SampleData) => {
     if (cascaderValue.length === 0) return true;
     
-    // 根据级联选择的值进行过滤
+    // 根据级联选择的值进行过�?
     const [selectedRegion, selectedCompany, selectedAirport] = cascaderValue;
     
-    // 如果选择了地区，检查地区是否匹配
+    // 如果选择了地区，检查地区是否匹�?
     if (selectedRegion && item.region !== selectedRegion) {
       return false;
     }
@@ -1068,16 +1063,16 @@ export default function SalesForecastMain() {
 
   // 过滤数据
   const filteredData = sampleData.filter(item => {
-    // 级联筛选
+    // 级联筛�?
     const matchesCascader = matchesCascaderFilter(item);
     
-    // 传统地区筛选（保持向后兼容）
+    // 传统地区筛选（保持向后兼容�?
     const matchesRegion = filterRegion === "" || item.region === filterRegion;
     
-    // 根据样本类型过滤（通过notes字段判断）
+    // 根据样本类型过滤（通过notes字段判断�?
     const matchesSampleType = filterSeason === "" || 
-      (filterSeason === "历史销售数据" && item.notes.includes("销量")) ||
-      (filterSeason === "年度汇总数据" && item.notes.includes("年度汇总")) ||
+      (filterSeason === "历史销售数�? && item.notes.includes("销�?)) ||
+      (filterSeason === "年度汇总数�? && item.notes.includes("年度汇�?)) ||
       (filterSeason === "季度数据" && item.notes.includes("季度")) ||
       (filterSeason === "月度数据" && item.notes.includes("月度"));
     
@@ -1085,13 +1080,13 @@ export default function SalesForecastMain() {
     const matchesDateRange = (!startDate || item.date >= startDate) && 
                             (!endDate || item.date <= endDate);
     
-    // 优先使用级联筛选，如果没有级联选择则使用传统筛选
+    // 优先使用级联筛选，如果没有级联选择则使用传统筛�?
     const regionMatch = cascaderValue.length > 0 ? matchesCascader : matchesRegion;
     
     return regionMatch && matchesSampleType && matchesDateRange;
   });
 
-  // 获取唯一区域和季节
+  // 获取唯一区域和季�?
   const uniqueRegions = [...new Set(sampleData.map(item => item.region))];
   const uniqueSeasons = [...new Set(sampleData.map(item => item.season))];
   
@@ -1107,7 +1102,7 @@ export default function SalesForecastMain() {
     
     // 根据索引确定任务信息
     const taskIndex = Math.floor(index / 12);
-    const taskNames = ["华东地区2024年销售预测", "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预测"];
+    const taskNames = ["华东地区2024年销售预�?, "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预�?];
     const regions = ["华东", "华南", "华北", "全国"];
     const companies = ["华东航空燃料有限公司", "华南航空燃料有限公司", "华北航空燃料有限公司", "全国航空燃料集团"];
     
@@ -1117,12 +1112,12 @@ export default function SalesForecastMain() {
     
     const [selectedRegion, selectedCompany, selectedAirport] = forecastCascaderValue;
     
-    // 如果选择了地区，检查地区是否匹配
+    // 如果选择了地区，检查地区是否匹�?
     if (selectedRegion && currentRegion !== selectedRegion) {
       return false;
     }
     
-    // 如果选择了公司，检查公司是否匹配
+    // 如果选择了公司，检查公司是否匹�?
     if (selectedCompany && !currentCompany.includes(selectedCompany)) {
       return false;
     }
@@ -1137,24 +1132,24 @@ export default function SalesForecastMain() {
 
   // 预测数据筛选和分页
   const filteredForecastData = forecastData.filter((item, index) => {
-    // 根据索引确定任务名称和算法（简化逻辑）
+    // 根据索引确定任务名称和算法（简化逻辑�?
     const taskIndex = Math.floor(index / 12);
-    const taskNames = ["华东地区2024年销售预测", "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预测"];
-    const algorithms = ["线性回归", "ARIMA模型", "指数平滑", "LSTM神经网络"];
+    const taskNames = ["华东地区2024年销售预�?, "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预�?];
+    const algorithms = ["线性回�?, "ARIMA模型", "指数平滑", "LSTM神经网络"];
     
     const currentTaskName = taskNames[taskIndex] || taskNames[0]!;
     const currentAlgorithm = algorithms[taskIndex] || algorithms[0]!;
     
-    // 级联筛选
+    // 级联筛�?
     const matchesCascader = matchesForecastCascaderFilter(item, index);
     
-    // 传统筛选
+    // 传统筛�?
     const matchesTaskName = !filterTaskName || filterTaskName === "all" || currentTaskName.includes(filterTaskName);
     const matchesAlgorithm = !filterAlgorithm || filterAlgorithm === "all" || currentAlgorithm.includes(filterAlgorithm);
     const matchesDateRange = (!filterStartDate || item.month >= filterStartDate) && 
                             (!filterEndDate || item.month <= filterEndDate);
     
-    // 优先使用级联筛选，如果没有级联选择则使用传统筛选
+    // 优先使用级联筛选，如果没有级联选择则使用传统筛�?
     const taskNameMatch = forecastCascaderValue.length > 0 ? matchesCascader : matchesTaskName;
     
     return taskNameMatch && matchesAlgorithm && matchesDateRange;
@@ -1172,7 +1167,7 @@ export default function SalesForecastMain() {
     
     if (totalWeight === 0) return null;
     
-    // 基于月份和地区生成更真实的预测值
+    // 基于月份和地区生成更真实的预测�?
     const monthParts = month.split('-');
     const monthIndex = monthParts[1] ? parseInt(monthParts[1]) - 1 : 0;
     const regionFactors: Record<string, number> = {
@@ -1183,13 +1178,13 @@ export default function SalesForecastMain() {
     };
     const regionFactor = regionFactors[weightConfig.region] || 1.0;
     
-    // 季节性调整因子
+    // 季节性调整因�?
     const seasonalFactors = [0.9, 0.85, 1.0, 1.1, 1.2, 1.3, 1.25, 1.2, 1.1, 1.0, 0.95, 0.9];
     const seasonalFactor = seasonalFactors[monthIndex] || 1.0;
     
-    // 不同模型的预测值（基于真实业务逻辑）
+    // 不同模型的预测值（基于真实业务逻辑�?
     const modelPredictions = {
-      "线性回归": Math.round((1000 + monthIndex * 20) * seasonalFactor * regionFactor + Math.random() * 50),
+      "线性回�?: Math.round((1000 + monthIndex * 20) * seasonalFactor * regionFactor + Math.random() * 50),
       "ARIMA模型": Math.round((980 + monthIndex * 15) * seasonalFactor * regionFactor + Math.random() * 40),
       "指数平滑": Math.round((1020 + monthIndex * 25) * seasonalFactor * regionFactor + Math.random() * 60),
       "LSTM神经网络": Math.round((1010 + monthIndex * 18) * seasonalFactor * regionFactor + Math.random() * 80),
@@ -1216,45 +1211,13 @@ export default function SalesForecastMain() {
     };
   };
 
-  // 配置筛选逻辑
-  const getFilteredConfigs = () => {
-    return savedConfigs.filter(config => {
-      // 文本搜索筛选
-      const textMatch = !configSearchTerm || (
-        config.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
-        config.description.toLowerCase().includes(configSearchTerm.toLowerCase())
-      );
-      
-      // 级联选择筛选
-      const cascaderMatch = (() => {
-        if (configFilterCascaderValue.length === 0) return true;
-        
-        const [selectedRegion, selectedCompany] = configFilterCascaderValue;
-        
-        // 如果选择了地区，检查地区是否匹配
-        if (selectedRegion && config.region !== selectedRegion) {
-          return false;
-        }
-        
-        // 如果选择了公司，检查公司是否匹配
-        if (selectedCompany && config.company !== selectedCompany) {
-          return false;
-        }
-        
-        return true;
-      })();
-      
-      return textMatch && cascaderMatch;
-    });
-  };
-
   // 获取当前分析数据
   const getCurrentAnalysisData = () => {
     const regionData = (analysisData.regions as any)[selectedRegion];
     if (!regionData) return [];
     
     if (analysisLevel === "region") {
-      // 返回该地区所有数据
+      // 返回该地区所有数�?
       const allData: any[] = [];
       Object.values(regionData.companies).forEach((company: any) => {
         Object.values(company.airports).forEach((airport: any) => {
@@ -1294,7 +1257,7 @@ export default function SalesForecastMain() {
       data = data.filter((item: any) => enabledAlgorithms.includes(item.algorithm));
     }
     
-    // 按时间范围过滤
+    // 按时间范围过�?
     const months = parseInt(analysisTimeRange);
     if (months > 0) {
       const cutoffDate = new Date();
@@ -1312,7 +1275,7 @@ export default function SalesForecastMain() {
   const exportAnalysisData = () => {
     const data = getFilteredAnalysisData();
     const csvContent = [
-      "月份,实际完成值,预测值,预测值同比,预测值环比,去年同期,预测偏差率,迭代次数,算法",
+      "月份,实际完成�?预测�?预测值同�?预测值环�?去年同期,预测偏差�?迭代次数,算法",
       ...data.map((item: any) => 
         `${item.month},${item.actual},${item.predicted},${(item.predictedYoy * 100).toFixed(2)}%,${(item.predictedMom * 100).toFixed(2)}%,${item.lastYearSame},${(item.deviation * 100).toFixed(2)}%,${item.iteration},${item.algorithm}`
       )
@@ -1354,16 +1317,16 @@ export default function SalesForecastMain() {
     
     // 模拟执行过程
     const logs = [
-      "开始执行预测任务...",
+      "开始执行预测任�?..",
       "正在加载样本数据...",
-      "数据预处理完成，共处理 20 条记录",
-      "正在训练线性回归模型...",
+      "数据预处理完成，共处�?20 条记�?,
+      "正在训练线性回归模�?..",
       "模型训练完成，R² = 0.85",
       "正在生成预测结果...",
-      "预测完成，生成 12 个月预测数据",
+      "预测完成，生�?12 个月预测数据",
       "正在计算置信区间...",
       "置信区间计算完成",
-      "预测任务执行成功！"
+      "预测任务执行成功�?
     ];
     
     const startTime = Date.now();
@@ -1381,9 +1344,9 @@ export default function SalesForecastMain() {
         // 添加历史记录
         const newRecord = {
           id: Date.now().toString(),
-          taskName: taskName || "未命名预测任务",
+          taskName: taskName || "未命名预测任�?,
           timestamp: new Date().toLocaleString(),
-          algorithm: "线性回归",
+          algorithm: "线性回�?,
           duration: `${duration}秒`,
           status: "成功",
           sampleCount: 20,
@@ -1399,29 +1362,29 @@ export default function SalesForecastMain() {
     }, 800);
   };
 
-  // 样本文件列表状态
+  // 样本文件列表状�?
   const [sampleFiles, setSampleFiles] = useState([
     {
       id: "1",
-      name: "华东地区2024年1月样本数据.xlsx",
+      name: "华东地区2024�?月样本数�?xlsx",
       uploadTime: "2024-01-05 14:30:00",
-      timeRange: "2024-01-01 至 2024-01-31",
-      sampleType: "历史销售数据",
+      timeRange: "2024-01-01 �?2024-01-31",
+      sampleType: "历史销售数�?,
       description: "华东地区冬季航空汽油销售数据，包含节假日和周末数据",
       size: "2.5MB"
     },
     {
       id: "2", 
-      name: "华南地区2023年样本数据.xlsx",
+      name: "华南地区2023年样本数�?xlsx",
       uploadTime: "2024-01-03 10:15:00",
-      timeRange: "2023-01-01 至 2023-12-31",
-      sampleType: "年度汇总数据",
+      timeRange: "2023-01-01 �?2023-12-31",
+      sampleType: "年度汇总数�?,
       description: "华南地区全年航空汽油销售汇总，按季度和月份统计",
       size: "5.2MB"
     }
   ]);
 
-  // 上传表单状态
+  // 上传表单状�?
   const [uploadForm, setUploadForm] = useState({
     timeRange: "",
     sampleType: "",
@@ -1432,7 +1395,7 @@ export default function SalesForecastMain() {
   const handleFileUpload = () => {
     const newFile = {
       id: Date.now().toString(),
-      name: "新上传样本数据.xlsx",
+      name: "新上传样本数�?xlsx",
       uploadTime: new Date().toLocaleString(),
       timeRange: uploadForm.timeRange,
       sampleType: uploadForm.sampleType,
@@ -1467,7 +1430,7 @@ export default function SalesForecastMain() {
     }, 500);
   };
 
-  // 重置预测结果筛选条件
+  // 重置预测结果筛选条�?
   const handleForecastReset = () => {
     setForecastCascaderValue([]);
     setFilterTaskName("");
@@ -1503,7 +1466,7 @@ export default function SalesForecastMain() {
                   上传样本数据
                 </CardTitle>
                 <CardDescription>
-                  上传Excel文件并填写样本信息
+                  上传Excel文件并填写样本信�?
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1513,7 +1476,7 @@ export default function SalesForecastMain() {
                     <UploadIcon className="w-12 h-12 mx-auto mb-4 text-slate-400" />
                     <h3 className="text-lg font-medium mb-2">拖拽文件到此处或点击上传</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                      支持 .xlsx 和 .xls 格式，文件大小不超过 10MB
+                      支持 .xlsx �?.xls 格式，文件大小不超过 10MB
                     </p>
                     <Button>选择文件</Button>
                   </div>
@@ -1522,10 +1485,10 @@ export default function SalesForecastMain() {
                 {/* 样本信息表单 */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="timeRange">样本时间段</Label>
+                    <Label htmlFor="timeRange">样本时间�?/Label>
                     <Input
                       id="timeRange"
-                      placeholder="例如：2024-01-01 至 2024-12-31"
+                      placeholder="例如�?024-01-01 �?2024-12-31"
                       value={uploadForm.timeRange}
                       onChange={(e) => setUploadForm({...uploadForm, timeRange: e.target.value})}
                     />
@@ -1541,8 +1504,8 @@ export default function SalesForecastMain() {
                         <SelectValue placeholder="选择样本类型" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="历史销售数据">历史销售数据</SelectItem>
-                        <SelectItem value="年度汇总数据">年度汇总数据</SelectItem>
+                        <SelectItem value="历史销售数�?>历史销售数�?/SelectItem>
+                        <SelectItem value="年度汇总数�?>年度汇总数�?/SelectItem>
                         <SelectItem value="季度数据">季度数据</SelectItem>
                         <SelectItem value="月度数据">月度数据</SelectItem>
                         <SelectItem value="其他">其他</SelectItem>
@@ -1588,12 +1551,12 @@ export default function SalesForecastMain() {
                               <Badge variant="outline">{file.size}</Badge>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-slate-600 dark:text-slate-400 mb-2">
-                              <div><strong>上传时间：</strong>{file.uploadTime}</div>
+                              <div><strong>上传时间�?/strong>{file.uploadTime}</div>
                               <div><strong>时间段：</strong>{file.timeRange}</div>
-                              <div><strong>类型：</strong>{file.sampleType}</div>
+                              <div><strong>类型�?/strong>{file.sampleType}</div>
                             </div>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                              <strong>描述：</strong>{file.description}
+                              <strong>描述�?/strong>{file.description}
                             </p>
                           </div>
                           <div className="flex items-center gap-2 ml-4">
@@ -1632,11 +1595,11 @@ export default function SalesForecastMain() {
                 样本数据查询
               </CardTitle>
               <CardDescription>
-                按样本类型查看和管理销售数据
+                按样本类型查看和管理销售数�?
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* 筛选条件 */}
+              {/* 筛选条�?*/}
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="space-y-2">
                   <Label>样本类型</Label>
@@ -1649,8 +1612,8 @@ export default function SalesForecastMain() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">全部类型</SelectItem>
-                      <SelectItem value="历史销售数据">历史销售数据</SelectItem>
-                      <SelectItem value="年度汇总数据">年度汇总数据</SelectItem>
+                      <SelectItem value="历史销售数�?>历史销售数�?/SelectItem>
+                      <SelectItem value="年度汇总数�?>年度汇总数�?/SelectItem>
                       <SelectItem value="季度数据">季度数据</SelectItem>
                       <SelectItem value="月度数据">月度数据</SelectItem>
                     </SelectContent>
@@ -1668,12 +1631,12 @@ export default function SalesForecastMain() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>开始时间</Label>
+                  <Label>开始时�?/Label>
                   <Input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    placeholder="选择开始日期"
+                    placeholder="选择开始日�?
                   />
                 </div>
                 
@@ -1699,7 +1662,7 @@ export default function SalesForecastMain() {
               {/* 数据统计 */}
               <div className="flex items-center gap-4">
                 <Badge variant="secondary">总记录数: {filteredData.length}</Badge>
-                <Badge variant="outline">当前页: 1/3</Badge>
+                <Badge variant="outline">当前�? 1/3</Badge>
               </div>
 
               {/* 数据表格 */}
@@ -1709,14 +1672,14 @@ export default function SalesForecastMain() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>日期</TableHead>
-                        <TableHead>销量(万升)</TableHead>
-                        <TableHead>价格(元/升)</TableHead>
+                        <TableHead>销�?万升)</TableHead>
+                        <TableHead>价格(�?�?</TableHead>
                         <TableHead>地区</TableHead>
                         <TableHead>季节</TableHead>
                         <TableHead>天气</TableHead>
                         <TableHead>事件</TableHead>
                         <TableHead>备注</TableHead>
-                        <TableHead>所属样本文件</TableHead>
+                        <TableHead>所属样本文�?/TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1749,24 +1712,24 @@ export default function SalesForecastMain() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-slate-500">
-                  没有找到匹配的数据
+                  没有找到匹配的数�?
                 </div>
               )}
 
               {/* 分页 */}
               <div className="flex items-center justify-between">
                 <div className="text-sm text-slate-600 dark:text-slate-400">
-                  显示 1-10 条，共 {filteredData.length} 条记录
+                  显示 1-10 条，�?{filteredData.length} 条记�?
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" disabled>
-                    上一页
+                    上一�?
                   </Button>
                   <Button variant="default" size="sm">1</Button>
                   <Button variant="outline" size="sm">2</Button>
                   <Button variant="outline" size="sm">3</Button>
                   <Button variant="outline" size="sm">
-                    下一页
+                    下一�?
                   </Button>
                 </div>
               </div>
@@ -1782,7 +1745,7 @@ export default function SalesForecastMain() {
                 执行预测
               </CardTitle>
               <CardDescription>
-                选择算法和样本数据执行销售预测
+                选择算法和样本数据执行销售预�?
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1791,7 +1754,7 @@ export default function SalesForecastMain() {
                 <Label htmlFor="taskName">任务名称</Label>
                 <Input
                   id="taskName"
-                  placeholder="请输入预测任务名称，例如：华东地区2024年销售预测"
+                  placeholder="请输入预测任务名称，例如：华东地�?024年销售预�?
                   value={taskName}
                   onChange={(e) => setTaskName(e.target.value)}
                 />
@@ -1809,8 +1772,8 @@ export default function SalesForecastMain() {
                         <SelectValue placeholder="选择预测算法" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="linear">线性回归</SelectItem>
-                        <SelectItem value="polynomial">多项式回归</SelectItem>
+                        <SelectItem value="linear">线性回�?/SelectItem>
+                        <SelectItem value="polynomial">多项式回�?/SelectItem>
                         <SelectItem value="exponential">指数平滑</SelectItem>
                         <SelectItem value="arima">ARIMA模型</SelectItem>
                         <SelectItem value="lstm">LSTM神经网络</SelectItem>
@@ -1835,10 +1798,10 @@ export default function SalesForecastMain() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>置信度水平</Label>
+                    <Label>置信度水�?/Label>
                     <Select defaultValue="95">
                       <SelectTrigger>
-                        <SelectValue placeholder="选择置信度" />
+                        <SelectValue placeholder="选择置信�? />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="90">90%</SelectItem>
@@ -1849,16 +1812,16 @@ export default function SalesForecastMain() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>季节性处理</Label>
+                    <Label>季节性处�?/Label>
                     <Select defaultValue="auto">
                       <SelectTrigger>
-                        <SelectValue placeholder="选择季节性处理" />
+                        <SelectValue placeholder="选择季节性处�? />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">无季节性</SelectItem>
-                        <SelectItem value="auto">自动检测</SelectItem>
-                        <SelectItem value="additive">加法季节性</SelectItem>
-                        <SelectItem value="multiplicative">乘法季节性</SelectItem>
+                        <SelectItem value="none">无季节�?/SelectItem>
+                        <SelectItem value="auto">自动检�?/SelectItem>
+                        <SelectItem value="additive">加法季节�?/SelectItem>
+                        <SelectItem value="multiplicative">乘法季节�?/SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1874,11 +1837,11 @@ export default function SalesForecastMain() {
                         <SelectValue placeholder="选择样本文件" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">使用所有样本数据</SelectItem>
-                        <SelectItem value="file1">华东地区2024年1月样本数据.xlsx</SelectItem>
-                        <SelectItem value="file2">华南地区2023年样本数据.xlsx</SelectItem>
-                        <SelectItem value="file3">华北地区2023年样本数据.xlsx</SelectItem>
-                        <SelectItem value="file4">华东地区2023年年度汇总.xlsx</SelectItem>
+                        <SelectItem value="all">使用所有样本数�?/SelectItem>
+                        <SelectItem value="file1">华东地区2024�?月样本数�?xlsx</SelectItem>
+                        <SelectItem value="file2">华南地区2023年样本数�?xlsx</SelectItem>
+                        <SelectItem value="file3">华北地区2023年样本数�?xlsx</SelectItem>
+                        <SelectItem value="file4">华东地区2023年年度汇�?xlsx</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1888,7 +1851,7 @@ export default function SalesForecastMain() {
                     <div className="grid grid-cols-2 gap-2">
                       <Input
                         type="date"
-                        placeholder="开始日期"
+                        placeholder="开始日�?
                         defaultValue="2023-01-01"
                       />
                       <Input
@@ -1900,19 +1863,19 @@ export default function SalesForecastMain() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>数据预处理</Label>
+                    <Label>数据预处�?/Label>
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <input type="checkbox" id="remove-outliers" defaultChecked />
-                        <Label htmlFor="remove-outliers">移除异常值</Label>
+                        <Label htmlFor="remove-outliers">移除异常�?/Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <input type="checkbox" id="normalize" defaultChecked />
-                        <Label htmlFor="normalize">数据标准化</Label>
+                        <Label htmlFor="normalize">数据标准�?/Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <input type="checkbox" id="fill-missing" defaultChecked />
-                        <Label htmlFor="fill-missing">填充缺失值</Label>
+                        <Label htmlFor="fill-missing">填充缺失�?/Label>
                       </div>
                     </div>
                   </div>
@@ -1930,18 +1893,18 @@ export default function SalesForecastMain() {
                   {isExecuting ? (
                     <>
                       <div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      执行中...
+                      执行�?..
                     </>
                   ) : (
                     <>
                       <TrendingUpIcon className="w-5 h-5 mr-2" />
-                      开始执行预测
+                      开始执行预�?
                     </>
                   )}
                 </Button>
               </div>
               
-              {/* 执行日志和历史记录 */}
+              {/* 执行日志和历史记�?*/}
               <div className="mt-6 space-y-6">
                 {/* 执行日志 */}
                 {(isExecuting || executionLogs.length > 0) && (
@@ -1972,7 +1935,7 @@ export default function SalesForecastMain() {
                       )}
                     </div>
                     
-                    {/* 执行状态 */}
+                    {/* 执行状�?*/}
                     {!isExecuting && executionLogs.length > 0 && (
                       <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                         <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
@@ -1980,7 +1943,7 @@ export default function SalesForecastMain() {
                           <span className="font-medium">预测执行完成</span>
                         </div>
                         <p className="text-sm text-green-600 dark:text-green-300 mt-1">
-                          已生成预测结果，可在"预测结果查询"中查看详细结果
+                          已生成预测结果，可在"预测结果查询"中查看详细结�?
                         </p>
                       </div>
                     )}
@@ -2010,10 +1973,10 @@ export default function SalesForecastMain() {
                             <TableHead>执行时间</TableHead>
                             <TableHead>算法</TableHead>
                             <TableHead>执行时长</TableHead>
-                            <TableHead>状态</TableHead>
-                            <TableHead>样本数</TableHead>
+                            <TableHead>状�?/TableHead>
+                            <TableHead>样本�?/TableHead>
                             <TableHead>预测月数</TableHead>
-                            <TableHead>准确率</TableHead>
+                            <TableHead>准确�?/TableHead>
                             <TableHead>操作</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -2056,7 +2019,7 @@ export default function SalesForecastMain() {
                       {totalPages > 1 && (
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-slate-600 dark:text-slate-400">
-                            显示 {startIndex + 1}-{Math.min(endIndex, executionHistory.length)} 条，共 {executionHistory.length} 条记录
+                            显示 {startIndex + 1}-{Math.min(endIndex, executionHistory.length)} 条，�?{executionHistory.length} 条记�?
                           </div>
                           <div className="flex items-center gap-2">
                             <Button 
@@ -2065,7 +2028,7 @@ export default function SalesForecastMain() {
                               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                               disabled={currentPage === 1}
                             >
-                              上一页
+                              上一�?
                             </Button>
                             
                             {/* 页码按钮 */}
@@ -2089,7 +2052,7 @@ export default function SalesForecastMain() {
                               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                               disabled={currentPage === totalPages}
                             >
-                              下一页
+                              下一�?
                             </Button>
                           </div>
                         </div>
@@ -2112,11 +2075,11 @@ export default function SalesForecastMain() {
                     预测结果查询
                   </CardTitle>
                   <CardDescription>
-                    查看和管理预测结果数据
+                    查看和管理预测结果数�?
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* 预测结果查询页面不再包含多模型加权预测功能 */}
+                  {/* 预测结果查询页面不再包含多模型加权预测功�?*/}
                 </div>
               </div>
             </CardHeader>
@@ -2125,12 +2088,12 @@ export default function SalesForecastMain() {
             <div className="px-6 py-3 bg-blue-50 border-b">
               <div className="flex items-center gap-2 text-sm text-blue-700">
                 💡
-                <span>系统已预置示例预测数据，您可以直接查看、筛选和分析，无需先执行预测任务</span>
+                <span>系统已预置示例预测数据，您可以直接查看、筛选和分析，无需先执行预测任�?/span>
               </div>
             </div>
             
             <CardContent className="space-y-6">
-              {/* 筛选条件 */}
+              {/* 筛选条�?*/}
               <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <Label>地区</Label>
@@ -2153,7 +2116,7 @@ export default function SalesForecastMain() {
                       <SelectItem value="华东">华东地区</SelectItem>
                       <SelectItem value="华南">华南地区</SelectItem>
                       <SelectItem value="华北">华北地区</SelectItem>
-                      <SelectItem value="全国">全国销售</SelectItem>
+                      <SelectItem value="全国">全国销�?/SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2166,7 +2129,7 @@ export default function SalesForecastMain() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">全部算法</SelectItem>
-                      <SelectItem value="线性回归">线性回归</SelectItem>
+                      <SelectItem value="线性回�?>线性回�?/SelectItem>
                       <SelectItem value="ARIMA">ARIMA模型</SelectItem>
                       <SelectItem value="指数平滑">指数平滑</SelectItem>
                       <SelectItem value="LSTM">LSTM神经网络</SelectItem>
@@ -2176,12 +2139,12 @@ export default function SalesForecastMain() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>开始时间</Label>
+                  <Label>开始时�?/Label>
                   <Input
                     type="date"
                     value={filterStartDate}
                     onChange={(e) => setFilterStartDate(e.target.value)}
-                    placeholder="选择开始日期"
+                    placeholder="选择开始日�?
                   />
                 </div>
                 
@@ -2207,7 +2170,7 @@ export default function SalesForecastMain() {
                       {isSearching ? (
                         <>
                           <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          搜索中...
+                          搜索�?..
                         </>
                       ) : (
                         <>
@@ -2220,7 +2183,7 @@ export default function SalesForecastMain() {
                       variant="outline" 
                       size="sm"
                       onClick={handleForecastReset}
-                      title="重置筛选条件"
+                      title="重置筛选条�?
                     >
                       重置
                     </Button>
@@ -2232,7 +2195,7 @@ export default function SalesForecastMain() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <Badge variant="secondary">总记录数: {filteredForecastData.length}</Badge>
-                  <Badge variant="outline">当前页: {forecastPreviewPage}/{forecastTotalPages}</Badge>
+                  <Badge variant="outline">当前�? {forecastPreviewPage}/{forecastTotalPages}</Badge>
                 </div>
                 <div className="text-sm text-slate-500">
                   💡 显示示例预测数据，支持筛选和分页查看
@@ -2247,9 +2210,9 @@ export default function SalesForecastMain() {
                       <TableRow>
                         <TableHead>任务名称</TableHead>
                         <TableHead>预测月份</TableHead>
-                        <TableHead>预测销量(万升)</TableHead>
-                        <TableHead>实际销量(万升)</TableHead>
-                        <TableHead>置信度(%)</TableHead>
+                        <TableHead>预测销�?万升)</TableHead>
+                        <TableHead>实际销�?万升)</TableHead>
+                        <TableHead>置信�?%)</TableHead>
                         <TableHead>算法</TableHead>
                         <TableHead>地区公司</TableHead>
                         <TableHead>执行时间</TableHead>
@@ -2260,8 +2223,8 @@ export default function SalesForecastMain() {
                       {currentForecastPageData.map((item, index) => {
                         const globalIndex = forecastStartIndex + index;
                         const taskIndex = Math.floor(globalIndex / 12);
-                        const taskNames = ["华东地区2024年销售预测", "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预测"];
-                        const algorithms = ["线性回归", "ARIMA模型", "指数平滑", "LSTM神经网络"];
+                        const taskNames = ["华东地区2024年销售预�?, "华南地区年度预测分析", "华北地区季度预测", "全国销售深度预�?];
+                        const algorithms = ["线性回�?, "ARIMA模型", "指数平滑", "LSTM神经网络"];
                         const executionTimes = ["2024-01-05 15:30", "2024-01-04 14:20", "2024-01-03 10:15", "2024-01-02 16:45"];
                         const regionCompanies = ["华东", "青岛", "烟台", "华南", "华北", "大连", "济南", "天津", "上海", "南京", "杭州", "广州"];
                         
@@ -2306,7 +2269,7 @@ export default function SalesForecastMain() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-slate-500">
-                  暂无符合条件的预测数据
+                  暂无符合条件的预测数�?
                 </div>
               )}
 
@@ -2314,7 +2277,7 @@ export default function SalesForecastMain() {
               {filteredForecastData.length > 0 && (
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-slate-600 dark:text-slate-400">
-                    显示 {forecastStartIndex + 1}-{Math.min(forecastEndIndex, filteredForecastData.length)} 条，共 {filteredForecastData.length} 条记录
+                    显示 {forecastStartIndex + 1}-{Math.min(forecastEndIndex, filteredForecastData.length)} 条，�?{filteredForecastData.length} 条记�?
                   </div>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -2323,7 +2286,7 @@ export default function SalesForecastMain() {
                       onClick={() => setForecastPreviewPage(prev => Math.max(1, prev - 1))}
                       disabled={forecastPreviewPage === 1}
                     >
-                      上一页
+                      上一�?
                     </Button>
                     
                     {/* 页码按钮 */}
@@ -2347,7 +2310,7 @@ export default function SalesForecastMain() {
                       onClick={() => setForecastPreviewPage(prev => Math.min(forecastTotalPages, prev + 1))}
                       disabled={forecastPreviewPage === forecastTotalPages}
                     >
-                      下一页
+                      下一�?
                     </Button>
                   </div>
                 </div>
@@ -2384,12 +2347,12 @@ export default function SalesForecastMain() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>开始时间</Label>
+                    <Label>开始时�?/Label>
                     <Input
                       type="date"
                       value={analysisStartDate}
                       onChange={(e) => setAnalysisStartDate(e.target.value)}
-                      placeholder="选择开始日期"
+                      placeholder="选择开始日�?
                     />
                   </div>
                   
@@ -2404,7 +2367,7 @@ export default function SalesForecastMain() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>多模型加权分析</Label>
+                    <Label>多模型加权分�?/Label>
                     <Button 
                       variant={showWeightedForecast ? "default" : "outline"}
                       onClick={() => setShowWeightedForecast(!showWeightedForecast)}
@@ -2416,25 +2379,25 @@ export default function SalesForecastMain() {
                   </div>
                 </div>
                 
-                {/* 多模型加权分析配置面板 */}
+                {/* 多模型加权分析配置面�?*/}
                 {showWeightedForecast && (
                   <div className="mt-6 border rounded-lg p-6 bg-slate-50">
                     {/* 功能说明 */}
                     <div className="mb-6 p-4 border rounded-lg bg-blue-50">
-                      <h4 className="text-sm font-medium text-blue-900 mb-2">多模型加权分析配置说明</h4>
+                      <h4 className="text-sm font-medium text-blue-900 mb-2">多模型加权分析配置说�?/h4>
                       <div className="text-sm text-blue-800 space-y-1">
-                        <p>• 支持多个预测模型按权重组合，提高预测准确性</p>
-                        <p>• 权重配置可细化至地区/公司层级，不同区域可设置不同权重</p>
-                        <p>• 系统自动计算加权综合预测值，并在表格中显示</p>
-                        <p>• 提供预设模板（保守型、平衡型、激进型）快速配置</p>
+                        <p>�?支持多个预测模型按权重组合，提高预测准确�?/p>
+                        <p>�?权重配置可细化至地区/公司层级，不同区域可设置不同权重</p>
+                        <p>�?系统自动计算加权综合预测值，并在表格中显�?/p>
+                        <p>�?提供预设模板（保守型、平衡型、激进型）快速配�?/p>
                       </div>
                     </div>
                     
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium">多模型加权配置</h3>
+                      <h3 className="text-lg font-medium">多模型加权配�?/h3>
                       <div className="flex items-center gap-3">
                         <Badge variant={validateWeightConfig().isValid ? "default" : "destructive"}>
-                          总权重: {validateWeightConfig().totalWeight}%
+                          总权�? {validateWeightConfig().totalWeight}%
                         </Badge>
                                                  <Select 
                            onValueChange={(template) => {
@@ -2447,8 +2410,8 @@ export default function SalesForecastMain() {
                              <SelectValue placeholder="选择模板" />
                            </SelectTrigger>
                            <SelectContent>
-                             <SelectItem value="保守型">保守型</SelectItem>
-                             <SelectItem value="平衡型">平衡型</SelectItem>
+                             <SelectItem value="保守�?>保守�?/SelectItem>
+                             <SelectItem value="平衡�?>平衡�?/SelectItem>
                              <SelectItem value="激进型">激进型</SelectItem>
                            </SelectContent>
                          </Select>
@@ -2465,7 +2428,7 @@ export default function SalesForecastMain() {
                            }}
                          >
                            <SelectTrigger className="w-40">
-                             <SelectValue placeholder="选择保存的配置" />
+                             <SelectValue placeholder="选择保存的配�? />
                            </SelectTrigger>
                            <SelectContent>
                              {savedConfigs.map((config) => (
@@ -2556,7 +2519,7 @@ export default function SalesForecastMain() {
                                 <div className="flex-1">
                                   <div className="text-sm font-medium">{model.name}</div>
                                   <div className="text-xs text-slate-500 mt-1">
-                                    准确率: {performance?.accuracy}% | 训练时间: {performance?.trainingTime}
+                                    准确�? {performance?.accuracy}% | 训练时间: {performance?.trainingTime}
                                   </div>
                                 </div>
                                 <div className="text-sm font-medium">{model.weight}%</div>
@@ -2599,7 +2562,7 @@ export default function SalesForecastMain() {
                      {showConfigList && (
                        <div className="mt-4 p-4 border rounded-lg bg-slate-50">
                          <div className="flex items-center justify-between mb-3">
-                           <h5 className="text-sm font-medium">保存的配置列表</h5>
+                           <h5 className="text-sm font-medium">保存的配置列�?/h5>
                            <div className="flex items-center gap-2">
                              {selectedConfigs.length > 0 && (
                                <Button 
@@ -2624,7 +2587,7 @@ export default function SalesForecastMain() {
                          </div>
                          <div className="mb-3">
                            <Input
-                             placeholder="搜索配置名称或描述..."
+                             placeholder="搜索配置名称或描�?.."
                              value={configSearchTerm}
                              onChange={(e) => setConfigSearchTerm(e.target.value)}
                              className="w-full"
@@ -2635,7 +2598,7 @@ export default function SalesForecastMain() {
                                config.description.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
                                config.region.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
                                config.company.toLowerCase().includes(configSearchTerm.toLowerCase())
-                             ).length} 个配置
+                             ).length} 个配�?
                            </div>
                          </div>
                          <div className="space-y-2">
@@ -2667,7 +2630,7 @@ export default function SalesForecastMain() {
                                        <div className="text-sm font-medium">{config.name}</div>
                                        <div className="text-xs text-slate-500 mt-1">{config.description}</div>
                                        <div className="text-xs text-slate-400 mt-1">
-                                         {config.region} - {config.company} | 准确率: {config.accuracy}% | 更新: {config.lastUpdated}
+                                         {config.region} - {config.company} | 准确�? {config.accuracy}% | 更新: {config.lastUpdated}
                                        </div>
                                      </div>
                                    </div>
@@ -2747,7 +2710,7 @@ export default function SalesForecastMain() {
                        </div>
                      )}
                      
-                     {/* 保存配置对话框 */}
+                     {/* 保存配置对话�?*/}
                      {showSaveDialog && (
                        <div className="mt-4 p-4 border rounded-lg bg-blue-50">
                          <h5 className="text-sm font-medium mb-3">
@@ -2759,7 +2722,7 @@ export default function SalesForecastMain() {
                              <Input
                                value={configName}
                                onChange={(e) => setConfigName(e.target.value)}
-                               placeholder="请输入配置名称"
+                               placeholder="请输入配置名�?
                                className="mt-1"
                              />
                            </div>
@@ -2768,7 +2731,7 @@ export default function SalesForecastMain() {
                              <Input
                                value={configDescription}
                                onChange={(e) => setConfigDescription(e.target.value)}
-                               placeholder="请输入配置描述"
+                               placeholder="请输入配置描�?
                                className="mt-1"
                              />
                            </div>
@@ -2798,7 +2761,7 @@ export default function SalesForecastMain() {
                                      ));
                                      setEditingConfig(null);
                                    } else {
-                                     // 保存新配置
+                                     // 保存新配�?
                                      const newConfig = {
                                        id: Date.now().toString(),
                                        name: configName,
@@ -2872,7 +2835,7 @@ export default function SalesForecastMain() {
                            <div className="text-lg font-bold text-blue-600">
                              {weightConfig.models.filter(m => m.enabled).length}
                            </div>
-                           <div className="text-xs text-slate-600">启用模型数</div>
+                           <div className="text-xs text-slate-600">启用模型�?/div>
                          </div>
                          <div className="text-center">
                            <div className="text-lg font-bold text-green-600">
@@ -2887,28 +2850,28 @@ export default function SalesForecastMain() {
                                return sum + (performance?.accuracy ?? 0) * m.weight / 100;
                              }, 0) * 10) / 10}%
                            </div>
-                           <div className="text-xs text-slate-600">预期准确率</div>
+                           <div className="text-xs text-slate-600">预期准确�?/div>
                          </div>
                          <div className="text-center">
                            <div className="text-lg font-bold text-orange-600">
                              {weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
                                const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
                                return sum + (parseInt(performance?.trainingTime.replace(/[^-\d]/g, '') ?? '0') * m.weight / 100);
-                             }, 0).toFixed(0)}秒
+                             }, 0).toFixed(0)}�?
                            </div>
                            <div className="text-xs text-slate-600">平均训练时间</div>
                          </div>
                        </div>
                      </div>
                      
-                     {/* 配置状态提示 */}
+                     {/* 配置状态提�?*/}
                      <div className="mt-4 p-3 border rounded-lg bg-green-50">
                        <div className="flex items-center justify-between">
                          <div className="text-sm text-green-700">
-                           ✅ 权重配置已就绪，可在下方表格中查看加权预测结果
+                           �?权重配置已就绪，可在下方表格中查看加权预测结�?
                          </div>
                          <div className="text-sm text-green-600">
-                           已保存 {savedConfigs.length} 个配置
+                           已保�?{savedConfigs.length} 个配�?
                          </div>
                        </div>
                      </div>
@@ -2955,13 +2918,13 @@ export default function SalesForecastMain() {
                     <TableHeader>
                                              <TableRow>
                          <TableHead>月份</TableHead>
-                         <TableHead>实际完成值</TableHead>
-                         <TableHead>预测值</TableHead>
-                         {showWeightedForecast && <TableHead>加权预测值</TableHead>}
-                         <TableHead>预测值同比</TableHead>
-                         <TableHead>预测值环比</TableHead>
+                         <TableHead>实际完成�?/TableHead>
+                         <TableHead>预测�?/TableHead>
+                         {showWeightedForecast && <TableHead>加权预测�?/TableHead>}
+                         <TableHead>预测值同�?/TableHead>
+                         <TableHead>预测值环�?/TableHead>
                          <TableHead>去年同期</TableHead>
-                         <TableHead>预测偏差率</TableHead>
+                         <TableHead>预测偏差�?/TableHead>
                          <TableHead>迭代次数</TableHead>
                          <TableHead>算法</TableHead>
                        </TableRow>
@@ -2974,7 +2937,7 @@ export default function SalesForecastMain() {
                            <TableCell>{item.predicted?.toLocaleString()}</TableCell>
                            {showWeightedForecast && (
                              <TableCell className="font-medium text-blue-600">
-                               {calculateWeightedForecast(item.month)?.toLocaleString() || "-"}
+                               {calculateWeightedForecast(item.month).toLocaleString()}
                              </TableCell>
                            )}
                            <TableCell className={item.predictedYoy >= 0 ? "text-green-600" : "text-red-600"}>
@@ -2988,7 +2951,7 @@ export default function SalesForecastMain() {
                             {(item.deviation * 100).toFixed(2)}%
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">第{item.iteration}次</Badge>
+                            <Badge variant="outline">第{item.iteration}�?/Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{item.algorithm}</Badge>
@@ -3013,7 +2976,7 @@ export default function SalesForecastMain() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <TargetIcon className="w-5 h-5" />
-                      预测完成率分析
+                      预测完成率分�?
                     </CardTitle>
                     <CardDescription>
                       源自各公司当月销售量统计及累计销量完成率汇报内容
@@ -3031,12 +2994,12 @@ export default function SalesForecastMain() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>月份</TableHead>
-                        <TableHead>实际完成值</TableHead>
+                        <TableHead>实际完成�?/TableHead>
                         <TableHead>本月同比</TableHead>
                         <TableHead>本年累计</TableHead>
                         <TableHead>本年同比</TableHead>
-                        <TableHead>本年销售预测</TableHead>
-                        <TableHead>预测完成率</TableHead>
+                        <TableHead>本年销售预�?/TableHead>
+                        <TableHead>预测完成�?/TableHead>
                         <TableHead>去年同期</TableHead>
                         <TableHead>去年截止同期</TableHead>
                       </TableRow>
@@ -3080,630 +3043,23 @@ export default function SalesForecastMain() {
         case "multi-model-config":
           return (
             <div className="space-y-6">
-              {/* 页面标题和配置列表 */}
+              {/* 页面标题和层级选择 */}
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Settings className="w-5 h-5" />
-                        多模型分析配置
-                      </CardTitle>
-                      <CardDescription>
-                        配置多个预测模型的权重，实现加权综合预测分析
-                      </CardDescription>
-                    </div>
-                    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                      <DialogTrigger asChild>
-                        <Button className="flex items-center gap-2">
-                          <UploadIcon className="w-4 h-4" />
-                          添加配置
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>
-                            {editingConfig ? "编辑配置" : "添加新配置"}
-                          </DialogTitle>
-                          <DialogDescription>
-                            配置多个预测模型的权重组合，创建自定义的加权预测方案
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-sm">配置名称</Label>
-                            <Input
-                              value={configName}
-                              onChange={(e) => setConfigName(e.target.value)}
-                              placeholder="请输入配置名称"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-sm">配置描述</Label>
-                            <Input
-                              value={configDescription}
-                              onChange={(e) => setConfigDescription(e.target.value)}
-                              placeholder="请输入配置描述"
-                              className="mt-1"
-                            />
-                          </div>
-                          
-                          {/* 地区选择 */}
-                          <div>
-                            <Label className="text-sm">适用地区</Label>
-                            <CascaderPro
-                              value={configCascaderValue}
-                              onChange={setConfigCascaderValue}
-                              options={cascaderOptions}
-                              placeholder="请选择地区、公司和机场"
-                              className="mt-1"
-                            />
-                            {configCascaderValue.length > 0 && (
-                              <div className="mt-2 text-xs text-slate-600">
-                                已选择: {configCascaderValue.join(" > ")}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* 模型权重配置 */}
-                          <div className="space-y-3">
-                            <Label className="text-sm font-medium">模型权重配置</Label>
-                            <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
-                              {weightConfig.models.map((model, index) => {
-                                const performance = modelPerformanceData[model.name as keyof typeof modelPerformanceData];
-                                return (
-                                  <div key={model.name} className="p-3 border rounded-lg bg-slate-50">
-                                    <div className="flex items-center gap-3 mb-2">
-                                      <input
-                                        type="checkbox"
-                                        checked={model.enabled}
-                                        onChange={(e) => {
-                                          const newModels = [...weightConfig.models];
-                                          newModels[index] = { ...model, enabled: e.target.checked };
-                                          setWeightConfig(prev => ({ ...prev, models: newModels }));
-                                        }}
-                                        className="w-4 h-4"
-                                      />
-                                      <div className="flex-1">
-                                        <div className="text-sm font-medium">{model.name}</div>
-                                        <div className="text-xs text-slate-500 mt-1">
-                                          准确率: {performance?.accuracy}% | 训练时间: {performance?.trainingTime}
-                                        </div>
-                                      </div>
-                                      <div className="text-sm font-medium">{model.weight}%</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="range"
-                                        min="0"
-                                        max="100"
-                                        value={model.weight}
-                                        onChange={(e) => {
-                                          const newModels = [...weightConfig.models];
-                                          newModels[index] = { ...model, weight: parseInt(e.target.value) };
-                                          setWeightConfig(prev => ({ ...prev, models: newModels }));
-                                        }}
-                                        className="flex-1"
-                                        disabled={!model.enabled}
-                                      />
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={model.weight}
-                                        onChange={(e) => {
-                                          const newModels = [...weightConfig.models];
-                                          newModels[index] = { ...model, weight: parseInt(e.target.value) || 0 };
-                                          setWeightConfig(prev => ({ ...prev, models: newModels }));
-                                        }}
-                                        className="w-16 text-sm border rounded px-2 py-1"
-                                        disabled={!model.enabled}
-                                      />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            
-                            {/* 权重验证信息 */}
-                            <div className={`p-3 rounded-lg text-sm ${
-                              validateWeightConfig().isValid 
-                                ? "bg-green-50 text-green-700 border border-green-200" 
-                                : "bg-red-50 text-red-700 border border-red-200"
-                            }`}>
-                              {validateWeightConfig().message}
-                            </div>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setConfigName("");
-                              setConfigDescription("");
-                              setConfigCascaderValue([]);
-                              setEditingConfig(null);
-                              setShowSaveDialog(false);
-                            }}
-                          >
-                            取消
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              if (configName.trim() && configCascaderValue.length >= 2) {
-                                const [selectedRegion, selectedCompany] = configCascaderValue;
-                                
-                                if (editingConfig) {
-                                  // 编辑现有配置
-                                  setSavedConfigs(prev => prev.map(config => 
-                                    config.id === editingConfig 
-                                      ? {
-                                          ...config,
-                                          name: configName,
-                                          description: configDescription,
-                                          region: selectedRegion || weightConfig.region,
-                                          company: selectedCompany || weightConfig.company,
-                                          models: weightConfig.models,
-                                          accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                                            const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                                            return sum + (performance?.accuracy ?? 0) * m.weight / 100;
-                                          }, 0) * 10) / 10,
-                                          lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                        }
-                                      : config
-                                  ));
-                                  setEditingConfig(null);
-                                } else {
-                                  // 保存新配置
-                                  const newConfig = {
-                                    id: Date.now().toString(),
-                                    name: configName,
-                                    description: configDescription,
-                                    region: selectedRegion || weightConfig.region,
-                                    company: selectedCompany || weightConfig.company,
-                                    models: weightConfig.models,
-                                    accuracy: Math.round(weightConfig.models.filter(m => m.enabled).reduce((sum, m) => {
-                                      const performance = modelPerformanceData[m.name as keyof typeof modelPerformanceData];
-                                      return sum + (performance?.accuracy ?? 0) * m.weight / 100;
-                                    }, 0) * 10) / 10,
-                                    lastUpdated: new Date().toISOString().split('T')[0] || new Date().toLocaleDateString()
-                                  };
-                                  setSavedConfigs(prev => [...prev, newConfig]);
-                                }
-                                setConfigName("");
-                                setConfigDescription("");
-                                setConfigCascaderValue([]);
-                                setShowSaveDialog(false);
-                              }
-                            }}
-                            disabled={!configName.trim() || !validateWeightConfig().isValid || configCascaderValue.length < 2}
-                          >
-                            {editingConfig ? "更新配置" : "保存配置"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    多模型分析配�?
+                  </CardTitle>
+                  <CardDescription>
+                    配置多个预测模型的权重，实现加权综合预测分析
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* 配置列表 - 表格形式 */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium">已保存的配置列表</h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {(() => {
-                            const filteredConfigs = getFilteredConfigs();
-                            const hasFilter = configSearchTerm || configFilterCascaderValue.length > 0;
-                            return hasFilter 
-                              ? `筛选显示 ${filteredConfigs.length} / ${savedConfigs.length} 个配置`
-                              : `共 ${savedConfigs.length} 个配置`;
-                          })()}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    {/* 搜索和筛选 */}
-                    <div className="space-y-4 mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <Input
-                            placeholder="搜索配置名称、描述..."
-                            value={configSearchTerm}
-                            onChange={(e) => {
-                              setConfigSearchTerm(e.target.value);
-                              setConfigCurrentPage(1); // 重置到第一页
-                            }}
-                            className="max-w-md"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* 地区级联筛选 */}
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 max-w-md">
-                          <Label className="text-sm mb-2 block">按地区筛选:</Label>
-                          <CascaderPro
-                            value={configFilterCascaderValue}
-                            onChange={(value) => {
-                              setConfigFilterCascaderValue(value);
-                              setConfigCurrentPage(1); // 重置到第一页
-                            }}
-                            options={cascaderOptions}
-                            placeholder="选择地区、公司筛选配置"
-                            className="w-full"
-                          />
-                        </div>
-                        {configFilterCascaderValue.length > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setConfigFilterCascaderValue([]);
-                              setConfigCurrentPage(1);
-                            }}
-                          >
-                            清除筛选
-                          </Button>
-                        )}
-                      </div>
-                      
-                      {/* 筛选结果提示 */}
-                      {(configSearchTerm || configFilterCascaderValue.length > 0) && (
-                        <div className="text-sm text-slate-600">
-                          {configSearchTerm && `关键词: "${configSearchTerm}"`}
-                          {configSearchTerm && configFilterCascaderValue.length > 0 && " | "}
-                          {configFilterCascaderValue.length > 0 && `地区: ${configFilterCascaderValue.join(" > ")}`}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {savedConfigs.length === 0 ? (
-                      <div className="text-center py-12 border rounded-lg bg-slate-50">
-                        <Settings className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-                        <h3 className="text-lg font-medium mb-2">暂无配置</h3>
-                        <p className="text-slate-600 mb-4">点击"添加配置"按钮创建您的第一个多模型配置</p>
-                        <Button 
-                          variant="outline"
-                          onClick={() => setShowSaveDialog(true)}
-                        >
-                          <UploadIcon className="w-4 h-4 mr-2" />
-                          添加配置
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {/* 配置表格 */}
-                        <div className="border rounded-lg overflow-hidden">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-12">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedConfigs.length === savedConfigs.length}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedConfigs(savedConfigs.map(c => c.id));
-                                      } else {
-                                        setSelectedConfigs([]);
-                                      }
-                                    }}
-                                  />
-                                </TableHead>
-                                <TableHead>配置名称</TableHead>
-                                <TableHead>地区</TableHead>
-                                <TableHead>公司</TableHead>
-                                <TableHead>启用模型数</TableHead>
-                                <TableHead>预期准确率</TableHead>
-                                <TableHead>更新时间</TableHead>
-                                <TableHead>操作</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {(() => {
-                                const filteredConfigs = getFilteredConfigs();
-                                const startIndex = (configCurrentPage - 1) * configPageSize;
-                                const endIndex = startIndex + configPageSize;
-                                const paginatedConfigs = filteredConfigs.slice(startIndex, endIndex);
-                                
-                                return paginatedConfigs.map((config) => (
-                                  <TableRow key={config.id} className="hover:bg-slate-50">
-                                    <TableCell>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedConfigs.includes(config.id)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setSelectedConfigs(prev => [...prev, config.id]);
-                                          } else {
-                                            setSelectedConfigs(prev => prev.filter(id => id !== config.id));
-                                          }
-                                        }}
-                                      />
-                                    </TableCell>
-                                    <TableCell>
-                                      <div>
-                                        <div className="font-medium">{config.name}</div>
-                                        <div className="text-sm text-slate-500">{config.description}</div>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                          {config.models.filter(m => m.enabled).slice(0, 3).map((model) => (
-                                            <Badge key={model.name} variant="secondary" className="text-xs">
-                                              {model.name}: {model.weight}%
-                                            </Badge>
-                                          ))}
-                                          {config.models.filter(m => m.enabled).length > 3 && (
-                                            <Badge variant="outline" className="text-xs">
-                                              +{config.models.filter(m => m.enabled).length - 3}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>{config.region}</TableCell>
-                                    <TableCell className="text-sm">{config.company}</TableCell>
-                                    <TableCell>
-                                      <div className="text-center">
-                                        <div className="text-sm font-medium text-blue-600">
-                                          {config.models.filter(m => m.enabled).length}
-                                        </div>
-                                        <div className="text-xs text-slate-500">个模型</div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="text-center">
-                                        <div className="text-sm font-medium text-green-600">
-                                          {config.accuracy}%
-                                        </div>
-                                        <div className="text-xs text-slate-500">准确率</div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="text-sm text-slate-500">
-                                      {config.lastUpdated}
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => {
-                                            setWeightConfig({
-                                              region: config.region,
-                                              company: config.company,
-                                              models: config.models
-                                            });
-                                            setEditingConfig(config.id);
-                                            setConfigName(config.name);
-                                            setConfigDescription(config.description);
-                                            // 设置级联选择器的值
-                                            setConfigCascaderValue([config.region, config.company]);
-                                            setShowSaveDialog(true);
-                                          }}
-                                        >
-                                          编辑
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => {
-                                            setWeightConfig({
-                                              region: config.region,
-                                              company: config.company,
-                                              models: config.models
-                                            });
-                                          }}
-                                        >
-                                          应用
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => {
-                                            setSavedConfigs(prev => prev.filter(c => c.id !== config.id));
-                                          }}
-                                        >
-                                          <TrashIcon className="w-4 h-4" />
-                                        </Button>
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                ));
-                              })()}
-                            </TableBody>
-                          </Table>
-                        </div>
-                        
-                        {/* 分页控件 - 常规底部分页策略 */}
-                        {(() => {
-                          const filteredConfigs = getFilteredConfigs();
-                          const totalPages = Math.ceil(filteredConfigs.length / configPageSize);
-                          const currentStart = (configCurrentPage - 1) * configPageSize + 1;
-                          const currentEnd = Math.min(configCurrentPage * configPageSize, filteredConfigs.length);
-                          
-                          // 生成页码范围
-                          const getPageNumbers = () => {
-                            const maxVisible = 7; // 最多显示7个页码
-                            const pages: number[] = [];
-                            
-                            if (totalPages <= maxVisible) {
-                              // 总页数不超过最大显示数，显示所有页码
-                              for (let i = 1; i <= totalPages; i++) {
-                                pages.push(i);
-                              }
-                            } else {
-                              // 总页数超过最大显示数，使用省略号策略
-                              if (configCurrentPage <= 4) {
-                                // 当前页在前面，显示 1,2,3,4,5...last
-                                for (let i = 1; i <= 5; i++) {
-                                  pages.push(i);
-                                }
-                                pages.push(-1); // 省略号
-                                pages.push(totalPages);
-                              } else if (configCurrentPage >= totalPages - 3) {
-                                // 当前页在后面，显示 1...last-4,last-3,last-2,last-1,last
-                                pages.push(1);
-                                pages.push(-1); // 省略号
-                                for (let i = totalPages - 4; i <= totalPages; i++) {
-                                  pages.push(i);
-                                }
-                              } else {
-                                // 当前页在中间，显示 1...current-1,current,current+1...last
-                                pages.push(1);
-                                pages.push(-1); // 省略号
-                                for (let i = configCurrentPage - 1; i <= configCurrentPage + 1; i++) {
-                                  pages.push(i);
-                                }
-                                pages.push(-2); // 省略号
-                                pages.push(totalPages);
-                              }
-                            }
-                            
-                            return pages;
-                          };
-                          
-                          return (
-                            <div className="border-t bg-white px-4 py-3 flex items-center justify-between sm:px-6">
-                              <div className="flex flex-1 justify-between items-center">
-                                {/* 左侧：页面信息和每页显示 */}
-                                <div className="flex items-center gap-4">
-                                  <div className="text-sm text-slate-700">
-                                    显示第 <span className="font-medium">{currentStart}</span> - <span className="font-medium">{currentEnd}</span> 条，
-                                    共 <span className="font-medium">{filteredConfigs.length}</span> 条记录
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Label className="text-sm text-slate-700">每页:</Label>
-                                    <Select 
-                                      value={configPageSize.toString()} 
-                                      onValueChange={(value) => {
-                                        setConfigPageSize(parseInt(value));
-                                        setConfigCurrentPage(1);
-                                      }}
-                                    >
-                                      <SelectTrigger className="h-8 w-16">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="5">5</SelectItem>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="20">20</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
-                                
-                                {/* 右侧：分页导航 */}
-                                {totalPages > 1 && (
-                                  <div className="flex items-center gap-1">
-                                    {/* 首页 */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setConfigCurrentPage(1)}
-                                      disabled={configCurrentPage === 1}
-                                      className="h-8 px-2"
-                                    >
-                                      首页
-                                    </Button>
-                                    
-                                    {/* 上一页 */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setConfigCurrentPage(prev => Math.max(1, prev - 1))}
-                                      disabled={configCurrentPage === 1}
-                                      className="h-8 px-2"
-                                    >
-                                      上一页
-                                    </Button>
-                                    
-                                    {/* 页码 */}
-                                    <div className="flex items-center gap-1 mx-2">
-                                      {getPageNumbers().map((pageNum, index) => {
-                                        if (pageNum === -1 || pageNum === -2) {
-                                          return (
-                                            <span key={`ellipsis-${index}`} className="px-2 text-slate-500">
-                                              ...
-                                            </span>
-                                          );
-                                        }
-                                        
-                                        return (
-                                          <Button
-                                            key={pageNum}
-                                            variant={pageNum === configCurrentPage ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setConfigCurrentPage(pageNum)}
-                                            className="h-8 w-8 p-0"
-                                          >
-                                            {pageNum}
-                                          </Button>
-                                        );
-                                      })}
-                                    </div>
-                                    
-                                    {/* 下一页 */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setConfigCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                      disabled={configCurrentPage === totalPages}
-                                      className="h-8 px-2"
-                                    >
-                                      下一页
-                                    </Button>
-                                    
-                                    {/* 尾页 */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setConfigCurrentPage(totalPages)}
-                                      disabled={configCurrentPage === totalPages}
-                                      className="h-8 px-2"
-                                    >
-                                      尾页
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                        
-                        {/* 批量操作 */}
-                        {selectedConfigs.length > 0 && (
-                          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <span className="text-sm text-blue-700">
-                              已选择 {selectedConfigs.length} 个配置
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSavedConfigs(prev => 
-                                  prev.filter(config => !selectedConfigs.includes(config.id))
-                                );
-                                setSelectedConfigs([]);
-                              }}
-                            >
-                              <TrashIcon className="w-4 h-4 mr-1" />
-                              批量删除
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedConfigs([])}
-                            >
-                              取消选择
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div className="text-center py-12">
+                    <Settings className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                    <h3 className="text-lg font-medium mb-2">多模型配置中�?/h3>
+                    <p className="text-slate-600">配置和管理多个预测模型的权重分配</p>
                   </div>
-
-
                 </CardContent>
               </Card>
             </div>
@@ -3748,7 +3104,7 @@ export default function SalesForecastMain() {
               <div className="text-center py-12">
                 <DownloadIcon className="w-16 h-16 mx-auto mb-4 text-slate-400" />
                 <h3 className="text-lg font-medium mb-2">数据导出功能</h3>
-                <p className="text-slate-600">支持导出为Excel、PDF、CSV等多种格式</p>
+                <p className="text-slate-600">支持导出为Excel、PDF、CSV等多种格�?/p>
               </div>
             </CardContent>
           </Card>
@@ -3763,14 +3119,14 @@ export default function SalesForecastMain() {
                 算法配置
               </CardTitle>
               <CardDescription>
-                配置预测算法参数和模型设置
+                配置预测算法参数和模型设�?
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
                 <Settings className="w-16 h-16 mx-auto mb-4 text-slate-400" />
                 <h3 className="text-lg font-medium mb-2">算法配置中心</h3>
-                <p className="text-slate-600">调整机器学习模型的超参数和训练配置</p>
+                <p className="text-slate-600">调整机器学习模型的超参数和训练配�?/p>
               </div>
             </CardContent>
           </Card>
@@ -3785,7 +3141,7 @@ export default function SalesForecastMain() {
                 月度报表
               </CardTitle>
               <CardDescription>
-                生成和查看月度销售预测报表
+                生成和查看月度销售预测报�?
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -3807,7 +3163,7 @@ export default function SalesForecastMain() {
                 用户管理
               </CardTitle>
               <CardDescription>
-                管理系统用户权限和角色分配
+                管理系统用户权限和角色分�?
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -3825,7 +3181,7 @@ export default function SalesForecastMain() {
     }
   };
 
-  // 递归渲染菜单项
+  // 递归渲染菜单�?
   const renderMenuItem = (item: MenuItemType, level: number = 0) => {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
@@ -3880,7 +3236,7 @@ export default function SalesForecastMain() {
         </div>
       </div>
 
-      {/* 主内容区域 */}
+      {/* 主内容区�?*/}
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-6xl mx-auto">
           {renderContent()}

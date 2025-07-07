@@ -3291,17 +3291,7 @@ export default function SalesForecastMain() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-medium">已保存的配置列表</h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {(() => {
-                            const filteredConfigs = getFilteredConfigs();
-                            const hasFilter = configSearchTerm || configFilterCascaderValue.length > 0;
-                            return hasFilter 
-                              ? `筛选显示 ${filteredConfigs.length} / ${savedConfigs.length} 个配置`
-                              : `共 ${savedConfigs.length} 个配置`;
-                          })()}
-                        </Badge>
-                      </div>
+            
                     </div>
                     
                     {/* 搜索和筛选 */}

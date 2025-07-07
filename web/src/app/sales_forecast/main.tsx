@@ -494,7 +494,7 @@ const analysisData = {
   }
 };
 
-type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis" | "deviation-analysis" | "completion-analysis" | "multi-model-config";
+type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis" | "deviation-analysis" | "completion-analysis" | "multi-model-config" | "fuel-ranking-analysis" | "sales-statistics" | "sales-total" | "sales-domestic" | "sales-international" | "sales-foreign" | "sales-last-month-airline" | "sales-accumulated-airline";
 
 interface MenuItemType {
   id: string;
@@ -967,7 +967,21 @@ export default function SalesForecastMain() {
       children: [
         { id: "deviation-analysis", label: "偏差分析", icon: TrendingUpIcon },
         { id: "completion-analysis", label: "完成率分析", icon: TargetIcon },
-        { id: "multi-model-config", label: "多模型分析配置", icon: Settings }
+        { id: "multi-model-config", label: "多模型分析配置", icon: Settings },
+        { id: "fuel-ranking-analysis", label: "加油排行量分析", icon: BarChart3Icon },
+      ]
+    },
+    {
+      id: "sales-statistics",
+      label: "销售统计分析",
+      icon: BarChart3Icon,
+      children: [
+        { id: "sales-total", label: "销售总量统计", icon: BarChart3Icon },
+        { id: "sales-domestic", label: "国内销售统计", icon: BarChart3Icon },
+        { id: "sales-international", label: "国际销售统计", icon: BarChart3Icon },
+        { id: "sales-foreign", label: "外航销售统计", icon: BarChart3Icon },
+        { id: "sales-last-month-airline", label: "上月销售统计", icon: BarChart3Icon },
+        { id: "sales-accumulated-airline", label: "本年度累计销售统计", icon: BarChart3Icon },
       ]
     }
   ];
@@ -3593,6 +3607,106 @@ export default function SalesForecastMain() {
             </div>
           );
 
+      case "fuel-ranking-analysis":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3Icon className="w-5 h-5" />
+                加油排行量分析
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-slate-500 text-center py-12">功能建设中，敬请期待…</div>
+            </CardContent>
+          </Card>
+        );
+
+      case "sales-total":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3Icon className="w-5 h-5" />
+                销售总量统计
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-slate-500 text-center py-12">功能建设中，敬请期待…</div>
+            </CardContent>
+          </Card>
+        );
+      case "sales-domestic":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3Icon className="w-5 h-5" />
+                国内销售统计
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-slate-500 text-center py-12">功能建设中，敬请期待…</div>
+            </CardContent>
+          </Card>
+        );
+      case "sales-international":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3Icon className="w-5 h-5" />
+                国际销售统计
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-slate-500 text-center py-12">功能建设中，敬请期待…</div>
+            </CardContent>
+          </Card>
+        );
+      case "sales-foreign":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3Icon className="w-5 h-5" />
+                外航销售统计
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-slate-500 text-center py-12">功能建设中，敬请期待…</div>
+            </CardContent>
+          </Card>
+        );
+      case "sales-last-month-airline":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3Icon className="w-5 h-5" />
+                上月销售统计（按航司）
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-slate-500 text-center py-12">功能建设中，敬请期待…</div>
+            </CardContent>
+          </Card>
+        );
+      case "sales-accumulated-airline":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3Icon className="w-5 h-5" />
+                本年度累计销售统计（按航司）
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-slate-500 text-center py-12">功能建设中，敬请期待…</div>
+            </CardContent>
+          </Card>
+        );
+
       default:
         return null;
     }
@@ -3613,7 +3727,6 @@ export default function SalesForecastMain() {
           onClick={() => {
             if (hasChildren) {
               toggleMenuExpansion(item.id);
-              // 如果菜单正在展开，自动选择第一个子菜单
               if (!isExpanded && item.children && item.children.length > 0) {
                 setActiveMenu(item.children[0]!.id as MenuItem);
               }
@@ -3623,7 +3736,7 @@ export default function SalesForecastMain() {
           }}
         >
           <Icon className="w-4 h-4 mr-2" />
-          {item.label}
+          <span className="truncate max-w-[160px] block">{item.label}</span>
           {hasChildren && (
             <div className="ml-auto">
               {isExpanded ? (

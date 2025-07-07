@@ -833,6 +833,9 @@ export default function SalesForecastMain() {
   const [selectedAirport, setSelectedAirport] = useState("上海浦东机场");
   const [selectedAlgorithm, setSelectedAlgorithm] = useState("all");
   const [analysisTimeRange, setAnalysisTimeRange] = useState("12"); // 12, 24, 36 months
+  const [analysisStartDate, setAnalysisStartDate] = useState("");
+  const [analysisEndDate, setAnalysisEndDate] = useState("");
+  const [analysisCascaderValue, setAnalysisCascaderValue] = useState<string[]>([]);
   const [showTrendChart, setShowTrendChart] = useState(true);
   
   // 历史执行记录
@@ -2242,98 +2245,37 @@ export default function SalesForecastMain() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* 层级和筛选控制 */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <Label>分析层级</Label>
-                    <Select value={analysisLevel} onValueChange={setAnalysisLevel}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="region">地区层级</SelectItem>
-                        <SelectItem value="company">合资公司层级</SelectItem>
-                        <SelectItem value="airport">机场层级</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
+                
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label>地区</Label>
-                    <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="华东">华东地区</SelectItem>
-                        <SelectItem value="华南">华南地区</SelectItem>
-                        <SelectItem value="华北">华北地区</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {(analysisLevel === "company" || analysisLevel === "airport") && (
-                    <div className="space-y-2">
-                      <Label>合资公司</Label>
-                      <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="华东航空燃料有限公司">华东航空燃料有限公司</SelectItem>
-                          <SelectItem value="江苏航空燃料公司">江苏航空燃料公司</SelectItem>
-                          <SelectItem value="华南航空燃料有限公司">华南航空燃料有限公司</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  
-                  {analysisLevel === "airport" && (
-                    <div className="space-y-2">
-                      <Label>机场</Label>
-                      <Select value={selectedAirport} onValueChange={setSelectedAirport}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="上海浦东机场">上海浦东机场</SelectItem>
-                          <SelectItem value="上海虹桥机场">上海虹桥机场</SelectItem>
-                          <SelectItem value="南京禄口机场">南京禄口机场</SelectItem>
-                          <SelectItem value="广州白云机场">广州白云机场</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>时间范围</Label>
-                    <Select value={analysisTimeRange} onValueChange={setAnalysisTimeRange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3">近3个月</SelectItem>
-                        <SelectItem value="6">近6个月</SelectItem>
-                        <SelectItem value="12">近12个月</SelectItem>
-                        <SelectItem value="24">近24个月</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <CascaderPro
+                      options={cascaderOptions}
+                      value={analysisCascaderValue}
+                      onChange={setAnalysisCascaderValue}
+                      placeholder="选择地区/公司/机场"
+                    />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>显示选项</Label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="showTrendChart"
-                        checked={showTrendChart}
-                        onChange={(e) => setShowTrendChart(e.target.checked)}
-                        className="rounded"
-                      />
-                      <Label htmlFor="showTrendChart" className="text-sm">显示趋势图</Label>
-                    </div>
+                    <Label>开始时间</Label>
+                    <Input
+                      type="date"
+                      value={analysisStartDate}
+                      onChange={(e) => setAnalysisStartDate(e.target.value)}
+                      placeholder="选择开始日期"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>结束时间</Label>
+                    <Input
+                      type="date"
+                      value={analysisEndDate}
+                      onChange={(e) => setAnalysisEndDate(e.target.value)}
+                      placeholder="选择结束日期"
+                    />
                   </div>
                   
                   <div className="space-y-2">
@@ -2344,7 +2286,7 @@ export default function SalesForecastMain() {
                       className="w-full"
                     >
                       <BarChart3 className="w-4 h-4 mr-2" />
-                      {showWeightedForecast ? "关闭配置" : "开启配置"}
+                      {showWeightedForecast ? "隐藏配置" : "显示配置"}
                     </Button>
                   </div>
                 </div>

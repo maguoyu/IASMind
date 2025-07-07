@@ -2729,74 +2729,132 @@ export default function SalesForecastMain() {
 
         case "completion-analysis":
           return (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <TargetIcon className="w-5 h-5" />
-                      预测完成率分析
-                    </CardTitle>
-                    <CardDescription>
-                      源自各公司当月销售量统计及累计销量完成率汇报内容
-                    </CardDescription>
+            <div className="space-y-6">
+              {/* Tab切换 */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <TargetIcon className="w-5 h-5" />
+                    <CardTitle className="text-lg">完成率分析</CardTitle>
                   </div>
-                  <Button onClick={exportAnalysisData} variant="outline">
-                    <DownloadIcon className="w-4 h-4 mr-2" />
-                    导出数据
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>月份</TableHead>
-                        <TableHead>实际完成值</TableHead>
-                        <TableHead>本月同比</TableHead>
-                        <TableHead>本年累计</TableHead>
-                        <TableHead>本年同比</TableHead>
-                        <TableHead>本年销售预测</TableHead>
-                        <TableHead>预测完成率</TableHead>
-                        <TableHead>去年同期</TableHead>
-                        <TableHead>去年截止同期</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getFilteredAnalysisData().map((item: any, index: number) => {
-                        const yearToDateActual = getFilteredAnalysisData()
-                          .filter((d: any) => d.month <= item.month && d.month.startsWith('2024'))
-                          .reduce((sum: number, d: any) => sum + d.actual, 0);
-                        const yearToDatePredicted = yearToDateActual * 1.15; // 模拟年度预测
-                        const completionRate = (yearToDateActual / yearToDatePredicted) * 100;
-                        const lastYearToDate = yearToDateActual * 0.92; // 模拟去年同期累计
-                        
-                        return (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{item.month}</TableCell>
-                            <TableCell>{item.actual?.toLocaleString()}</TableCell>
-                            <TableCell className={item.predictedYoy >= 0 ? "text-green-600" : "text-red-600"}>
-                              {(item.predictedYoy * 100).toFixed(2)}%
-                            </TableCell>
-                            <TableCell>{yearToDateActual.toLocaleString()}</TableCell>
-                            <TableCell className="text-green-600">
-                              {((yearToDateActual / lastYearToDate - 1) * 100).toFixed(2)}%
-                            </TableCell>
-                            <TableCell>{yearToDatePredicted.toLocaleString()}</TableCell>
-                            <TableCell className={completionRate >= 90 ? "text-green-600" : completionRate >= 80 ? "text-yellow-600" : "text-red-600"}>
-                              {completionRate.toFixed(1)}%
-                            </TableCell>
-                            <TableCell>{item.lastYearSame?.toLocaleString()}</TableCell>
-                            <TableCell>{lastYearToDate.toLocaleString()}</TableCell>
+                  <CardDescription>
+                    选择地区公司、分公司、机场，选择预测月份，查看各单位销售完成率
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* 检索条件 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label>地区公司</Label>
+                      <CascaderPro
+                        options={cascaderOptions}
+                        value={completionCascaderValue}
+                        onChange={setCompletionCascaderValue}
+                        placeholder="选择地区/公司/机场"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>预测月份</Label>
+                      <Select
+                        value={completionYearMonth}
+                        onValueChange={setCompletionYearMonth}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择预测月份" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {['2023','2024','2025'].flatMap(y =>
+                            Array.from({length:12}, (_,i) => (
+                              <SelectItem key={`${y}-${i+1}`} value={`${y}-${i+1}`}>{`${y}年${i+1}月`}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {/* Tab页 */}
+                  <div className="flex space-x-2 mb-4">
+                    <Button
+                      variant={completionTab === 'region' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => { setCompletionTab('region'); setCompletionPage(1); }}
+                    >
+                      地区公司
+                    </Button>
+                    <Button
+                      variant={completionTab === 'company' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => { setCompletionTab('company'); setCompletionPage(1); }}
+                    >
+                      分公司
+                    </Button>
+                    <Button
+                      variant={completionTab === 'airport' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => { setCompletionTab('airport'); setCompletionPage(1); }}
+                    >
+                      机场
+                    </Button>
+                  </div>
+                  {/* 表格 */}
+                  <div className="border rounded-lg overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50">
+                          {completionTab === 'region' && <TableHead>地区公司</TableHead>}
+                          {completionTab === 'company' && <><TableHead>地区公司</TableHead><TableHead>分公司</TableHead></>}
+                          {completionTab === 'airport' && <><TableHead>地区公司</TableHead><TableHead>分公司</TableHead><TableHead>机场</TableHead></>}
+                          <TableHead>月份</TableHead>
+                          <TableHead>实际</TableHead>
+                          <TableHead>当月同比</TableHead>
+                          <TableHead>本年累计</TableHead>
+                          <TableHead>本年同比</TableHead>
+                          <TableHead>本年销售预算</TableHead>
+                          <TableHead>本年预算完成百分比</TableHead>
+                          <TableHead>去年同期数据</TableHead>
+                          <TableHead>去年截止同期数据</TableHead>
+                          <TableHead>滚动预测</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getCompletionTableData().map((item, idx) => (
+                          <TableRow key={idx}>
+                            {completionTab === 'region' && <TableCell>{item.region}</TableCell>}
+                            {completionTab === 'company' && <><TableCell>{item.region}</TableCell><TableCell>{item.company}</TableCell></>}
+                            {completionTab === 'airport' && <><TableCell>{item.region}</TableCell><TableCell>{item.company}</TableCell><TableCell>{item.airport}</TableCell></>}
+                            <TableCell>{item.month}</TableCell>
+                            <TableCell>{item.actual}</TableCell>
+                            <TableCell>{item.yoy}%</TableCell>
+                            <TableCell>{item.accumulated}</TableCell>
+                            <TableCell>{item.accumulatedYoy}%</TableCell>
+                            <TableCell>{item.annualBudget}</TableCell>
+                            <TableCell>{item.budgetRate}%</TableCell>
+                            <TableCell>{item.lastYear}</TableCell>
+                            <TableCell>{item.lastYearAccumulated}</TableCell>
+                            <TableCell>第{item.rolling}次</TableCell>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+                        ))}
+                        {/* 合计行 */}
+                        <TableRow className="font-bold bg-slate-100">
+                          <TableCell colSpan={completionTab==='region'?2:completionTab==='company'?3:4}>合计</TableCell>
+                          <TableCell>{getCompletionTotal('actual')}</TableCell>
+                          <TableCell></TableCell>
+                          <TableCell>{getCompletionTotal('accumulated')}</TableCell>
+                          <TableCell></TableCell>
+                          <TableCell>{getCompletionTotal('annualBudget')}</TableCell>
+                          <TableCell></TableCell>
+                          <TableCell>{getCompletionTotal('lastYear')}</TableCell>
+                          <TableCell>{getCompletionTotal('lastYearAccumulated')}</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {/* 分页控件 */}
+                  {renderCompletionPagination()}
+                </CardContent>
+              </Card>
+            </div>
           );
 
         case "multi-model-config":
@@ -3585,6 +3643,153 @@ export default function SalesForecastMain() {
       </div>
     );
   };
+
+  // === 完成率分析相关状态 ===
+  const [completionTab, setCompletionTab] = useState<'region'|'company'|'airport'>('region');
+  const [completionCascaderValue, setCompletionCascaderValue] = useState<string[]>([]);
+  const [completionYearMonth, setCompletionYearMonth] = useState('2024-6');
+  const [completionPage, setCompletionPage] = useState(1);
+  const [completionPageSize, setCompletionPageSize] = useState(10);
+
+  // === 完成率分析模拟数据生成 ===
+  function getCompletionTableData() {
+    // 生成模拟数据，字段与表头一致
+    const regions = ['华北', '东北', '华东', '华南', '西北', '云南', '烟台', '南京', '重庆', '成都', '天津', '蓝天'];
+    const companies = ['分公司A', '分公司B', '分公司C'];
+    const airports = ['机场A', '机场B', '机场C'];
+    const [year, month] = completionYearMonth.split('-').map(Number);
+    let data = [];
+    if (completionTab === 'region') {
+      data = regions.map(region => ({
+        region,
+        month,
+        actual: Math.floor(Math.random()*10000+5000),
+        yoy: (Math.random()*20-10).toFixed(1),
+        accumulated: Math.floor(Math.random()*50000+20000),
+        accumulatedYoy: (Math.random()*20-10).toFixed(1),
+        annualBudget: Math.floor(Math.random()*60000+30000),
+        budgetRate: (Math.random()*30+70).toFixed(1),
+        lastYear: Math.floor(Math.random()*10000+5000),
+        lastYearAccumulated: Math.floor(Math.random()*50000+20000),
+        rolling: Math.floor(Math.random()*10+1),
+      }));
+    } else if (completionTab === 'company') {
+      data = regions.flatMap(region => companies.map(company => ({
+        region,
+        company,
+        month,
+        actual: Math.floor(Math.random()*5000+2000),
+        yoy: (Math.random()*20-10).toFixed(1),
+        accumulated: Math.floor(Math.random()*20000+10000),
+        accumulatedYoy: (Math.random()*20-10).toFixed(1),
+        annualBudget: Math.floor(Math.random()*25000+10000),
+        budgetRate: (Math.random()*30+70).toFixed(1),
+        lastYear: Math.floor(Math.random()*5000+2000),
+        lastYearAccumulated: Math.floor(Math.random()*20000+10000),
+        rolling: Math.floor(Math.random()*10+1),
+      })));
+    } else {
+      data = regions.flatMap(region => companies.flatMap(company => airports.map(airport => ({
+        region,
+        company,
+        airport,
+        month,
+        actual: Math.floor(Math.random()*2000+500),
+        yoy: (Math.random()*20-10).toFixed(1),
+        accumulated: Math.floor(Math.random()*8000+2000),
+        accumulatedYoy: (Math.random()*20-10).toFixed(1),
+        annualBudget: Math.floor(Math.random()*10000+3000),
+        budgetRate: (Math.random()*30+70).toFixed(1),
+        lastYear: Math.floor(Math.random()*2000+500),
+        lastYearAccumulated: Math.floor(Math.random()*8000+2000),
+        rolling: Math.floor(Math.random()*10+1),
+      }))));
+    }
+    // 分页
+    const start = (completionPage-1)*completionPageSize;
+    const end = start+completionPageSize;
+    return data.slice(start, end);
+  }
+
+  function getCompletionTotal(field: string) {
+    // 合计行统计
+    const regions = ['华北', '东北', '华东', '华南', '西北', '云南', '烟台', '南京', '重庆', '成都', '天津', '蓝天'];
+    const companies = ['分公司A', '分公司B', '分公司C'];
+    const airports = ['机场A', '机场B', '机场C'];
+    const [year, month] = completionYearMonth.split('-').map(Number);
+    let data = [];
+    if (completionTab === 'region') {
+      data = regions.map(region => ({
+        region,
+        month,
+        actual: Math.floor(Math.random()*10000+5000),
+        accumulated: Math.floor(Math.random()*50000+20000),
+        annualBudget: Math.floor(Math.random()*60000+30000),
+        lastYear: Math.floor(Math.random()*10000+5000),
+        lastYearAccumulated: Math.floor(Math.random()*50000+20000),
+      }));
+    } else if (completionTab === 'company') {
+      data = regions.flatMap(region => companies.map(company => ({
+        region,
+        company,
+        month,
+        actual: Math.floor(Math.random()*5000+2000),
+        accumulated: Math.floor(Math.random()*20000+10000),
+        annualBudget: Math.floor(Math.random()*25000+10000),
+        lastYear: Math.floor(Math.random()*5000+2000),
+        lastYearAccumulated: Math.floor(Math.random()*20000+10000),
+      })));
+    } else {
+      data = regions.flatMap(region => companies.flatMap(company => airports.map(airport => ({
+        region,
+        company,
+        airport,
+        month,
+        actual: Math.floor(Math.random()*2000+500),
+        accumulated: Math.floor(Math.random()*8000+2000),
+        annualBudget: Math.floor(Math.random()*10000+3000),
+        lastYear: Math.floor(Math.random()*2000+500),
+        lastYearAccumulated: Math.floor(Math.random()*8000+2000),
+      }))));
+    }
+    return data.reduce((sum, item) => sum + (item[field] ? Number(item[field]) : 0), 0).toLocaleString();
+  }
+
+  function renderCompletionPagination() {
+    // 分页控件
+    const regions = ['华北', '东北', '华东', '华南', '西北', '云南', '烟台', '南京', '重庆', '成都', '天津', '蓝天'];
+    const companies = ['分公司A', '分公司B', '分公司C'];
+    const airports = ['机场A', '机场B', '机场C'];
+    let total = 0;
+    if (completionTab === 'region') total = regions.length;
+    else if (completionTab === 'company') total = regions.length*companies.length;
+    else total = regions.length*companies.length*airports.length;
+    const totalPages = Math.ceil(total/completionPageSize);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between py-2">
+        <div className="text-sm text-slate-700">
+          显示第 {(completionPage-1)*completionPageSize+1} - {Math.min(completionPage*completionPageSize, total)} 条，共 {total} 条记录
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={()=>setCompletionPage(1)} disabled={completionPage===1}>首页</Button>
+          <Button size="sm" variant="outline" onClick={()=>setCompletionPage(p=>Math.max(1,p-1))} disabled={completionPage===1}>上一页</Button>
+          <span className="mx-2">{completionPage}/{totalPages}</span>
+          <Button size="sm" variant="outline" onClick={()=>setCompletionPage(p=>Math.min(totalPages,p+1))} disabled={completionPage===totalPages}>下一页</Button>
+          <Button size="sm" variant="outline" onClick={()=>setCompletionPage(totalPages)} disabled={completionPage===totalPages}>尾页</Button>
+          <Select value={completionPageSize+''} onValueChange={v=>{setCompletionPageSize(Number(v));setCompletionPage(1);}}>
+            <SelectTrigger className="h-8 w-16"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full pt-12">

@@ -493,7 +493,7 @@ const analysisData = {
   }
 };
 
-type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis" | "data-management" | "model-config" | "system-settings" | "reports" | "user-management" | "data-import" | "data-export" | "data-validation" | "data-backup" | "algorithm-config" | "parameter-tuning" | "model-validation" | "monthly-report" | "quarterly-report" | "annual-report" | "custom-report" | "role-management" | "region-management" | "system-config";
+type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis" | "deviation-analysis" | "completion-analysis" | "multi-model-config" | "data-management" | "model-config" | "system-settings" | "reports" | "user-management" | "data-import" | "data-export" | "data-validation" | "data-backup" | "algorithm-config" | "parameter-tuning" | "model-validation" | "monthly-report" | "quarterly-report" | "annual-report" | "custom-report" | "role-management" | "region-management" | "system-config";
 
 interface MenuItemType {
   id: string;
@@ -504,7 +504,7 @@ interface MenuItemType {
 
 export default function SalesForecastMain() {
   const [activeMenu, setActiveMenu] = useState<MenuItem>("upload");
-  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(["data-management", "model-config", "reports", "system-settings"]));
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(["analysis", "data-management", "model-config", "reports", "system-settings"]));
   const [sampleData, setSampleData] = useState<SampleData[]>(staticSampleData);
   const [forecastData, setForecastData] = useState<ForecastData[]>([
     { month: "2024-01", predicted: 1250, actual: 1280, confidence: 92 },
@@ -965,7 +965,16 @@ export default function SalesForecastMain() {
     { id: "preview", label: "样本数据查询", icon: FileTextIcon },
     { id: "forecast", label: "预测管理", icon: TrendingUpIcon },
     { id: "forecast-preview", label: "预测结果查询", icon: BarChart3Icon },
-    { id: "analysis", label: "预测分析", icon: PieChartIcon },
+    {
+      id: "analysis",
+      label: "预测分析",
+      icon: PieChartIcon,
+      children: [
+        { id: "deviation-analysis", label: "偏差分析", icon: TrendingUpIcon },
+        { id: "completion-analysis", label: "完成率分析", icon: TargetIcon },
+        { id: "multi-model-config", label: "多模型分析配置", icon: Settings }
+      ]
+    },
     {
       id: "data-management",
       label: "数据管理",
@@ -2309,21 +2318,21 @@ export default function SalesForecastMain() {
             </CardContent>
           </Card>
         );
-      case "analysis":
-        return (
-          <div className="space-y-6">
-            {/* 页面标题和层级选择 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PieChartIcon className="w-5 h-5" />
-                  预测分析
-                </CardTitle>
-                <CardDescription>
-                  依托模型算法输出，支持地区/合资公司、分公司、机场等层级的多维度预测结果分析
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+              case "deviation-analysis":
+          return (
+            <div className="space-y-6">
+              {/* 页面标题和层级选择 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUpIcon className="w-5 h-5" />
+                    预测结果偏差分析
+                  </CardTitle>
+                  <CardDescription>
+                    整合各公司上月预测与实际偏差及本月预测数据，多维呈现关键指标
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                 
                 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -2955,7 +2964,12 @@ export default function SalesForecastMain() {
               </CardContent>
             </Card>
 
-            {/* 2. 预测完成率分析 */}
+
+                     </div>
+        );
+
+        case "completion-analysis":
+          return (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -3024,168 +3038,34 @@ export default function SalesForecastMain() {
                 </div>
               </CardContent>
             </Card>
+          );
 
-            {/* 3. 加油量排名分析 */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrophyIcon className="w-5 h-5" />
-                      加油量排名分析
-                    </CardTitle>
-                    <CardDescription>
-                      源自上月与上上月排名前十机场汇报内容，支持TopX排名对比分析
-                    </CardDescription>
+        case "multi-model-config":
+          return (
+            <div className="space-y-6">
+              {/* 页面标题和层级选择 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    多模型分析配置
+                  </CardTitle>
+                  <CardDescription>
+                    配置多个预测模型的权重，实现加权综合预测分析
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-12">
+                    <Settings className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+                    <h3 className="text-lg font-medium mb-2">多模型配置中心</h3>
+                    <p className="text-slate-600">配置和管理多个预测模型的权重分配</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Select defaultValue="10">
-                      <SelectTrigger className="w-24">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">Top5</SelectItem>
-                        <SelectItem value="10">Top10</SelectItem>
-                        <SelectItem value="15">Top15</SelectItem>
-                        <SelectItem value="20">Top20</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={exportAnalysisData} variant="outline">
-                      <DownloadIcon className="w-4 h-4 mr-2" />
-                      导出数据
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {showTrendChart && (
-                  <div className="mb-6 p-4 border rounded-lg">
-                    <h4 className="text-sm font-medium mb-4">加油量排名趋势图</h4>
-                    <div className="h-64 bg-slate-50 rounded flex items-center justify-center">
-                      <div className="text-center text-slate-500">
-                        <TrophyIcon className="w-12 h-12 mx-auto mb-2" />
-                        <p>排名趋势图表区域</p>
-                        <p className="text-xs">显示Top机场加油量变化趋势</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-16">排名</TableHead>
-                        <TableHead>机场名称</TableHead>
-                        <TableHead>地区</TableHead>
-                        <TableHead>当月加油量</TableHead>
-                        <TableHead>上月加油量</TableHead>
-                        <TableHead>环比变化</TableHead>
-                        <TableHead>同比变化</TableHead>
-                        <TableHead>市场占比</TableHead>
-                        <TableHead>排名变化</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[
-                        {
-                          rank: 1,
-                          airport: "上海浦东机场",
-                          region: "华东",
-                          current: 1250,
-                          lastMonth: 1200,
-                          mom: 0.042,
-                          yoy: 0.08,
-                          marketShare: 15.2,
-                          rankChange: 0
-                        },
-                        {
-                          rank: 2,
-                          airport: "广州白云机场",
-                          region: "华南",
-                          current: 1150,
-                          lastMonth: 1180,
-                          mom: -0.025,
-                          yoy: 0.06,
-                          marketShare: 14.1,
-                          rankChange: 1
-                        },
-                        {
-                          rank: 3,
-                          airport: "北京首都机场",
-                          region: "华北",
-                          current: 1100,
-                          lastMonth: 1050,
-                          mom: 0.048,
-                          yoy: 0.12,
-                          marketShare: 13.5,
-                          rankChange: -1
-                        },
-                        {
-                          rank: 4,
-                          airport: "上海虹桥机场",
-                          region: "华东",
-                          current: 880,
-                          lastMonth: 850,
-                          mom: 0.035,
-                          yoy: 0.07,
-                          marketShare: 10.8,
-                          rankChange: 0
-                        },
-                        {
-                          rank: 5,
-                          airport: "南京禄口机场",
-                          region: "华东",
-                          current: 720,
-                          lastMonth: 680,
-                          mom: 0.059,
-                          yoy: 0.09,
-                          marketShare: 8.8,
-                          rankChange: 2
-                        }
-                      ].map((item) => (
-                        <TableRow key={item.rank}>
-                          <TableCell className="font-bold">
-                            <div className="flex items-center">
-                              {item.rank <= 3 && (
-                                <TrophyIcon className={`w-4 h-4 mr-1 ${item.rank === 1 ? 'text-yellow-500' : item.rank === 2 ? 'text-gray-400' : 'text-amber-600'}`} />
-                              )}
-                              {item.rank}
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">{item.airport}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{item.region}</Badge>
-                          </TableCell>
-                          <TableCell>{item.current.toLocaleString()}</TableCell>
-                          <TableCell>{item.lastMonth.toLocaleString()}</TableCell>
-                          <TableCell className={item.mom >= 0 ? "text-green-600" : "text-red-600"}>
-                            {(item.mom * 100).toFixed(2)}%
-                          </TableCell>
-                          <TableCell className={item.yoy >= 0 ? "text-green-600" : "text-red-600"}>
-                            {(item.yoy * 100).toFixed(2)}%
-                          </TableCell>
-                          <TableCell>{item.marketShare.toFixed(1)}%</TableCell>
-                          <TableCell>
-                            {item.rankChange === 0 ? (
-                              <Badge variant="secondary">-</Badge>
-                            ) : item.rankChange > 0 ? (
-                              <Badge variant="default" className="text-red-600">↓{item.rankChange}</Badge>
-                            ) : (
-                              <Badge variant="default" className="text-green-600">↑{Math.abs(item.rankChange)}</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-                     </div>
-        );
-      
-      // 新增菜单项的内容渲染
+                </CardContent>
+              </Card>
+            </div>
+          );
+
+        // 新增菜单项的内容渲染
       case "data-import":
         return (
           <Card>

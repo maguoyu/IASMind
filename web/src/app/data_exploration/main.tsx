@@ -1,7 +1,8 @@
 "use client";
 
 import { UploadOutlined, EyeOutlined, BarChartOutlined, FileTextOutlined, DeleteOutlined } from "@ant-design/icons";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ScatterChart, Scatter, AreaChart, Area, Legend } from 'recharts';
 
 interface DataFile {
   id: string;
@@ -13,7 +14,51 @@ interface DataFile {
 }
 
 export default function DataExplorationMain() {
-  const [uploadedFiles, setUploadedFiles] = useState<DataFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<DataFile[]>(() => [
+    // 预设一些测试数据文件
+    {
+      id: 'sample-1',
+      name: '销售数据分析.csv',
+      size: 24576,
+      type: 'text/csv',
+      uploadTime: new Date('2024-01-15'),
+      preview: [
+        { id: 1, name: "华东地区", value: 1200, category: "A", date: "2024-01-01" },
+        { id: 2, name: "华南地区", value: 1800, category: "B", date: "2024-01-02" },
+        { id: 3, name: "华北地区", value: 1500, category: "A", date: "2024-01-03" },
+        { id: 4, name: "西南地区", value: 3000, category: "C", date: "2024-01-04" },
+        { id: 5, name: "东北地区", value: 2500, category: "B", date: "2024-01-05" }
+      ]
+    },
+    {
+      id: 'sample-2',
+      name: '财务趋势分析.xlsx',
+      size: 51200,
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      uploadTime: new Date('2024-01-10'),
+      preview: [
+        { month: "1月", revenue: 1200, expenses: 800, profit: 400 },
+        { month: "2月", revenue: 1400, expenses: 900, profit: 500 },
+        { month: "3月", revenue: 1100, expenses: 700, profit: 400 },
+        { month: "4月", revenue: 1600, expenses: 1000, profit: 600 },
+        { month: "5月", revenue: 1800, expenses: 1200, profit: 600 }
+      ]
+    },
+    {
+      id: 'sample-3',
+      name: '用户行为数据.json',
+      size: 15360,
+      type: 'application/json',
+      uploadTime: new Date('2024-01-08'),
+      preview: [
+        { user_id: "U001", page_views: 25, session_duration: 180, conversion: true },
+        { user_id: "U002", page_views: 15, session_duration: 120, conversion: false },
+        { user_id: "U003", page_views: 35, session_duration: 240, conversion: true },
+        { user_id: "U004", page_views: 10, session_duration: 90, conversion: false },
+        { user_id: "U005", page_views: 30, session_duration: 200, conversion: true }
+      ]
+    }
+  ]);
   const [selectedFile, setSelectedFile] = useState<DataFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'visualization' | 'insights'>('preview');
@@ -54,8 +99,65 @@ export default function DataExplorationMain() {
     return [];
   };
 
+  // 生成可视化测试数据
+  const generateVisualizationData = useMemo(() => {
+    // 柱状图数据
+    const barData = [
+      { name: '类别A', value: 120, target: 100 },
+      { name: '类别B', value: 180, target: 150 },
+      { name: '类别C', value: 250, target: 200 },
+      { name: '类别D', value: 90, target: 120 },
+      { name: '类别E', value: 220, target: 180 }
+    ];
+
+    // 饼图数据
+    const pieData = [
+      { name: '类别A', value: 120, color: '#8884d8' },
+      { name: '类别B', value: 180, color: '#82ca9d' },
+      { name: '类别C', value: 250, color: '#ffc658' },
+      { name: '类别D', value: 90, color: '#ff7300' },
+      { name: '类别E', value: 220, color: '#8dd1e1' }
+    ];
+
+    // 折线图数据
+    const lineData = [
+      { month: '1月', sales: 1200, profit: 800, cost: 400 },
+      { month: '2月', sales: 1400, profit: 900, cost: 500 },
+      { month: '3月', sales: 1100, profit: 700, cost: 400 },
+      { month: '4月', sales: 1600, profit: 1000, cost: 600 },
+      { month: '5月', sales: 1800, profit: 1200, cost: 600 },
+      { month: '6月', sales: 2000, profit: 1400, cost: 600 }
+    ];
+
+    // 散点图数据
+    const scatterData = [
+      { x: 10, y: 20, size: 5, category: 'A' },
+      { x: 15, y: 35, size: 8, category: 'B' },
+      { x: 20, y: 25, size: 6, category: 'A' },
+      { x: 25, y: 45, size: 10, category: 'C' },
+      { x: 30, y: 30, size: 7, category: 'B' },
+      { x: 35, y: 55, size: 12, category: 'C' },
+      { x: 40, y: 40, size: 9, category: 'A' },
+      { x: 45, y: 65, size: 15, category: 'C' }
+    ];
+
+    // 面积图数据
+    const areaData = [
+      { month: '1月', revenue: 1200, expenses: 800, profit: 400 },
+      { month: '2月', revenue: 1400, expenses: 900, profit: 500 },
+      { month: '3月', revenue: 1100, expenses: 700, profit: 400 },
+      { month: '4月', revenue: 1600, expenses: 1000, profit: 600 },
+      { month: '5月', revenue: 1800, expenses: 1200, profit: 600 },
+      { month: '6月', revenue: 2000, expenses: 1400, profit: 600 }
+    ];
+
+    return { barData, pieData, lineData, scatterData, areaData };
+  }, []);
+
   const handleFileSelect = (file: DataFile) => {
     setSelectedFile(file);
+    // 自动切换到可视化标签页
+    setActiveTab('visualization');
   };
 
   const handleFileDelete = (fileId: string) => {
@@ -224,39 +326,130 @@ export default function DataExplorationMain() {
 
               {activeTab === 'visualization' && (
                 <div className="p-6">
-                  <div className="mb-4">
+                  <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <BarChartOutlined />
-                      数据可视化
+                      数据可视化 - {selectedFile.name}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      生成图表和可视化分析
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      基于上传的数据生成图表和可视化分析
                     </p>
+                    
+                    {/* 数据统计卡片 */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          {selectedFile.preview?.length || 0}
+                        </div>
+                        <div className="text-sm text-blue-600 dark:text-blue-400">数据记录</div>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {selectedFile.preview && selectedFile.preview.length > 0 ? Object.keys(selectedFile.preview[0]).length : 0}
+                        </div>
+                        <div className="text-sm text-green-600 dark:text-green-400">数据字段</div>
+                      </div>
+                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                          {formatFileSize(selectedFile.size)}
+                        </div>
+                        <div className="text-sm text-purple-600 dark:text-purple-400">文件大小</div>
+                      </div>
+                      <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                          {selectedFile.uploadTime.toLocaleDateString()}
+                        </div>
+                        <div className="text-sm text-orange-600 dark:text-orange-400">上传时间</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">柱状图</h4>
-                      <div className="h-40 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                        <p className="text-gray-500 dark:text-gray-400">图表区域 - 展示分类数据</p>
-                      </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* 柱状图 */}
+                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">分类数据对比</h4>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={generateVisualizationData.barData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="value" fill="#8884d8" name="实际值" />
+                          <Bar dataKey="target" fill="#82ca9d" name="目标值" />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">饼图</h4>
-                      <div className="h-40 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                        <p className="text-gray-500 dark:text-gray-400">图表区域 - 展示比例关系</p>
-                      </div>
+
+                    {/* 饼图 */}
+                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">数据分布比例</h4>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={generateVisualizationData.pieData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {generateVisualizationData.pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">折线图</h4>
-                      <div className="h-40 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                        <p className="text-gray-500 dark:text-gray-400">图表区域 - 展示趋势变化</p>
-                      </div>
+
+                    {/* 折线图 */}
+                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">趋势分析</h4>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={generateVisualizationData.lineData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} name="销售额" />
+                          <Line type="monotone" dataKey="profit" stroke="#82ca9d" strokeWidth={2} name="利润" />
+                          <Line type="monotone" dataKey="cost" stroke="#ffc658" strokeWidth={2} name="成本" />
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">散点图</h4>
-                      <div className="h-40 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                        <p className="text-gray-500 dark:text-gray-400">图表区域 - 展示相关性</p>
-                      </div>
+
+                    {/* 散点图 */}
+                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">相关性分析</h4>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <ScatterChart data={generateVisualizationData.scatterData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" dataKey="x" name="X轴" />
+                          <YAxis type="number" dataKey="y" name="Y轴" />
+                          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                          <Scatter dataKey="y" fill="#8884d8" />
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* 面积图 */}
+                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 lg:col-span-2">
+                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">财务趋势分析</h4>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={generateVisualizationData.areaData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Area type="monotone" dataKey="revenue" stackId="1" stroke="#8884d8" fill="#8884d8" name="收入" />
+                          <Area type="monotone" dataKey="expenses" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="支出" />
+                          <Area type="monotone" dataKey="profit" stackId="1" stroke="#ffc658" fill="#ffc658" name="利润" />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
                 </div>

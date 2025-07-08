@@ -55,7 +55,11 @@ def get_web_search_tool(max_search_results: int):
             name="web_search",
             wrapper=SearxSearchWrapper(
                 searx_host=os.getenv("SEARX_HOST", ""),
-            ),
+                k=max_search_results,
+            ),   
+        kwargs={
+        "engines": ["baidu","360search","sogou"],  # 指定搜索引擎
+        "categories": "general", }
         )
     elif SELECTED_SEARCH_ENGINE == SearchEngine.ARXIV.value:
         return LoggedArxivSearch(
@@ -68,3 +72,5 @@ def get_web_search_tool(max_search_results: int):
         )
     else:
         raise ValueError(f"Unsupported search engine: {SELECTED_SEARCH_ENGINE}")
+
+

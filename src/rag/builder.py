@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 from src.config.tools import SELECTED_RAG_PROVIDER, RAGProvider
-from src.rag.ragflow import RAGFlowProvider
+from src.rag.ragflow import RAGFlowProvider 
+from src.rag.milvus import LocalMilvusProvider
 from src.rag.retriever import Retriever
 
 

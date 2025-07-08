@@ -73,7 +73,8 @@ export default function HomePage() {
       icon: <LineChartOutlined className="text-2xl" />,
       href: "/sales_forecast",
       color: "bg-gradient-to-br from-pink-500 to-rose-600"
-    }
+    },
+
   ], []);
 
   return (

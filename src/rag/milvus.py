@@ -1,5 +1,7 @@
 from langchain_core.embeddings import Embeddings
 from langchain_milvus import Milvus, BM25BuiltInFunction
+from src.rag.retriever import Chunk, Document, Resource, Retriever
+
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 import os
 def milvus_vector_store(drop_old:  bool = False):
@@ -33,7 +35,33 @@ class LocalMilvusProvider(Retriever):
         self.vector_store = milvus_vector_store()
 
     def query_relevant_documents(self, query: str, resources: list[Resource] = []):
-        return self.vector_store.query_relevant_documents(query, resources)
+            # 初始化检索，并配置
 
-    def list_resources(self, query: str | None = None):
-        return self.vector_store.list_resources(query)
+        base_retriever = self.vector_store.as_retriever(
+        search_type="similarity",
+        search_kwargs={
+            "k": 5,  # 检索结果返回最相似的文档数量
+            "fetch_k": 20,  # 要传递给 MMR 算法的文档量
+            # "search_type": "mmr",
+            # "score_threshold": 0.7,  # 相似度阈值过滤
+             "ranker_type": "weighted",
+            "ranker_params": {"weights": [0.6, 0.4]}
+        }
+    )
+        return base_retriever.invoke(query)
+
+    def list_resources(self, query: str | None = None) -> list[Resource]:
+
+
+
+        resources = []
+
+        item = Resource(
+                uri=f"rag://dataset/{os.getenv("DOC_COLLECTION_NAME", "rag_docs")}",
+                title=f"milvus_collection:{os.getenv("DOC_COLLECTION_NAME", "rag_docs")}",
+                description="milvus",
+            )        
+        resources.append(item)
+
+        return resources
+

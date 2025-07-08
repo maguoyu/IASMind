@@ -1,16 +1,17 @@
 "use client";
 
 import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, Target as TargetIcon, ChevronDown, ChevronRight, Settings } from "lucide-react";
-import { useState, useEffect } from "react";
+import { ShoppingCartOutlined, DollarOutlined, UserOutlined, CalendarOutlined, FilterOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { CascaderPro } from "~/components/ui/cascader-pro";
 import type { CascaderOption } from "~/components/ui/cascader-pro";
@@ -494,7 +495,7 @@ const analysisData = {
   }
 };
 
-type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis" | "deviation-analysis" | "completion-analysis" | "multi-model-config" | "fuel-ranking-analysis" | "sales-statistics" | "sales-total" | "sales-domestic" | "sales-international" | "sales-foreign" | "sales-last-month-airline" | "sales-accumulated-airline";
+type MenuItem = "upload" | "preview" | "forecast" | "forecast-preview" | "analysis" | "deviation-analysis" | "completion-analysis" | "multi-model-config" | "fuel-ranking-analysis" | "sales-statistics" | "sales-total" | "sales-domestic" | "sales-international" | "sales-foreign" | "sales-last-month-airline" | "sales-accumulated-airline" | "sales-data-query";
 
 interface MenuItemType {
   id: string;
@@ -976,12 +977,14 @@ export default function SalesForecastMain() {
       label: "销售统计分析",
       icon: BarChart3Icon,
       children: [
+        { id: "sales-data-query", label: "销售数据查询", icon: BarChart3Icon },
         { id: "sales-total", label: "销售总量统计", icon: BarChart3Icon },
         { id: "sales-domestic", label: "国内销售统计", icon: BarChart3Icon },
         { id: "sales-international", label: "国际销售统计", icon: BarChart3Icon },
         { id: "sales-foreign", label: "外航销售统计", icon: BarChart3Icon },
         { id: "sales-last-month-airline", label: "上月销售统计", icon: BarChart3Icon },
         { id: "sales-accumulated-airline", label: "本年度累计销售统计", icon: BarChart3Icon },
+
       ]
     }
   ];
@@ -3707,6 +3710,9 @@ export default function SalesForecastMain() {
           </Card>
         );
 
+      case "sales-data-query":
+        return <SalesDataQuery />;
+
       default:
         return null;
     }
@@ -3919,6 +3925,468 @@ export default function SalesForecastMain() {
           {renderContent()}
         </div>
       </div>
+    </div>
+  );
+}
+
+// 销售数据查询组件
+function SalesDataQuery() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [regionFilter, setRegionFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+
+  // 模拟销售数据类型
+  interface SalesData {
+    id: string;
+    date: string;
+    product: string;
+    category: string;
+    customer: string;
+    amount: number;
+    quantity: number;
+    region: string;
+    status: 'completed' | 'pending' | 'cancelled';
+  }
+
+  // 模拟销售数据
+  const mockSalesData: SalesData[] = [
+    {
+      id: "S001",
+      date: "2024-01-15",
+      product: "航空汽油 A型",
+      category: "燃料",
+      customer: "航空公司A",
+      amount: 120000,
+      quantity: 5000,
+      region: "华东",
+      status: "completed"
+    },
+    {
+      id: "S002",
+      date: "2024-01-16",
+      product: "航空汽油 B型",
+      category: "燃料",
+      customer: "航空公司B",
+      amount: 85000,
+      quantity: 3500,
+      region: "华北",
+      status: "completed"
+    },
+    {
+      id: "S003",
+      date: "2024-01-17",
+      product: "航空汽油 A型",
+      category: "燃料",
+      customer: "航空公司C",
+      amount: 95000,
+      quantity: 4000,
+      region: "华南",
+      status: "pending"
+    },
+    {
+      id: "S004",
+      date: "2024-01-18",
+      product: "航空汽油 C型",
+      category: "燃料",
+      customer: "航空公司D",
+      amount: 150000,
+      quantity: 6000,
+      region: "西南",
+      status: "completed"
+    },
+    {
+      id: "S005",
+      date: "2024-01-19",
+      product: "航空汽油 B型",
+      category: "燃料",
+      customer: "航空公司E",
+      amount: 75000,
+      quantity: 3000,
+      region: "东北",
+      status: "cancelled"
+    },
+    {
+      id: "S006",
+      date: "2024-01-20",
+      product: "航空汽油 A型",
+      category: "燃料",
+      customer: "航空公司F",
+      amount: 110000,
+      quantity: 4500,
+      region: "华中",
+      status: "completed"
+    },
+    {
+      id: "S007",
+      date: "2024-01-21",
+      product: "航空汽油 C型",
+      category: "燃料",
+      customer: "航空公司G",
+      amount: 135000,
+      quantity: 5500,
+      region: "华东",
+      status: "pending"
+    },
+    {
+      id: "S008",
+      date: "2024-01-22",
+      product: "航空汽油 B型",
+      category: "燃料",
+      customer: "航空公司H",
+      amount: 90000,
+      quantity: 3700,
+      region: "华北",
+      status: "completed"
+    },
+    {
+      id: "S009",
+      date: "2024-01-23",
+      product: "航空汽油 A型",
+      category: "燃料",
+      customer: "航空公司I",
+      amount: 105000,
+      quantity: 4200,
+      region: "华南",
+      status: "completed"
+    },
+    {
+      id: "S010",
+      date: "2024-01-24",
+      product: "航空汽油 C型",
+      category: "燃料",
+      customer: "航空公司J",
+      amount: 145000,
+      quantity: 5800,
+      region: "西南",
+      status: "pending"
+    },
+    {
+      id: "S011",
+      date: "2024-01-25",
+      product: "航空汽油 B型",
+      category: "燃料",
+      customer: "航空公司K",
+      amount: 80000,
+      quantity: 3300,
+      region: "东北",
+      status: "completed"
+    },
+    {
+      id: "S012",
+      date: "2024-01-26",
+      product: "航空汽油 A型",
+      category: "燃料",
+      customer: "航空公司L",
+      amount: 125000,
+      quantity: 5100,
+      region: "华中",
+      status: "completed"
+    }
+  ];
+
+  // 筛选和搜索逻辑
+  const filteredData = useMemo(() => {
+    let filtered = mockSalesData;
+
+    // 搜索过滤
+    if (searchTerm) {
+      filtered = filtered.filter(item =>
+        item.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // 状态过滤
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(item => item.status === statusFilter);
+    }
+
+    // 区域过滤
+    if (regionFilter !== "all") {
+      filtered = filtered.filter(item => item.region === regionFilter);
+    }
+
+    return filtered;
+  }, [searchTerm, statusFilter, regionFilter]);
+
+  // 分页逻辑
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredData.slice(start, end);
+  }, [filteredData, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredData.length / pageSize);
+
+  // 重置筛选
+  const resetFilters = useCallback(() => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setRegionFilter("all");
+    setCurrentPage(1);
+  }, []);
+
+  // 状态样式
+  const getStatusBadge = (status: string) => {
+    const statusMap = {
+      completed: { label: "已完成", variant: "default" as const },
+      pending: { label: "待处理", variant: "secondary" as const },
+      cancelled: { label: "已取消", variant: "destructive" as const }
+    };
+    return statusMap[status as keyof typeof statusMap] || statusMap.completed;
+  };
+
+  // 统计数据
+  const stats = useMemo(() => {
+    const total = filteredData.length;
+    const completed = filteredData.filter(item => item.status === 'completed').length;
+    const pending = filteredData.filter(item => item.status === 'pending').length;
+    const totalAmount = filteredData.reduce((sum, item) => sum + item.amount, 0);
+    
+    return { total, completed, pending, totalAmount };
+  }, [filteredData]);
+
+  return (
+    <div className="space-y-6">
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                <ShoppingCartOutlined className="text-white text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {stats.total}
+                </div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  总订单数
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                <DollarOutlined className="text-white text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  ¥{(stats.totalAmount / 10000).toFixed(1)}万
+                </div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  总销售额
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <UserOutlined className="text-white text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {stats.completed}
+                </div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  已完成订单
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
+                <CalendarOutlined className="text-white text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {stats.pending}
+                </div>
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  待处理订单
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 搜索和筛选 */}
+      <Card className="border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FilterOutlined />
+            搜索和筛选
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="搜索产品、客户或订单号..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex gap-4">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部状态</SelectItem>
+                  <SelectItem value="completed">已完成</SelectItem>
+                  <SelectItem value="pending">待处理</SelectItem>
+                  <SelectItem value="cancelled">已取消</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={regionFilter} onValueChange={setRegionFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="区域" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部区域</SelectItem>
+                  <SelectItem value="华东">华东</SelectItem>
+                  <SelectItem value="华北">华北</SelectItem>
+                  <SelectItem value="华南">华南</SelectItem>
+                  <SelectItem value="华中">华中</SelectItem>
+                  <SelectItem value="西南">西南</SelectItem>
+                  <SelectItem value="东北">东北</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button variant="outline" onClick={resetFilters}>
+                <ReloadOutlined className="mr-2" />
+                重置
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 数据列表 */}
+      <Card className="border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>销售数据列表</CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
+                共 {filteredData.length} 条记录
+              </span>
+              <Button variant="outline" size="sm">
+                <DownloadOutlined className="mr-2" />
+                导出
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {paginatedData.map((item) => (
+              <div
+                key={item.id}
+                className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-mono text-sm bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                        {item.id}
+                      </span>
+                      <Badge {...getStatusBadge(item.status)}>
+                        {getStatusBadge(item.status).label}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="text-slate-600 dark:text-slate-400">产品</div>
+                        <div className="font-medium">{item.product}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-600 dark:text-slate-400">客户</div>
+                        <div className="font-medium">{item.customer}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-600 dark:text-slate-400">区域</div>
+                        <div className="font-medium">{item.region}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-600 dark:text-slate-400">日期</div>
+                        <div className="font-medium">{item.date}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      ¥{item.amount.toLocaleString()}
+                    </div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      数量: {item.quantity.toLocaleString()}L
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 分页 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                第 {currentPage} 页，共 {totalPages} 页
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                >
+                  上一页
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-8 h-8"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                >
+                  下一页
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

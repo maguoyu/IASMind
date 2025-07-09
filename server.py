@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log-level",
         type=str,
-        default="info",
+        default="debug",
         choices=["debug", "info", "warning", "error", "critical"],
         help="Log level (default: info)",
     )

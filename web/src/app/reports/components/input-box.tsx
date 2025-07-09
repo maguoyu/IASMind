@@ -3,9 +3,11 @@
 
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Lightbulb, X, FileText, TrendingUp, BarChart3, Settings } from "lucide-react";
+import { ArrowUp, Lightbulb, X, FileText, TrendingUp, BarChart3, Settings, Globe } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { mockKnowledgeBases } from "~/app/knowledge_base/mock-data";
+import type { KnowledgeBase } from "~/app/knowledge_base/types";
 import { Detective } from "~/components/deer-flow/icons/detective";
 import MessageInput, {
   type MessageInputRef,
@@ -103,6 +105,7 @@ export function InputBox({
   const [currentPrompt, setCurrentPrompt] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<typeof REPORT_TEMPLATES[0] | null>(null);
+  const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>([]);
 
   const handleSendMessage = useCallback(
     (message: string, resources: Array<Resource>) => {
@@ -175,6 +178,13 @@ export function InputBox({
       setIsEnhancing(false);
     }
   }, [currentPrompt, isEnhancing, reportStyle]);
+
+  // 知识库多选切换
+  const handleToggleKnowledgeBase = (id: string) => {
+    setSelectedKnowledgeBases((prev) =>
+      prev.includes(id) ? prev.filter((kb) => kb !== id) : [...prev, id],
+    );
+  };
 
   return (
     <div
@@ -366,18 +376,13 @@ export function InputBox({
             </Tooltip>
           )}
 
+          {/* 联网搜索按钮 */}
           <Tooltip
             className="max-w-60"
             title={
               <div>
-                <h3 className="mb-2 font-bold">
-                  Investigation Mode: {backgroundInvestigation ? "On" : "Off"}
-                </h3>
-                <p>
-                  When enabled, IAS_Mind will perform a quick search before
-                  planning. This is useful for researches related to ongoing
-                  events and news.
-                </p>
+                <h3 className="mb-2 font-bold">联网搜索</h3>
+                <p>开启后，IAS_Mind会在生成报告前进行实时互联网检索，获取最新信息。</p>
               </div>
             }
           >
@@ -387,14 +392,48 @@ export function InputBox({
                 backgroundInvestigation && "!border-brand !text-brand",
               )}
               variant="outline"
-              onClick={() =>
-                setEnableBackgroundInvestigation(!backgroundInvestigation)
-              }
+              onClick={() => setEnableBackgroundInvestigation(!backgroundInvestigation)}
             >
-              <Detective /> Investigation
+              <Globe /> 联网搜索
             </Button>
           </Tooltip>
-          <ReportStyleDialog />
+
+          {/* 知识库检索多选 */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                className={cn(
+                  "rounded-2xl",
+                  selectedKnowledgeBases.length > 0 && "!border-brand !text-brand"
+                )}
+                variant="outline"
+              >
+                知识库检索
+                {selectedKnowledgeBases.length > 0 && (
+                  <span className="ml-2 text-xs text-primary font-medium">
+                    {selectedKnowledgeBases.length}个已选
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-3">
+              <div className="font-medium mb-2 text-sm text-muted-foreground">选择知识库（可多选）</div>
+              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                {mockKnowledgeBases.map((kb) => (
+                  <label key={kb.id} className="flex items-center gap-2 cursor-pointer rounded hover:bg-accent/40 px-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedKnowledgeBases.includes(kb.id)}
+                      onChange={() => handleToggleKnowledgeBase(kb.id)}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm font-medium">{kb.name}</span>
+                    <span className="text-xs text-muted-foreground">{kb.description}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Tooltip title="Enhance prompt with AI">

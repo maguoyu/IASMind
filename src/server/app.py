@@ -17,6 +17,7 @@ from src.server.routers.mcp_router import router as mcp_router
 from src.server.routers.rag_router import router as rag_router
 from src.server.routers.config_router import router as config_router
 from src.server.routers.sales_forecast_router import router as sales_forecast_router
+from src.server.routers.reports_router import router as reports_router
 
 logger = logging.getLogger(__name__)
 
@@ -47,3 +48,4 @@ app.include_router(mcp_router)
 app.include_router(rag_router)
 app.include_router(config_router)
 app.include_router(sales_forecast_router)
+app.include_router(reports_router)

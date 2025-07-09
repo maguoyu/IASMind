@@ -45,7 +45,7 @@ export function MessagesBlock({ className }: { className?: string }) {
       const abortController = getGlobalAbortController();
       try {
         await sendMessage(
-          "deep_research/stream",
+          "reports/stream",
           message,
           {
             interruptFeedback:

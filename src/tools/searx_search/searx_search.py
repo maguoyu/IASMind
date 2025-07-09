@@ -442,10 +442,11 @@ class SearxSearchWrapper(BaseModel):
 
         return [
             {
-                "snippet": result.get("content", ""),
+                "content": result.get("content", ""),
                 "title": result["title"],
-                "link": result["url"],
+                "url": result["url"],
                 "engines": result["engines"],
+                "type":"page",
                 "category": result["category"],
             }
             for result in results
@@ -480,10 +481,11 @@ class SearxSearchWrapper(BaseModel):
 
         return [
             {
-                "snippet": result.get("content", ""),
+                "content": result.get("content", ""),
                 "title": result["title"],
-                "link": result["url"],
+                "url": result["url"],
                 "engines": result["engines"],
+                "type":"page",
                 "category": result["category"],
             }
             for result in results

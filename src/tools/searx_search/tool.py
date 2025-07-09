@@ -72,7 +72,7 @@ class SearxSearchResults(BaseTool):  # type: ignore[override, override]
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         """Use the tool."""
-        return str(self.wrapper.results(query, self.num_results, **self.kwargs))
+        return json.dumps(self.wrapper.results(query, self.num_results, **self.kwargs), ensure_ascii=False, indent=2)
 
     async def _arun(
         self,

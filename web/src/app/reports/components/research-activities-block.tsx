@@ -129,8 +129,7 @@ function WebSearchToolCall({ toolCall }: { toolCall: ToolCallRuntime }) {
     let results: SearchResult[] | undefined = undefined;
     try {
       results = toolCall.result ? parseJSON(toolCall.result, []) : undefined;
-      console.log('11111111111111111111111111111111111111111111111111111111');
-      console.log(results);
+
     } catch {
       results = undefined;
     }

@@ -7,12 +7,14 @@ import os
 
 from langchain_community.tools import BraveSearch, DuckDuckGoSearchResults
 from langchain_community.tools.arxiv import ArxivQueryRun
-from langchain_community.utilities import ArxivAPIWrapper, BraveSearchWrapper, SearxSearchWrapper
-from langchain_community.tools import  SearxSearchResults
+from langchain_community.utilities import ArxivAPIWrapper, BraveSearchWrapper
+
 from src.config import SearchEngine, SELECTED_SEARCH_ENGINE
 from src.tools.tavily_search.tavily_search_results_with_images import (
     TavilySearchResultsWithImages,
 )
+from src.tools.searx_search.tool import SearxSearchResults
+from src.tools.searx_search.searx_search import SearxSearchWrapper
 
 from src.tools.decorators import create_logged_tool
 

@@ -5,15 +5,15 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Send, Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity } from "lucide-react";
+import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, LineChart as RechartsLine, Line, Legend, AreaChart, Area } from 'recharts';
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
+import { InputBox } from "./components/input-box";
 
 // 消息类型定义
 interface ChatMessage {
@@ -149,7 +149,6 @@ const generateMockChart = (question: string): ChartData[] => {
 
 export default function Main() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
   const [selectedDataSource, setSelectedDataSource] = useState('sales_db');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -169,7 +168,6 @@ export default function Main() {
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
     setIsLoading(true);
 
     // 模拟 API 延迟
@@ -418,10 +416,10 @@ export default function Main() {
           </div>
 
           {/* 快速问题 / 输入区域 */}
-          <div className="relative flex h-42 shrink-0 pb-4">
+          <div className="relative flex shrink-0 pb-4 flex-col">
             {!isLoading && messages.length === 0 && (
               <motion.div
-                className="absolute top-[-218px] left-0 w-full"
+                className="w-full mb-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -477,36 +475,12 @@ export default function Main() {
               </motion.div>
             )}
 
-            {/* 输入框 */}
-            <div className="h-full w-full">
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <Input
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="用自然语言提问，比如：最近30天的销售趋势如何？"
-                    className="min-h-[48px] bg-background"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage(inputValue);
-                      }
-                    }}
-                    disabled={isLoading}
-                  />
-                </div>
-                <Button 
-                  onClick={() => handleSendMessage(inputValue)}
-                  disabled={!inputValue.trim() || isLoading}
-                  className="h-[48px] px-6"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                试试问："各地区销售额对比"、"产品类别利润分析"或"营销ROI趋势"
-              </p>
-            </div>
+            {/* 使用标准的 InputBox 组件 */}
+            <InputBox
+              className="h-full w-full"
+              responding={isLoading}
+              onSend={handleSendMessage}
+            />
           </div>
         </div>
       </div>

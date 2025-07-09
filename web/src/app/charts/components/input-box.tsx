@@ -6,11 +6,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Lightbulb, X } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { Detective } from "~/components/deer-flow/icons/detective";
+
 import MessageInput, {
   type MessageInputRef,
 } from "~/components/deer-flow/message-input";
-import { ReportStyleDialog } from "~/components/deer-flow/report-style-dialog";
+
 import { Tooltip } from "~/components/deer-flow/tooltip";
 import { BorderBeam } from "~/components/magicui/border-beam";
 import { Button } from "~/components/ui/button";
@@ -19,7 +19,6 @@ import { getConfig } from "~/core/api/config";
 import type { Option, Resource } from "~/core/messages";
 import {
   setEnableDeepThinking,
-  setEnableBackgroundInvestigation,
   useSettingsStore,
 } from "~/core/store";
 import { cn } from "~/lib/utils";
@@ -48,9 +47,6 @@ export function InputBox({
 }) {
   const enableDeepThinking = useSettingsStore(
     (state) => state.general.enableDeepThinking,
-  );
-  const backgroundInvestigation = useSettingsStore(
-    (state) => state.general.enableBackgroundInvestigation,
   );
   const reasoningModel = useMemo(() => getConfig().models.reasoning?.[0], []);
   const reportStyle = useSettingsStore((state) => state.general.reportStyle);
@@ -239,35 +235,7 @@ export function InputBox({
             </Tooltip>
           )}
 
-          <Tooltip
-            className="max-w-60"
-            title={
-              <div>
-                <h3 className="mb-2 font-bold">
-                  Investigation Mode: {backgroundInvestigation ? "On" : "Off"}
-                </h3>
-                <p>
-                  When enabled, IAS_Mind will perform a quick search before
-                  planning. This is useful for researches related to ongoing
-                  events and news.
-                </p>
-              </div>
-            }
-          >
-            <Button
-              className={cn(
-                "rounded-2xl",
-                backgroundInvestigation && "!border-brand !text-brand",
-              )}
-              variant="outline"
-              onClick={() =>
-                setEnableBackgroundInvestigation(!backgroundInvestigation)
-              }
-            >
-              <Detective /> Investigation
-            </Button>
-          </Tooltip>
-          <ReportStyleDialog />
+
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Tooltip title="Enhance prompt with AI">

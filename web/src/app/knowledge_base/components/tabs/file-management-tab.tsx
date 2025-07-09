@@ -442,10 +442,10 @@ export function FileManagementTab() {
             <Zap className="h-4 w-4 mr-2" />
             批量向量化 ({getSelectedCount()})
           </Button>
-          <Button onClick={() => setShowUploadDialog(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            上传文件
-          </Button>
+        <Button onClick={() => setShowUploadDialog(true)}>
+          <Upload className="h-4 w-4 mr-2" />
+          上传文件
+        </Button>
         </div>
       </div>
 
@@ -493,25 +493,25 @@ export function FileManagementTab() {
 
       {/* 排序选项和选择状态 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">排序:</span>
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="uploadedAt">上传时间</SelectItem>
-              <SelectItem value="name">文件名</SelectItem>
-              <SelectItem value="size">文件大小</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
-          >
-            {sortOrder === "asc" ? "升序" : "降序"}
-          </Button>
+      <div className="flex items-center gap-4">
+        <span className="text-sm text-muted-foreground">排序:</span>
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="uploadedAt">上传时间</SelectItem>
+            <SelectItem value="name">文件名</SelectItem>
+            <SelectItem value="size">文件大小</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+        >
+          {sortOrder === "asc" ? "升序" : "降序"}
+        </Button>
         </div>
         
         {getSelectedCount() > 0 && (
@@ -582,7 +582,7 @@ export function FileManagementTab() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {getStatusBadge(file.status)}
+                    {getStatusBadge(file.status)}
                       {vectorizingFiles.has(file.id) && (
                         <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
                       )}
@@ -636,10 +636,10 @@ export function FileManagementTab() {
                         </DropdownMenuItem>
                         
                         {file.status === "failed" && (
-                          <DropdownMenuItem onClick={() => handleRetryProcessing(file.id)}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            重新处理
-                          </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRetryProcessing(file.id)}>
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              重新处理
+                            </DropdownMenuItem>
                         )}
                         
                         <DropdownMenuSeparator />

@@ -177,12 +177,20 @@ const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
     }
 
     return (
-      <div className={className}>
+      <div
+        className={
+          className +
+          " max-h-[calc(2*1.75em+2rem)] min-h-[2.5rem] overflow-y-auto rounded-xl bg-white dark:bg-background"
+        }
+        style={{
+          boxSizing: "border-box",
+        }}
+      >
         <EditorRoot>
           <EditorContent
             immediatelyRender={false}
             extensions={extensions}
-            className="border-muted h-full w-full overflow-auto"
+            className="border-muted h-full w-full min-h-[2.5rem] max-h-[calc(2*1.75em+2rem)] overflow-y-auto"
             editorProps={{
               attributes: {
                 class:

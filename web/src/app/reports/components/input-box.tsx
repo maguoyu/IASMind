@@ -195,13 +195,13 @@ export function InputBox({
       ref={containerRef}
     >
       {/* 模板选择按钮和气泡浮层 */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-border/30">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">报告模板</span>
+          <span className="text-sm font-medium text-muted-foreground">报告模板</span>
           {selectedTemplate && (
             <span className="flex items-center">
               <span
-                className="ml-1 flex items-center rounded-full border bg-muted/60 px-3 py-1 text-xs text-primary shadow-sm"
+                className="ml-1 flex items-center rounded-full border bg-primary/10 px-3 py-1 text-xs text-primary shadow-sm"
                 style={{ lineHeight: 1.6 }}
               >
                 {selectedTemplate.title}
@@ -223,7 +223,7 @@ export function InputBox({
             <Button
               variant="outline"
               size="sm"
-              className="text-xs"
+              className="text-xs h-7 px-3"
               onClick={() => setShowTemplates(true)}
             >
               选择模板
@@ -266,7 +266,7 @@ export function InputBox({
       </div>
 
       {/* 输入框部分 */}
-      <div className="w-full">
+      <div className="w-full flex-1 flex flex-col">
         <AnimatePresence>
           {feedback && (
             <motion.div
@@ -335,8 +335,8 @@ export function InputBox({
         </AnimatePresence>
         <MessageInput
           className={cn(
-            "h-24 px-4 pt-5",
-            feedback && "pt-9",
+            "flex-1 px-4 pt-4 pb-2",
+            feedback && "pt-8",
             isEnhanceAnimating && "transition-all duration-500",
           )}
           ref={inputRef}
@@ -344,8 +344,8 @@ export function InputBox({
           onChange={setCurrentPrompt}
         />
       </div>
-      <div className="flex items-center px-4 py-2">
-        <div className="flex grow gap-2">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 bg-muted/20">
+        <div className="flex items-center gap-3">
           {reasoningModel && (
             <Tooltip
               className="max-w-60"
@@ -363,7 +363,7 @@ export function InputBox({
             >
               <Button
                 className={cn(
-                  "rounded-2xl",
+                  "rounded-2xl text-xs h-8 px-3",
                   enableDeepThinking && "!border-brand !text-brand",
                 )}
                 variant="outline"
@@ -371,7 +371,7 @@ export function InputBox({
                   setEnableDeepThinking(!enableDeepThinking);
                 }}
               >
-                <Lightbulb /> Deep Thinking
+                <Lightbulb className="w-3 h-3 mr-1" /> Deep Thinking
               </Button>
             </Tooltip>
           )}
@@ -388,13 +388,13 @@ export function InputBox({
           >
             <Button
               className={cn(
-                "rounded-2xl",
+                "rounded-2xl text-xs h-8 px-3",
                 backgroundInvestigation && "!border-brand !text-brand",
               )}
               variant="outline"
               onClick={() => setEnableBackgroundInvestigation(!backgroundInvestigation)}
             >
-              <Globe /> 联网搜索
+              <Globe className="w-3 h-3 mr-1" /> 联网搜索
             </Button>
           </Tooltip>
 
@@ -403,14 +403,14 @@ export function InputBox({
             <PopoverTrigger asChild>
               <Button
                 className={cn(
-                  "rounded-2xl",
+                  "rounded-2xl text-xs h-8 px-3",
                   selectedKnowledgeBases.length > 0 && "!border-brand !text-brand"
                 )}
                 variant="outline"
               >
                 知识库检索
                 {selectedKnowledgeBases.length > 0 && (
-                  <span className="ml-2 text-xs text-primary font-medium">
+                  <span className="ml-1 text-xs text-primary font-medium">
                     {selectedKnowledgeBases.length}个已选
                   </span>
                 )}
@@ -435,24 +435,24 @@ export function InputBox({
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex items-center gap-2">
           <Tooltip title="Enhance prompt with AI">
             <Button
               variant="ghost"
               size="icon"
               className={cn(
-                "hover:bg-accent h-10 w-10",
+                "hover:bg-accent h-8 w-8",
                 isEnhancing && "animate-pulse",
               )}
               onClick={handleEnhancePrompt}
               disabled={isEnhancing || currentPrompt.trim() === ""}
             >
               {isEnhancing ? (
-                <div className="flex h-10 w-10 items-center justify-center">
+                <div className="flex h-8 w-8 items-center justify-center">
                   <div className="bg-foreground h-3 w-3 animate-bounce rounded-full opacity-70" />
                 </div>
               ) : (
-                <MagicWandIcon className="text-brand" />
+                <MagicWandIcon className="text-brand w-4 h-4" />
               )}
             </Button>
           </Tooltip>
@@ -460,15 +460,15 @@ export function InputBox({
             <Button
               variant="outline"
               size="icon"
-              className={cn("h-10 w-10 rounded-full")}
+              className={cn("h-8 w-8 rounded-full")}
               onClick={() => inputRef.current?.submit()}
             >
               {responding ? (
-                <div className="flex h-10 w-10 items-center justify-center">
-                  <div className="bg-foreground h-4 w-4 rounded-sm opacity-70" />
+                <div className="flex h-8 w-8 items-center justify-center">
+                  <div className="bg-foreground h-3 w-3 rounded-sm opacity-70" />
                 </div>
               ) : (
-                <ArrowUp />
+                <ArrowUp className="w-4 h-4" />
               )}
             </Button>
           </Tooltip>

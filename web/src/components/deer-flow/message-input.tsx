@@ -34,6 +34,7 @@ export interface MessageInputProps {
   placeholder?: string;
   onChange?: (markdown: string) => void;
   onEnter?: (message: string, resources: Array<Resource>) => void;
+  disableMention?: boolean;
 }
 
 function formatMessage(content: JSONContent) {
@@ -75,7 +76,7 @@ function formatItem(item: JSONContent): {
 }
 
 const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
-  ({ className, onChange, onEnter }: MessageInputProps, ref) => {
+  ({ className, onChange, onEnter, placeholder, disableMention }: MessageInputProps, ref) => {
     const editorRef = useRef<Editor>(null);
     const handleEnterRef = useRef<
       ((message: string, resources: Array<Resource>) => void) | undefined
@@ -132,9 +133,9 @@ const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
         }),
         Placeholder.configure({
           showOnlyCurrent: false,
-          placeholder: provider
+          placeholder: placeholder || (provider && !disableMention
             ? "What can I do for you? \nYou may refer to RAG resources by using @."
-            : "我可以为您做哪些工作？",
+            : "我可以为您做哪些工作？"),
           emptyEditorClass: "placeholder",
         }),
         Extension.create({
@@ -154,7 +155,7 @@ const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
           },
         }),
       ];
-      if (provider) {
+      if (provider && !disableMention) {
         extensions.push(
           Mention.configure({
             HTMLAttributes: {
@@ -165,7 +166,7 @@ const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
         );
       }
       return extensions;
-    }, [provider]);
+    }, [provider, placeholder, disableMention]);
 
     if (loading) {
       return (

@@ -33,6 +33,7 @@ async def astream_workflow_generator(
         "auto_accepted_plan": auto_accepted_plan,
         "enable_background_investigation": enable_background_investigation,
         "research_topic": messages[-1]["content"] if messages else "",
+        "locale": "zh-CN",  # 确保计划生成使用中文
     }
     if not auto_accepted_plan and interrupt_feedback:
         resume_msg = f"[{interrupt_feedback}]"
@@ -66,8 +67,8 @@ async def astream_workflow_generator(
                         "content": event_data["__interrupt__"][0].value,
                         "finish_reason": "interrupt",
                         "options": [
-                            {"text": "Edit plan", "value": "edit_plan"},
-                            {"text": "Start research", "value": "accepted"},
+                            {"text": "编辑计划", "value": "edit_plan"},
+                            {"text": "开始调研", "value": "accepted"},
                         ],
                     },
                 )

@@ -14,10 +14,10 @@ export function Welcome({ className }: { className?: string }) {
       animate={{ opacity: 1, scale: 1 }}
     >
       <h3 className="mb-2 text-center text-3xl font-medium">
-        👋 Hello, there!
+        📊 智能报告分析
       </h3>
       <div className="text-muted-foreground px-4 text-center text-lg">
-        Welcome to{" "}
+        欢迎使用{" "}
         <a
           href="https://github.com/bytedance/deer-flow"
           target="_blank"
@@ -26,8 +26,14 @@ export function Welcome({ className }: { className?: string }) {
         >
           🧠 IAS_Mind
         </a>
-        , a deep research assistant built on cutting-edge language models, helps
-        you search on web, browse information, and handle complex tasks.
+        {" "}智能报告分析系统。基于先进的语言模型，为您提供专业的报告生成服务。
+      </div>
+      <div className="text-muted-foreground mt-4 px-4 text-center text-base">
+        <p className="mb-2">✨ 核心功能：</p>
+        <p className="mb-1">• 多源数据整合（知识库、网络搜索、数据库）</p>
+        <p className="mb-1">• 智能报告生成与可视化图表</p>
+        <p className="mb-1">• 多格式导出（HTML、Markdown、PDF、Word）</p>
+        <p>• 结构化报告（目录、标题、段落、结论）</p>
       </div>
     </motion.div>
   );

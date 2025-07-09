@@ -8,10 +8,10 @@ import { cn } from "~/lib/utils";
 import { Welcome } from "./welcome";
 
 const questions = [
-  "How many times taller is the Eiffel Tower than the tallest building in the world?",
-  "How many years does an average Tesla battery last compared to a gasoline engine?",
-  "How many liters of water are required to produce 1 kg of beef?",
-  "How many times faster is the speed of light compared to the speed of sound?",
+  "请分析2024年航空燃油价格走势及对航空公司运营成本的影响报告",
+  "生成一份关于可持续航空燃料(SAF)发展现状及前景的研究报告",
+  "分析全球航空业碳排放政策对航油需求的影响并提供应对策略报告",
+  "生成一份关于航空燃油供应链优化及风险管理的研究报告",
 ];
 export function ConversationStarter({
   className,

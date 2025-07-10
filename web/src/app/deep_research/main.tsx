@@ -11,7 +11,7 @@ import { cn } from "~/lib/utils";
 import { MessagesBlock } from "./components/messages-block";
 import { ResearchBlock } from "./components/research-block";
 
-export default function Main() {
+export function DeepResearchMain() {
   const openResearchId = useStore((state) => state.openResearchId);
   const doubleColumnMode = useMemo(
     () => openResearchId !== null,

@@ -504,7 +504,7 @@ interface MenuItemType {
   children?: MenuItemType[];
 }
 
-export default function SalesForecastMain() {
+export function SalesForecastMain() {
   const [activeMenu, setActiveMenu] = useState<MenuItem>("upload");
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(["analysis", "data-management", "model-config", "reports", "system-settings"]));
   const [sampleData, setSampleData] = useState<SampleData[]>(staticSampleData);

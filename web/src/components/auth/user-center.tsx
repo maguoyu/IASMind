@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import { 
   User, 
   LogOut, 
-  Settings, 
-  Shield, 
   ChevronDown,
   UserCheck,
   Bell
@@ -53,14 +51,6 @@ export function UserCenter() {
 
   const handleProfile = () => {
     router.push('/auth/profile');
-  };
-
-  const handleSettings = () => {
-    router.push('/settings');
-  };
-
-  const handleUsers = () => {
-    router.push('/auth/users');
   };
 
   // 如果用户未登录，显示登录按钮
@@ -147,18 +137,6 @@ export function UserCenter() {
           <User className="mr-2 h-4 w-4" />
           <span>个人资料</span>
         </DropdownMenuItem>
-        
-        <DropdownMenuItem onClick={handleSettings}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>系统设置</span>
-        </DropdownMenuItem>
-        
-        {user.role === 'admin' && (
-          <DropdownMenuItem onClick={handleUsers}>
-            <Shield className="mr-2 h-4 w-4" />
-            <span>用户管理</span>
-          </DropdownMenuItem>
-        )}
         
         <DropdownMenuSeparator />
         

@@ -21,6 +21,7 @@ import {
   XCircle
 } from 'lucide-react';
 
+import { Layout } from '~/components/layout';
 import { AdminGuard } from '~/components/auth/auth-guard';
 import { useAuthStore } from '~/core/store/auth-store';
 import { authApi, UserInfo } from '~/core/api/auth';
@@ -114,7 +115,7 @@ export default function UsersPage() {
 
   return (
     <AdminGuard>
-      <div className="container mx-auto p-6 space-y-6">
+      <Layout>
         {/* 页面标题 */}
         <div className="flex items-center justify-between">
           <div>
@@ -397,7 +398,7 @@ export default function UsersPage() {
             </Card>
           </div>
         )}
-      </div>
+      </Layout>
     </AdminGuard>
   );
 } 

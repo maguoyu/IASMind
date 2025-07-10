@@ -147,7 +147,7 @@ const generateMockChart = (question: string): ChartData[] => {
   }];
 };
 
-export default function Main() {
+export function ChartsMain() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedDataSource, setSelectedDataSource] = useState('sales_db');
   const [isLoading, setIsLoading] = useState(false);

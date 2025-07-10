@@ -10,7 +10,7 @@ import { cn } from "~/lib/utils";
 
 import { MessagesBlock } from "./components/messages-block";
 
-export default function Main() {
+export function ChatbotMain() {
   const openResearchId = useStore((state) => state.openResearchId);
   const doubleColumnMode = useMemo(
     () => openResearchId !== null,
@@ -30,7 +30,6 @@ export default function Main() {
           doubleColumnMode && `w-[538px]`,
         )}
       />
-
     </div>
   );
 }

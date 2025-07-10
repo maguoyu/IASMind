@@ -13,7 +13,7 @@ interface DataFile {
   preview?: Record<string, unknown>[];
 }
 
-export default function DataExplorationMain() {
+export function DataExplorationMain() {
   const [uploadedFiles, setUploadedFiles] = useState<DataFile[]>(() => [
     // 预设一些测试数据文件
     {

@@ -3,18 +3,13 @@
 
 "use client";
 
-import { HomeOutlined, MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined, LineChartOutlined } from "@ant-design/icons";
-import Link from "next/link";
+import { MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined, LineChartOutlined } from "@ant-design/icons";
+import { Settings } from "lucide-react";
 import { useMemo } from "react";
+import Link from "next/link";
 
-import { Logo } from "~/components/deer-flow/logo";
-import { ThemeToggle } from "~/components/deer-flow/theme-toggle";
-import { Tooltip } from "~/components/deer-flow/tooltip";
-import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { UserCenter } from "~/components/auth/user-center";
-
-import { SettingsDialog } from "./settings/dialogs/settings-dialog";
+import { Layout } from "~/components/layout";
 
 interface WorkPanelItem {
   title: string;
@@ -75,30 +70,18 @@ export default function HomePage() {
       href: "/sales_forecast",
       color: "bg-gradient-to-br from-pink-500 to-rose-600"
     },
-
+    {
+      title: "系统管理",
+      description: "个人设置、用户管理、系统配置等管理功能",
+      icon: <Settings className="text-2xl" />,
+      href: "/system",
+      color: "bg-gradient-to-br from-violet-500 to-purple-600"
+    },
   ], []);
 
   return (
-    <div className="min-h-screen bg-app">
-      {/* Header */}
-      <header className="fixed top-0 left-0 flex h-16 w-full items-center justify-between px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 z-50">
-        <Logo />
-        <div className="flex items-center gap-2">
-          <Tooltip title="返回首页">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/">
-                <HomeOutlined />
-              </Link>
-            </Button>
-          </Tooltip>
-          <ThemeToggle />
-          <UserCenter />
-          <SettingsDialog />
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-6 pt-24 pb-12">
+    <Layout>
+      <div className="container mx-auto px-6 pb-12">
         {/* Welcome Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
@@ -163,28 +146,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
         </div>
-      </main>
-
-      {/* Footer */}
-      <Footer />
-    </div>
-  );
-}
-
-function Footer() {
-  const year = useMemo(() => new Date().getFullYear(), []);
-  return (
-    <footer className="container mx-auto px-6 mt-16">
-      <hr className="from-border/0 via-border/70 to-border/0 m-0 h-px w-full border-none bg-gradient-to-r" />
-      <div className="text-muted-foreground flex h-20 flex-col items-center justify-center text-sm">
-        <p className="text-center font-serif text-lg md:text-xl">
-          &quot;Originated from Open Source, give back to Open Source.&quot;
-        </p>
       </div>
-      <div className="text-muted-foreground mb-8 flex flex-col items-center justify-center text-xs">
-        <p>Licensed under MIT License</p>
-        <p>&copy; {year} IAS_Mind</p>
-      </div>
-    </footer>
+    </Layout>
   );
 }

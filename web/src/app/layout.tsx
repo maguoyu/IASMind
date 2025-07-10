@@ -9,6 +9,7 @@ import Script from "next/script";
 
 import { ThemeProviderWrapper } from "~/components/deer-flow/theme-provider-wrapper";
 import { RouteChangeHandler } from "~/components/deer-flow/route-change-handler";
+import { AuthProvider } from "~/components/auth/auth-provider";
 import { loadConfig } from "~/core/api/config";
 import { env } from "~/env";
 
@@ -49,7 +50,7 @@ export default async function RootLayout({
       <body className="bg-app">
         <ThemeProviderWrapper>
           <RouteChangeHandler />
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </ThemeProviderWrapper>
         <Toaster />
         {

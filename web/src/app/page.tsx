@@ -12,6 +12,7 @@ import { ThemeToggle } from "~/components/deer-flow/theme-toggle";
 import { Tooltip } from "~/components/deer-flow/tooltip";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { UserCenter } from "~/components/auth/user-center";
 
 import { SettingsDialog } from "./settings/dialogs/settings-dialog";
 
@@ -91,6 +92,7 @@ export default function HomePage() {
             </Button>
           </Tooltip>
           <ThemeToggle />
+          <UserCenter />
           <SettingsDialog />
         </div>
       </header>

@@ -21,6 +21,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    // 只在客户端环境中初始化认证
+    if (typeof window === 'undefined') {
+      setIsInitialized(true);
+      return;
+    }
+
     const initializeAuth = async () => {
       console.log('AuthProvider: Starting initialization...');
       console.log('AuthProvider: Current state - isAuthenticated:', isAuthenticated, 'accessToken:', !!accessToken, 'user:', !!user);

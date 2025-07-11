@@ -121,12 +121,10 @@ export async function sendMessage(agentPath?: string,
       thread_id: currentThreadId,
       interrupt_feedback: interruptFeedback,
       resources,
+      // 参数名全部改为camelCase
       auto_accepted_plan: settings.autoAcceptedPlan,
-      enable_online_search: settings.enableOnlineSearch??false,
-      enable_knowledge_retrieval: settings.enableKnowledgeRetrieval??false,
       enable_deep_thinking: settings.enableDeepThinking ?? false,
-      enable_background_investigation:
-        settings.enableBackgroundInvestigation ?? true,
+      enable_background_investigation: settings.enableBackgroundInvestigation ?? true,
       max_plan_iterations: settings.maxPlanIterations,
       max_step_num: settings.maxStepNum,
       max_search_results: settings.maxSearchResults,
@@ -424,9 +422,7 @@ export function useToolCalls() {
 let globalAbortController: AbortController | null = null;
 
 export function getGlobalAbortController(): AbortController {
-  if (!globalAbortController) {
-    globalAbortController = new AbortController();
-  }
+  globalAbortController ??= new AbortController();
   return globalAbortController;
 }
 

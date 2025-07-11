@@ -44,7 +44,7 @@ export function AuthGuard({
       // 检查会话是否有效
       if (isAuthenticated && !checkSession()) {
         // 会话无效，重定向到登录页
-        router.push(`/auth/login?redirect_uri=${encodeURIComponent(pathname)}`);
+        router.push(`/auth/login?redirect_uri=${encodeURIComponent(pathname ?? '/')}`);
         return;
       }
     }
@@ -68,7 +68,7 @@ export function AuthGuard({
   // 如果未认证，重定向到登录页
   if (!isAuthenticated) {
     if (typeof window !== 'undefined') {
-      router.push(`/auth/login?redirect_uri=${encodeURIComponent(pathname)}`);
+      router.push(`/auth/login?redirect_uri=${encodeURIComponent(pathname ?? '/')}`);
     }
     return fallback;
   }

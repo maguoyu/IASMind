@@ -153,7 +153,7 @@ export function FileUploadDialog({
       case "processing":
         return "default";
       case "completed":
-        return "success";
+        return "secondary";
       case "failed":
         return "destructive";
       default:

@@ -296,7 +296,7 @@ export function DataExplorationMain() {
                       <table className="w-full border-collapse border border-gray-200 dark:border-gray-700">
                         <thead>
                           <tr className="bg-gray-50 dark:bg-gray-800">
-                            {Object.keys(selectedFile.preview[0]).map((key) => (
+                            {Object.keys(selectedFile.preview[0] ?? {}).map((key) => (
                               <th key={key} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {key}
                               </th>
@@ -345,7 +345,7 @@ export function DataExplorationMain() {
                       </div>
                       <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
                         <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {selectedFile.preview && selectedFile.preview.length > 0 ? Object.keys(selectedFile.preview[0]).length : 0}
+                          {selectedFile.preview && selectedFile.preview.length > 0 ? Object.keys(selectedFile.preview[0] ?? {}).length : 0}
                         </div>
                         <div className="text-sm text-green-600 dark:text-green-400">数据字段</div>
                       </div>

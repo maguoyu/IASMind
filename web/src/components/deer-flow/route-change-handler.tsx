@@ -20,8 +20,8 @@ export function RouteChangeHandler() {
       const isFromAgentPage = agentPages.some(page => 
         previousPathname.current?.startsWith(page)
       );
-      const isToAgentPage = agentPages.some(page => 
-        pathname.startsWith(page)
+            const isToAgentPage = agentPages.some(page =>
+        pathname?.startsWith(page) ?? false
       );
       
       if (isFromAgentPage || isToAgentPage) {

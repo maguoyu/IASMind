@@ -2937,7 +2937,7 @@ export default function SalesForecastMain() {
                            <TableCell>{item.predicted?.toLocaleString()}</TableCell>
                            {showWeightedForecast && (
                              <TableCell className="font-medium text-blue-600">
-                               {calculateWeightedForecast(item.month).toLocaleString()}
+                               {calculateWeightedForecast(item.month)?.toLocaleString() ?? '0'}
                              </TableCell>
                            )}
                            <TableCell className={item.predictedYoy >= 0 ? "text-green-600" : "text-red-600"}>

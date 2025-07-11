@@ -9,15 +9,17 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { 
   authApi, 
+  isTokenExpired,
+  getTokenPayload
+} from '~/core/api/auth';
+import type { 
   LoginRequest, 
   LoginResponse, 
   UserInfo, 
   UserUpdateRequest, 
   PasswordChangeRequest,
   RefreshTokenRequest,
-  LogoutRequest,
-  isTokenExpired,
-  getTokenPayload
+  LogoutRequest
 } from '~/core/api/auth';
 
 interface AuthState {
@@ -101,8 +103,8 @@ export const useAuthStore = create<AuthStore>()(
           const response: LoginResponse = await authApi.login(request);
           
           const tokenPayload = getTokenPayload(response.access_token);
-          const sessionId = tokenPayload?.session_id;
-          const expiry = tokenPayload?.exp;
+          const sessionId = tokenPayload?.session_id as string | undefined;
+          const expiry = tokenPayload?.exp as number | undefined;
           
           const newState: Partial<AuthState> = {
             isAuthenticated: true,
@@ -125,10 +127,11 @@ export const useAuthStore = create<AuthStore>()(
           get().setupAutoRefresh();
           
           return true;
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : '登录失败';
           set({ 
             isLoading: false, 
-            error: error.message || '登录失败' 
+            error: errorMessage
           });
           return false;
         }
@@ -170,8 +173,8 @@ export const useAuthStore = create<AuthStore>()(
           const response: LoginResponse = await authApi.refreshToken(refreshRequest);
           
           const tokenPayload = getTokenPayload(response.access_token);
-          const sessionId = tokenPayload?.session_id;
-          const expiry = tokenPayload?.exp;
+          const sessionId = tokenPayload?.session_id as string | undefined;
+          const expiry = tokenPayload?.exp as number | undefined;
           
           set({
             accessToken: response.access_token,
@@ -185,7 +188,7 @@ export const useAuthStore = create<AuthStore>()(
           });
           
           return true;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('刷新令牌失败:', error);
           get().clearAuth();
           return false;
@@ -204,7 +207,7 @@ export const useAuthStore = create<AuthStore>()(
           const user = await authApi.getCurrentUser(accessToken);
           set({ user, permissions: user.permissions, role: user.role });
           return user;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('获取用户信息失败:', error);
           return null;
         }
@@ -222,8 +225,9 @@ export const useAuthStore = create<AuthStore>()(
           const user = await authApi.updateCurrentUser(request, accessToken);
           set({ user });
           return user;
-        } catch (error: any) {
-          set({ error: error.message });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : '更新用户信息失败';
+          set({ error: errorMessage });
           return null;
         }
       },
@@ -239,8 +243,9 @@ export const useAuthStore = create<AuthStore>()(
         try {
           await authApi.changePassword(request, accessToken);
           return true;
-        } catch (error: any) {
-          set({ error: error.message });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : '修改密码失败';
+          set({ error: errorMessage });
           return false;
         }
       },
@@ -318,11 +323,12 @@ export const useAuthStore = create<AuthStore>()(
           const refreshTime = (tokenExpiry - currentTime - 300) * 1000; // 转换为毫秒
           
           if (refreshTime > 0) {
-            refreshTimer = setTimeout(async () => {
-              const success = await get().refreshAccessToken();
-              if (success) {
-                get().setupAutoRefresh(); // 设置下次刷新
-              }
+            refreshTimer = setTimeout(() => {
+              void get().refreshAccessToken().then(success => {
+                if (success) {
+                  get().setupAutoRefresh(); // 设置下次刷新
+                }
+              });
             }, refreshTime);
           }
         }
@@ -355,7 +361,7 @@ export const useAuthStore = create<AuthStore>()(
           
           if (currentTime > tokenExpiry) {
             // 尝试自动刷新token
-            get().refreshAccessToken().then(success => {
+            void get().refreshAccessToken().then(success => {
               if (!success) {
                 get().clearAuth();
               }

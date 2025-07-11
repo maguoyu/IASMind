@@ -298,7 +298,7 @@ export const isTokenExpired = (token: string): boolean => {
   }
 };
 
-export const getTokenPayload = (token: string): any => {
+export const getTokenPayload = (token: string): Record<string, unknown> | null => {
   try {
     if (!token) return null;
     const parts = token.split('.');

@@ -2837,8 +2837,8 @@ export function SalesForecastMain() {
                         {getCompletionTableData().map((item, idx) => (
                           <TableRow key={idx}>
                             {completionTab === 'region' && <TableCell>{item.region}</TableCell>}
-                            {completionTab === 'company' && <><TableCell>{item.region}</TableCell><TableCell>{item.company}</TableCell></>}
-                            {completionTab === 'airport' && <><TableCell>{item.region}</TableCell><TableCell>{item.company}</TableCell><TableCell>{item.airport}</TableCell></>}
+                            {completionTab === 'company' && <><TableCell>{item.region}</TableCell><TableCell>{'company' in item ? String(item.company) : ''}</TableCell></>}
+{completionTab === 'airport' && <><TableCell>{item.region}</TableCell><TableCell>{'company' in item ? String(item.company) : ''}</TableCell><TableCell>{'airport' in item ? String(item.airport) : ''}</TableCell></>}
                             <TableCell>{item.month}</TableCell>
                             <TableCell>{item.actual}</TableCell>
                             <TableCell>{item.yoy}%</TableCell>
@@ -3871,7 +3871,7 @@ export function SalesForecastMain() {
         lastYearAccumulated: Math.floor(Math.random()*8000+2000),
       }))));
     }
-    return data.reduce((sum, item) => sum + (item[field] ? Number(item[field]) : 0), 0).toLocaleString();
+    return data.reduce((sum, item) => sum + (item[field as keyof typeof item] ? Number(item[field as keyof typeof item]) : 0), 0).toLocaleString();
   }
 
   function renderCompletionPagination() {

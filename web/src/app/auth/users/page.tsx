@@ -24,7 +24,8 @@ import {
 import { Layout } from '~/components/layout';
 import { AdminGuard } from '~/components/auth/auth-guard';
 import { useAuthStore } from '~/core/store/auth-store';
-import { authApi, UserInfo } from '~/core/api/auth';
+import { authApi } from '~/core/api/auth';
+import type { UserInfo } from '~/core/api/auth';
 
 interface UserListItem extends UserInfo {
   password_hash?: string;

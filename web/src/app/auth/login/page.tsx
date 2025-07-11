@@ -62,7 +62,10 @@ export default function LoginPage() {
   
   // 组件加载时获取验证码
   useEffect(() => {
-    loadCaptcha();
+    // 只在客户端环境中加载验证码
+    if (typeof window !== 'undefined') {
+      loadCaptcha();
+    }
   }, []);
   
   // 处理表单输入

@@ -52,7 +52,7 @@ export function InputBox({
   const enableKnowledgeRetrieval = useSettingsStore(
     (state) => state.general.enableKnowledgeRetrieval,
   );
-  const reasoningModel = useMemo(() => getConfig().models.reasoning?.[0], []);
+  const reasoningModel = useMemo(() => getConfig().models?.reasoning?.[0] ?? "", []);
   const reportStyle = useSettingsStore((state) => state.general.reportStyle);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<MessageInputRef>(null);

@@ -52,7 +52,7 @@ export function useRAGProvider() {
       setLoading(false);
       return;
     }
-    setProvider(getConfig().rag.provider);
+    setProvider(getConfig().rag?.provider ?? "local_milvus");
     setLoading(false);
   }, []);
 

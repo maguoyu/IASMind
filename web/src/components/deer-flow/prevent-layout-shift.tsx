@@ -32,10 +32,9 @@ export function PreventLayoutShift() {
       return scrollbarWidth;
     }
     
-    // 强制显示滚动条
+    // 强制显示滚动条 - 由CSS处理，这里不再重复设置
     function forceScrollbar() {
-      document.documentElement.style.overflowY = 'scroll';
-      document.body.style.overflowY = 'auto';
+      // 不再设置，由CSS统一处理
     }
     
     // 处理body样式变化
@@ -47,8 +46,7 @@ export function PreventLayoutShift() {
         if (!bodyStyle.includes('padding-right')) {
           document.body.style.paddingRight = `${scrollbarWidth}px`;
         }
-        // 强制显示滚动条
-        document.body.style.overflowY = 'scroll';
+        // 滚动条由CSS统一处理，这里只补偿宽度
       }
     }
     
@@ -63,7 +61,6 @@ export function PreventLayoutShift() {
     
     // 初始化
     calculateScrollbarWidth();
-    forceScrollbar();
     
     // 开始监听
     observer.observe(document.body, {
@@ -74,7 +71,6 @@ export function PreventLayoutShift() {
     // 监听窗口大小变化
     const handleResize = () => {
       calculateScrollbarWidth();
-      forceScrollbar();
     };
     
     window.addEventListener('resize', handleResize);

@@ -56,9 +56,6 @@ export default async function RootLayout({
               
               document.documentElement.style.setProperty('--scrollbar-width', scrollbarWidth + 'px');
               
-              // 强制显示滚动条
-              document.documentElement.style.overflowY = 'scroll';
-              
               // 监听body变化
               const observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {

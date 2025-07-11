@@ -200,36 +200,34 @@
   --novel-highlight-gray: #3a3a3a;
 }
 
-/* 防抖动解决方案 - 最强力版本 */
+/* 智能滚动条管理 - 防抖动解决方案 */
 :root {
   --scrollbar-width: 17px;
 }
 
-/* 强制显示滚动条，防止抖动 */
+/* 智能显示滚动条，内容超出时才显示 */
 html {
-  overflow-y: scroll !important;
-  scrollbar-gutter: stable both-edges !important;
+  overflow-y: auto !important;
 }
 
 body {
-  overflow-y: auto !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
-/* 当任何元素被设置为overflow:hidden时，补偿滚动条宽度 */
+/* 当弹窗等组件设置overflow:hidden时，补偿滚动条宽度防止布局抖动 */
 body[style*="overflow"],
 body[style*="overflow-y"],
 body[data-scroll-locked],
 body.overflow-hidden,
 body.no-scroll {
   padding-right: var(--scrollbar-width) !important;
-  overflow-y: scroll !important;
+  overflow-y: auto !important;
 }
 
-/* 针对Radix UI的特殊处理 */
+/* 针对Radix UI组件的滚动区域处理 */
 body[data-radix-scroll-area-viewport] {
-  overflow-y: scroll !important;
+  overflow-y: auto !important;
 }
 
 /* 确保弹窗不会影响页面布局 */

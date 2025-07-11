@@ -9,6 +9,7 @@ import Script from "next/script";
 
 import { ThemeProviderWrapper } from "~/components/deer-flow/theme-provider-wrapper";
 import { RouteChangeHandler } from "~/components/deer-flow/route-change-handler";
+import { PreventLayoutShift } from "~/components/deer-flow/prevent-layout-shift";
 import { AuthProvider } from "~/components/auth/auth-provider";
 import { loadConfig } from "~/core/api/config";
 import { env } from "~/env";
@@ -35,6 +36,61 @@ export default async function RootLayout({
     <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <head>
         <script>{`window.__iasmindConfig = ${JSON.stringify(conf)}`}</script>
+        
+        {/* 防抖动：立即执行脚本 */}
+        <Script id="prevent-layout-shift" strategy="beforeInteractive">
+          {`
+            // 立即计算并设置滚动条宽度
+            (function() {
+              const outer = document.createElement('div');
+              outer.style.visibility = 'hidden';
+              outer.style.overflow = 'scroll';
+              outer.style.msOverflowStyle = 'scrollbar';
+              document.body.appendChild(outer);
+              
+              const inner = document.createElement('div');
+              outer.appendChild(inner);
+              
+              const scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
+              document.body.removeChild(outer);
+              
+              document.documentElement.style.setProperty('--scrollbar-width', scrollbarWidth + 'px');
+              
+              // 强制显示滚动条
+              document.documentElement.style.overflowY = 'scroll';
+              
+              // 监听body变化
+              const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                  if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    const target = mutation.target;
+                    const style = target.getAttribute('style') || '';
+                    
+                    if (style.includes('overflow') && style.includes('hidden')) {
+                      target.style.paddingRight = scrollbarWidth + 'px';
+                      target.style.overflowY = 'scroll';
+                    }
+                  }
+                });
+              });
+              
+              if (document.body) {
+                observer.observe(document.body, {
+                  attributes: true,
+                  attributeFilter: ['style', 'class']
+                });
+              } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                  observer.observe(document.body, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class']
+                  });
+                });
+              }
+            })();
+          `}
+        </Script>
+        
         {/* Define isSpace function globally to fix markdown-it issues with Next.js + Turbopack
           https://github.com/markdown-it/markdown-it/issues/1082#issuecomment-2749656365 */}
         <Script id="markdown-it-fix" strategy="beforeInteractive">
@@ -48,6 +104,7 @@ export default async function RootLayout({
         </Script>
       </head>
       <body className="bg-app">
+        <PreventLayoutShift />
         <ThemeProviderWrapper>
           <RouteChangeHandler />
           <AuthProvider>{children}</AuthProvider>

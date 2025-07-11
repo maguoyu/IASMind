@@ -369,7 +369,11 @@ export function KnowledgeBaseManagementTab() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent 
+                        align="end"
+                        sideOffset={8}
+                        avoidCollisions={true}
+                      >
                         <DropdownMenuLabel>操作</DropdownMenuLabel>
                         <DropdownMenuItem
                           onClick={() => {

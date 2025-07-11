@@ -200,10 +200,62 @@
   --novel-highlight-gray: #3a3a3a;
 }
 
+/* 防抖动解决方案 - 最强力版本 */
+:root {
+  --scrollbar-width: 17px;
+}
+
+/* 强制显示滚动条，防止抖动 */
+html {
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable both-edges !important;
+}
+
+body {
+  overflow-y: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 当任何元素被设置为overflow:hidden时，补偿滚动条宽度 */
+body[style*="overflow"],
+body[style*="overflow-y"],
+body[data-scroll-locked],
+body.overflow-hidden,
+body.no-scroll {
+  padding-right: var(--scrollbar-width) !important;
+  overflow-y: scroll !important;
+}
+
+/* 针对Radix UI的特殊处理 */
+body[data-radix-scroll-area-viewport] {
+  overflow-y: scroll !important;
+}
+
+/* 确保弹窗不会影响页面布局 */
+[data-radix-portal],
+[data-radix-popper-content-wrapper] {
+  position: fixed !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+[data-radix-portal] > *,
+[data-radix-popper-content-wrapper] > * {
+  pointer-events: auto !important;
+}
+
+/* 防止任何动画或过渡影响布局 */
+[data-state="open"],
+[data-state="closed"] {
+  will-change: opacity, transform !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
   }

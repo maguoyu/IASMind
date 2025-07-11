@@ -30,7 +30,11 @@ export function ThemeToggle() {
           </Button>
         </DropdownMenuTrigger>
       </Tooltip>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent 
+        align="end"
+        sideOffset={8}
+        avoidCollisions={true}
+      >
         <DropdownMenuItem onClick={() => setTheme("light")}>
           <Sun className="mr-2 h-4 w-4" />
           <span

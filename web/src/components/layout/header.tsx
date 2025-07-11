@@ -111,7 +111,12 @@ export function Header({ showUserMenu = true, className = "" }: HeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent 
+              align="end" 
+              className="w-56"
+              sideOffset={8}
+              avoidCollisions={true}
+            >
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">{user.username}</p>

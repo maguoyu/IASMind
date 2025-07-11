@@ -8,8 +8,8 @@ import { DataExplorationMain } from "./main";
 
 export default function DataExplorationPage() {
   return (
-    <Layout showFooter={false}>
-      <div className="flex h-screen w-screen justify-center overscroll-none">
+    <Layout fullHeight={true} showFooter={false}>
+      <div className="flex h-full w-full justify-center overscroll-none">
         <DataExplorationMain />
       </div>
     </Layout>

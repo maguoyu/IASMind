@@ -17,6 +17,6 @@ class State(MessagesState):
     response: Optional[str]
     
     # Enhanced retrieval results
-    knowledge_base_results: Optional[List[Dict[str, Any]]] = None
-    web_search_results: Optional[List[Dict[str, Any]]] = None
-    fusion_enabled: bool = True  # Enable/disable fusion retrieval 
+    knowledge_base_results: Optional[List[Dict[str, Any]]]
+    web_search_results: Optional[List[Dict[str, Any]]]
+    fusion_enabled: bool 

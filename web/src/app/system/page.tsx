@@ -127,8 +127,8 @@ export default function SystemManagementPage() {
   }
 
   return (
-    <Layout>
-      <div className="flex h-full min-h-screen bg-slate-50 dark:bg-slate-900">
+    <Layout fullHeight={true} showFooter={false}>
+      <div className="flex h-full bg-slate-50 dark:bg-slate-900">
         {/* Sidebar */}
         <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -180,7 +180,7 @@ export default function SystemManagementPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:ml-0">
+        <div className="flex-1 flex flex-col lg:ml-0 overflow-hidden">
           {/* Mobile Header */}
           <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <Button
@@ -197,7 +197,7 @@ export default function SystemManagementPage() {
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-6 overflow-y-auto">
             {activeModuleData ? (
               <div className={activeModule === 'users' || activeModule === 'mcp' ? 'w-full' : 'max-w-4xl mx-auto'}>
                 {/* Page Header */}

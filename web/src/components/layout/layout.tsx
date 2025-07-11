@@ -12,6 +12,7 @@ interface LayoutProps {
   headerClassName?: string;
   footerClassName?: string;
   mainClassName?: string;
+  fullHeight?: boolean;
 }
 
 export function Layout({ 
@@ -20,17 +21,18 @@ export function Layout({
   showFooter = true,
   headerClassName = "",
   footerClassName = "",
-  mainClassName = ""
+  mainClassName = "",
+  fullHeight = false
 }: LayoutProps) {
   return (
-    <div className="min-h-screen bg-app">
+    <div className={`${fullHeight ? 'h-screen' : 'min-h-screen'} bg-app`}>
       <Header showUserMenu={showUserMenu} className={headerClassName} />
       
-      <main className={`pt-16 ${mainClassName}`}>
+      <main className={`pt-16 ${mainClassName} ${fullHeight ? 'h-[calc(100vh-4rem)]' : ''}`}>
         {children}
       </main>
       
-      {showFooter && <Footer className={footerClassName} />}
+      {showFooter && !fullHeight && <Footer className={footerClassName} />}
     </div>
   );
 } 

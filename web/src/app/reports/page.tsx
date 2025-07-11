@@ -8,8 +8,8 @@ import { ReportsMain } from "./main";
 
 export default function ReportsPage() {
   return (
-    <Layout showFooter={false}>
-      <div className="flex h-screen w-screen justify-center overscroll-none">
+    <Layout fullHeight={true} showFooter={false}>
+      <div className="flex h-full w-full justify-center overscroll-none">
         <ReportsMain />
       </div>
     </Layout>

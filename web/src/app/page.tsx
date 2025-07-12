@@ -125,27 +125,7 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Quick Stats */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          <Card className="text-center border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">100+</div>
-              <div className="text-slate-600 dark:text-slate-400">活跃用户</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">50+</div>
-              <div className="text-slate-600 dark:text-slate-400">功能模块</div>
-            </CardContent>
-          </Card>
-          <Card className="text-center border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">99.9%</div>
-              <div className="text-slate-600 dark:text-slate-400">系统稳定性</div>
-            </CardContent>
-          </Card>
-        </div>
+
       </div>
     </Layout>
   );

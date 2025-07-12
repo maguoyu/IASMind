@@ -53,6 +53,13 @@ export interface UserUpdateRequest {
   profile?: Record<string, any>;
 }
 
+export interface AdminUserUpdateRequest {
+  username?: string;
+  email?: string;
+  role?: 'admin' | 'user' | 'guest';
+  status?: 'active' | 'inactive' | 'suspended';
+}
+
 export interface PasswordChangeRequest {
   old_password: string;
   new_password: string;
@@ -254,6 +261,43 @@ export class AuthApi {
     });
 
     return this.handleResponse<UserInfo>(response);
+  }
+
+  /**
+   * 更新用户（管理员）
+   */
+  async updateUser(userId: string, request: AdminUserUpdateRequest, token: string): Promise<UserInfo> {
+    // 临时模拟实现，等待后端API完成
+    console.log('模拟更新用户:', userId, request);
+    
+    // 模拟网络延迟
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // 返回模拟的更新后的用户信息
+    const updatedUser: UserInfo = {
+      id: userId,
+      username: request.username || 'unknown',
+      email: request.email,
+      role: request.role || 'user',
+      status: request.status || 'active',
+      permissions: request.role === 'admin' ? ['admin'] : ['user'],
+      created_at: new Date().toISOString(),
+      last_login: new Date().toISOString()
+    };
+    
+    console.log('模拟更新成功:', updatedUser);
+    return updatedUser;
+    
+    // 实际API调用（暂时注释掉）
+    /*
+    const response = await fetch(`${this.baseUrl}/api/auth/admin/users/${userId}`, {
+      method: 'PUT',
+      headers: this.createHeaders(token),
+      body: JSON.stringify(request),
+    });
+
+    return this.handleResponse<UserInfo>(response);
+    */
   }
 
   /**

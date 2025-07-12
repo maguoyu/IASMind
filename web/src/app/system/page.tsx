@@ -28,6 +28,8 @@ import { useSettingsStore, changeSettings, saveSettings } from '~/core/store';
 import { GeneralTab } from '../settings/tabs/general-tab';
 import { MCPTab } from '../settings/tabs/mcp-tab';
 import { UsersTab } from './tabs/users-tab';
+import { RolesTab } from './tabs/roles-tab';
+import { PermissionsTab } from './tabs/permissions-tab';
 
 interface SystemModule {
   id: string;
@@ -83,6 +85,24 @@ export default function SystemManagementPage() {
       description: '管理系统用户、角色权限、账户状态',
       icon: <Users className="w-5 h-5" />,
       color: 'bg-gradient-to-br from-green-500 to-emerald-600',
+      disabled: user?.role !== 'admin',
+      badge: user?.role === 'admin' ? '管理员' : undefined
+    },
+    {
+      id: 'roles',
+      title: '角色管理',
+      description: '管理系统角色和权限分配',
+      icon: <Shield className="w-5 h-5" />,
+      color: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+      disabled: user?.role !== 'admin',
+      badge: user?.role === 'admin' ? '管理员' : undefined
+    },
+    {
+      id: 'permissions',
+      title: '权限管理',
+      description: '管理系统权限定义和配置',
+      icon: <User className="w-5 h-5" />,
+      color: 'bg-gradient-to-br from-teal-500 to-cyan-600',
       disabled: user?.role !== 'admin',
       badge: user?.role === 'admin' ? '管理员' : undefined
     },
@@ -199,7 +219,7 @@ export default function SystemManagementPage() {
           {/* Content Area */}
           <div className="flex-1 p-6 overflow-y-auto">
             {activeModuleData ? (
-              <div className={activeModule === 'users' || activeModule === 'mcp' ? 'w-full' : 'max-w-4xl mx-auto'}>
+              <div className={activeModule === 'users' || activeModule === 'roles' || activeModule === 'permissions' || activeModule === 'mcp' ? 'w-full' : 'max-w-4xl mx-auto'}>
                 {/* Page Header */}
                 <div className="mb-8">
                   <div className="flex items-center space-x-3 mb-4">
@@ -222,6 +242,8 @@ export default function SystemManagementPage() {
                   <CardContent className="p-6">
                     {/* 直接渲染内容，不加 max-h-96 overflow-auto */}
                     {activeModule === 'users' && <UsersTab />}
+                    {activeModule === 'roles' && <RolesTab />}
+                    {activeModule === 'permissions' && <PermissionsTab />}
                     {activeModule === 'general' && (
                       <GeneralTab 
                         settings={{ ...settings, ...settingsChanges }}
@@ -238,7 +260,7 @@ export default function SystemManagementPage() {
                 </Card>
 
                 {/* Action Buttons */}
-                {activeModule !== 'users' && (
+                {activeModule !== 'users' && activeModule !== 'roles' && activeModule !== 'permissions' && (
                   <div className="mt-6 flex justify-end space-x-3">
                     <Button 
                       variant="outline"

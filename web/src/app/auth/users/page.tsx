@@ -21,7 +21,8 @@ import {
   X, 
   Info, 
   Database,
-  AlertCircle
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 
 import { Layout } from '~/components/layout';
@@ -41,14 +42,23 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
     email: '',
     role: 'user' as 'admin' | 'user' | 'guest'
+  });
+  const [editFormData, setEditFormData] = useState({
+    username: '',
+    email: '',
+    role: 'user' as 'admin' | 'user' | 'guest',
+    status: 'active' as 'active' | 'inactive' | 'suspended'
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const router = useRouter();
@@ -79,6 +89,53 @@ export default function UsersPage() {
       setFormData({ username: '', password: '', email: '', role: 'user' });
     } catch (error: any) {
       setError(error.message || '创建用户失败');
+    }
+  };
+
+  // 打开编辑用户对话框
+  const openEditUser = (user: UserListItem) => {
+    setEditingUser(user);
+    setEditFormData({
+      username: user.username,
+      email: user.email || '',
+      role: user.role,
+      status: user.status
+    });
+    setShowEditForm(true);
+  };
+
+  // 更新用户
+  const updateUser = async () => {
+    if (!accessToken || !editingUser) {
+      console.error('缺少访问令牌或编辑用户信息');
+      setError('缺少必要的权限信息');
+      return;
+    }
+    
+    try {
+      console.log('开始更新用户:', editingUser.id, editFormData);
+      const updatedUser = await authApi.updateUser(editingUser.id, editFormData, accessToken);
+      console.log('用户更新成功:', updatedUser);
+      
+      // 更新本地用户列表
+      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...updatedUser } : u));
+      
+      // 关闭编辑对话框
+      setShowEditForm(false);
+      setEditingUser(null);
+      setEditFormData({ username: '', email: '', role: 'user', status: 'active' });
+      
+      // 清除错误信息
+      setError('');
+      
+      // 显示成功提示
+      setSuccess('用户信息已成功更新');
+      setTimeout(() => setSuccess(''), 3000); // 3秒后自动清除
+      
+      console.log('用户信息已成功更新');
+    } catch (error: any) {
+      console.error('更新用户失败:', error);
+      setError(error.message || '更新用户失败，请检查网络连接或联系管理员');
     }
   };
 
@@ -282,12 +339,18 @@ export default function UsersPage() {
             </div>
 
             {/* 错误提示 */}
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+                  {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert variant="default" className="border-green-200 bg-green-50 text-green-800">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
 
             {/* 创建用户表单 */}
             {showCreateForm && (
@@ -448,7 +511,7 @@ export default function UsersPage() {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            disabled={user.id === currentUser?.id}
+                            onClick={() => openEditUser(user)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -537,6 +600,94 @@ export default function UsersPage() {
                         onClick={() => setSelectedUser(null)}
                       >
                         关闭
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* 编辑用户模态框 */}
+            {showEditForm && editingUser && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <Card className="w-full max-w-2xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Edit className="h-5 w-5" />
+                      编辑用户
+                    </CardTitle>
+                    <CardDescription>
+                      修改用户 {editingUser.username} 的信息
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-username">用户名</Label>
+                        <Input
+                          id="edit-username"
+                          value={editFormData.username}
+                          onChange={(e) => setEditFormData({...editFormData, username: e.target.value})}
+                          placeholder="请输入用户名"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-email">邮箱</Label>
+                        <Input
+                          id="edit-email"
+                          type="email"
+                          value={editFormData.email}
+                          onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
+                          placeholder="请输入邮箱"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-role">角色</Label>
+                        <select
+                          id="edit-role"
+                          value={editFormData.role}
+                          onChange={(e) => setEditFormData({...editFormData, role: e.target.value as any})}
+                          className="w-full h-11 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="guest">访客</option>
+                          <option value="user">用户</option>
+                          <option value="admin">管理员</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-status">状态</Label>
+                        <select
+                          id="edit-status"
+                          value={editFormData.status}
+                          onChange={(e) => setEditFormData({...editFormData, status: e.target.value as any})}
+                          className="w-full h-11 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="active">活跃</option>
+                          <option value="inactive">不活跃</option>
+                          <option value="suspended">已停用</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowEditForm(false);
+                          setEditingUser(null);
+                          setEditFormData({ username: '', email: '', role: 'user', status: 'active' });
+                        }}
+                      >
+                        取消
+                      </Button>
+                      <Button 
+                        onClick={updateUser}
+                        disabled={!editFormData.username}
+                      >
+                        保存更改
                       </Button>
                     </div>
                   </CardContent>

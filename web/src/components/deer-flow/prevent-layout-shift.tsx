@@ -15,7 +15,7 @@ export function PreventLayoutShift() {
       const outer = document.createElement('div');
       outer.style.visibility = 'hidden';
       outer.style.overflow = 'scroll';
-      outer.style.msOverflowStyle = 'scrollbar';
+      (outer.style as any).msOverflowStyle = 'scrollbar';
       outer.style.position = 'absolute';
       outer.style.top = '-9999px';
       document.body.appendChild(outer);

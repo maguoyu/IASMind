@@ -20,7 +20,8 @@ import {
   Menu, 
   X, 
   Info, 
-  Database 
+  Database,
+  AlertCircle
 } from 'lucide-react';
 
 import { Layout } from '~/components/layout';

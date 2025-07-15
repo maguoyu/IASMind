@@ -3,14 +3,15 @@
 
 "use client";
 
+import { RefreshCw, FileText, Download, Trash2, Settings, Search, X } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
+
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { RefreshCw, FileText, Download, Trash2, Settings } from "lucide-react";
 import { knowledgeBaseApi, FileDocument, KnowledgeBase } from "~/core/api/knowledge-base";
 import { toast } from "sonner";
 
@@ -26,6 +27,8 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [totalFiles, setTotalFiles] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // 加载文件列表
   const LoadFiles = useCallback(async () => {
@@ -37,6 +40,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
         knowledge_base_id: selectedKnowledgeBase.id,
         page: currentPage,
         page_size: pageSize,
+        search: searchTerm.trim() || undefined, // 添加搜索参数
       });
       
       setFiles(response.files);
@@ -47,7 +51,37 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
     } finally {
       setLoading(false);
     }
-  }, [selectedKnowledgeBase?.id, currentPage, pageSize]);
+  }, [selectedKnowledgeBase?.id, currentPage, pageSize, searchTerm]);
+
+  // 处理搜索输入
+  const HandleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+    
+    // 清除之前的定时器
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // 重置到第一页
+    setCurrentPage(1);
+    
+    // 设置新的定时器，延迟搜索
+    const timeout = setTimeout(() => {
+      LoadFiles();
+    }, 500); // 500ms 延迟
+    
+    setSearchTimeout(timeout);
+  }, [searchTimeout, LoadFiles]);
+
+  // 清除搜索
+  const HandleClearSearch = useCallback(() => {
+    setSearchTerm("");
+    setCurrentPage(1);
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    LoadFiles();
+  }, [searchTimeout, LoadFiles]);
 
   // 删除文件
   const HandleDeleteFile = async (fileId: string) => {
@@ -103,6 +137,15 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
     LoadFiles();
   }, [LoadFiles, refreshTrigger]);
 
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
+
   if (!selectedKnowledgeBase) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -142,6 +185,33 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
               </span>
             </div>
           </CardTitle>
+          {/* 搜索框 */}
+          <div className="flex items-center gap-2 mt-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="搜索文件名称..."
+                value={searchTerm}
+                onChange={(e) => HandleSearchChange(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={HandleClearSearch}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {searchTerm && (
+              <span className="text-sm text-muted-foreground">
+                搜索: &ldquo;{searchTerm}&rdquo; - 找到 {totalFiles} 个文件
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -151,9 +221,14 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
           ) : files.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-sm font-medium text-muted-foreground">暂无文件</h3>
+              <h3 className="mt-2 text-sm font-medium text-muted-foreground">
+                {searchTerm ? "未找到匹配的文件" : "暂无文件"}
+              </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                上传文件到知识库开始管理
+                {searchTerm 
+                  ? `没有找到包含"${searchTerm}"的文件，请尝试其他关键词`
+                  : "上传文件到知识库开始管理"
+                }
               </p>
             </div>
           ) : (

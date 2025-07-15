@@ -408,6 +408,7 @@ export default function KnowledgeBasePage() {
                         <FileText className="h-5 w-5" />
                         {selectedKnowledgeBase?.name} - 文件管理
                       </div>
+                      
                       <Button onClick={() => setShowUploadDialog(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         上传文件

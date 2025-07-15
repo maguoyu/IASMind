@@ -119,41 +119,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
   return (
     <div className="space-y-6">
       {/* 统计信息 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>文件统计</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={LoadFiles}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{totalFiles}</div>
-              <div className="text-xs text-muted-foreground">总文件数</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{selectedKnowledgeBase.vector_count}</div>
-              <div className="text-xs text-muted-foreground">向量总数</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{selectedKnowledgeBase.embedding_model}</div>
-              <div className="text-xs text-muted-foreground">嵌入模型</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{selectedKnowledgeBase.chunk_size}</div>
-              <div className="text-xs text-muted-foreground">分块大小</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* 文件列表 */}
       <Card>

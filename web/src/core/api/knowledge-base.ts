@@ -153,13 +153,6 @@ export const knowledgeBaseApi = {
     status?: string;
     search?: string;
   }): Promise<KnowledgeBaseListResponse> {
-    const timestamp = new Date().toISOString();
-    const stack = new Error().stack;
-    console.log(`🔍 [${timestamp}] GetKnowledgeBases 被调用`, { 
-      params, 
-      callerStack: stack?.split('\n')[2]?.trim() 
-    });
-
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
@@ -167,23 +160,16 @@ export const knowledgeBaseApi = {
     if (params?.search) searchParams.append("search", params.search);
 
     const url = resolveServiceURL(`/api/knowledge_base/knowledge_bases?${searchParams.toString()}`);
-    console.log(`🌐 [${timestamp}] 发起请求: ${url}`);
 
     const response = await fetch(url, {
       method: "GET",
     });
 
     if (!response.ok) {
-      console.error(`❌ [${timestamp}] GetKnowledgeBases 请求失败: ${response.statusText}`);
       throw new Error(`获取知识库列表失败: ${response.statusText}`);
     }
 
-    const result = await response.json();
-    console.log(`✅ [${timestamp}] GetKnowledgeBases 请求成功`, {
-      count: result.knowledge_bases?.length || 0
-    });
-
-    return result;
+    return response.json();
   },
 
   // 获取知识库详情

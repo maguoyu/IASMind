@@ -28,8 +28,8 @@ router = APIRouter(
 )
 
 # 文件存储目录
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+FILE_PATH = os.getenv("FILE_PATH", "uploads")
+os.makedirs(FILE_PATH, exist_ok=True)
 
 
 class KnowledgeBaseCreateRequest(BaseModel):
@@ -76,7 +76,7 @@ class BatchVectorizeRequest(BaseModel):
 class HealthCheckResponse(BaseModel):
     status: str
     database: str
-    upload_dir: str
+    file_path: str
     timestamp: str
 
 
@@ -103,12 +103,12 @@ async def health_check():
         db_status = "disconnected"
     
     # 检查上传目录
-    upload_status = "accessible" if os.access(UPLOAD_DIR, os.W_OK) else "not_accessible"
+    upload_status = "accessible" if os.access(FILE_PATH, os.W_OK) else "not_accessible"
     
     return HealthCheckResponse(
         status="healthy" if db_status == "connected" else "unhealthy",
         database=db_status,
-        upload_dir=upload_status,
+        file_path=upload_status,
         timestamp=datetime.now().isoformat()
     )
 
@@ -302,7 +302,7 @@ async def UploadFile(
         # 生成文件路径
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_filename = f"{timestamp}_{file.filename.replace(' ', '_')}"
-        file_path = os.path.join(UPLOAD_DIR, safe_filename)
+        file_path = os.path.join(FILE_PATH, safe_filename)
         
         # 保存文件
         with open(file_path, "wb") as buffer:

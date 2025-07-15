@@ -273,7 +273,7 @@ export default function ApiDebugPanel() {
                       {healthStatus.status === "healthy" ? "健康" : "异常"}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
-                      数据库: {healthStatus.database} | 上传目录: {healthStatus.upload_dir}
+                      数据库: {healthStatus.database} | 文件目录: {healthStatus.file_path}
                     </span>
                   </div>
                 )}

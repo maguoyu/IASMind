@@ -93,7 +93,7 @@ export interface StatsResponse {
 export interface HealthCheckResponse {
   status: string;
   database: string;
-  upload_dir: string;
+  file_path: string;
   timestamp: string;
 }
 

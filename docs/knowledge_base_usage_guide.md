@@ -59,7 +59,7 @@ MYSQL_PASSWORD=your_password
 MYSQL_DATABASE=knowledge_base
 
 # 文件上传配置
-UPLOAD_DIR=uploads
+FILE_PATH=uploads
 ```
 
 ### 3. 安装依赖

@@ -58,6 +58,7 @@ export default function KnowledgeBasePage() {
   const [detailTab, setDetailTab] = useState<DetailTab>("dataset");
   const [searchTerm, setSearchTerm] = useState("");
   const [batchMode, setBatchMode] = useState(false);
+  const [fileListRefreshTrigger, setFileListRefreshTrigger] = useState(0);
 
   // 加载知识库列表
   const LoadKnowledgeBases = useCallback(async () => {
@@ -73,7 +74,7 @@ export default function KnowledgeBasePage() {
         } else if (current) {
           // 更新当前选中的知识库信息
           const updatedKb = response.knowledge_bases.find(kb => kb.id === current.id);
-          return updatedKb ?? null;
+          return updatedKb ? updatedKb : null;
         }
         return current;
       });
@@ -440,6 +441,7 @@ export default function KnowledgeBasePage() {
                 <SimpleFileManagement
                   selectedKnowledgeBase={selectedKnowledgeBase}
                   onRefresh={HandleUpdateKnowledgeBaseInfo}
+                  refreshTrigger={fileListRefreshTrigger}
                 />
               </div>
             </div>
@@ -476,7 +478,10 @@ export default function KnowledgeBasePage() {
           selectedKnowledgeBase={selectedKnowledgeBase}
           onUploadComplete={() => {
             setShowUploadDialog(false);
-            HandleRefresh();
+            // 刷新知识库信息
+            HandleUpdateKnowledgeBaseInfo();
+            // 触发文件列表刷新
+            setFileListRefreshTrigger(prev => prev + 1);
           }}
         />
       )}

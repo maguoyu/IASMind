@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -27,8 +27,8 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
   const [totalFiles, setTotalFiles] = useState(0);
 
   // 加载文件列表
-  const LoadFiles = async () => {
-    if (!selectedKnowledgeBase) return;
+  const LoadFiles = useCallback(async () => {
+    if (!selectedKnowledgeBase?.id) return;
     
     setLoading(true);
     try {
@@ -46,7 +46,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedKnowledgeBase?.id, currentPage, pageSize]);
 
   // 删除文件
   const HandleDeleteFile = async (fileId: string) => {
@@ -56,6 +56,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
       await knowledgeBaseApi.DeleteFile(fileId);
       toast.success("文件删除成功");
       LoadFiles();
+      // 通知父组件更新知识库信息（文件数量等）
       onRefresh();
     } catch (error) {
       console.error("删除文件失败:", error);
@@ -69,6 +70,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
       await knowledgeBaseApi.VectorizeFile(fileId);
       toast.success("文件向量化成功");
       LoadFiles();
+      // 通知父组件更新知识库信息（向量数量等）
       onRefresh();
     } catch (error) {
       console.error("向量化文件失败:", error);
@@ -95,27 +97,10 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
     }
   };
 
-  // 监听知识库变化
+  // 监听知识库变化和分页变化
   useEffect(() => {
-    if (selectedKnowledgeBase) {
-      setCurrentPage(1);
-      LoadFiles();
-    }
-  }, [selectedKnowledgeBase]);
-
-  // 监听分页变化
-  useEffect(() => {
-    if (selectedKnowledgeBase) {
-      LoadFiles();
-    }
-  }, [currentPage, pageSize]);
-
-  // 监听知识库信息更新（用于文件上传后刷新）
-  useEffect(() => {
-    if (selectedKnowledgeBase) {
-      LoadFiles();
-    }
-  }, [selectedKnowledgeBase?.file_count, selectedKnowledgeBase?.vector_count]);
+    LoadFiles();
+  }, [LoadFiles]);
 
   if (!selectedKnowledgeBase) {
     return (

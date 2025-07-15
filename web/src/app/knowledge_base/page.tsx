@@ -23,7 +23,7 @@ import {
   ChevronDown,
   Eye
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
@@ -38,6 +38,7 @@ import { Separator } from "~/components/ui/separator";
 
 import { knowledgeBaseApi, type KnowledgeBase } from "~/core/api/knowledge-base";
 
+import { Layout } from "~/components/layout";
 import { toast } from "sonner";
 
 import { CreateKnowledgeBaseDialog } from "./components/create-knowledge-base-dialog";
@@ -59,31 +60,30 @@ export default function KnowledgeBasePage() {
   const [batchMode, setBatchMode] = useState(false);
 
   // 加载知识库列表
-  const LoadKnowledgeBases = async () => {
+  const LoadKnowledgeBases = useCallback(async () => {
     setLoading(true);
     try {
       const response = await knowledgeBaseApi.GetKnowledgeBases();
       setKnowledgeBases(response.knowledge_bases);
       
       // 如果没有选中的知识库，选择第一个
-      if (!selectedKnowledgeBase && response.knowledge_bases.length > 0) {
-        setSelectedKnowledgeBase(response.knowledge_bases[0]);
-      } else if (selectedKnowledgeBase) {
-        // 更新当前选中的知识库信息
-        const updatedKb = response.knowledge_bases.find(kb => kb.id === selectedKnowledgeBase.id);
-        if (updatedKb) {
-          setSelectedKnowledgeBase(updatedKb);
-        } else {
-          setSelectedKnowledgeBase(null);
+      setSelectedKnowledgeBase(current => {
+        if (!current && response.knowledge_bases.length > 0) {
+          return response.knowledge_bases[0];
+        } else if (current) {
+          // 更新当前选中的知识库信息
+          const updatedKb = response.knowledge_bases.find(kb => kb.id === current.id);
+          return updatedKb ?? null;
         }
-      }
+        return current;
+      });
     } catch (error) {
       console.error("加载知识库列表失败:", error);
       toast.error("加载知识库列表失败");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 创建知识库成功回调
   const HandleCreateKnowledgeBaseSuccess = () => {
@@ -118,9 +118,24 @@ export default function KnowledgeBasePage() {
   }, []);
 
   // 刷新数据
-  const HandleRefresh = () => {
+  const HandleRefresh = useCallback(() => {
     LoadKnowledgeBases();
-  };
+  }, [LoadKnowledgeBases]);
+
+  // 更新知识库信息（用于文件操作后更新统计信息）
+  const HandleUpdateKnowledgeBaseInfo = useCallback(async () => {
+    if (!selectedKnowledgeBase) return;
+    
+    try {
+      const response = await knowledgeBaseApi.GetKnowledgeBases();
+      const updatedKb = response.knowledge_bases.find(kb => kb.id === selectedKnowledgeBase.id);
+      if (updatedKb) {
+        setSelectedKnowledgeBase(updatedKb);
+      }
+    } catch (error) {
+      console.error("更新知识库信息失败:", error);
+    }
+  }, [selectedKnowledgeBase]);
 
   // 点击知识库卡片进入详情页
   const HandleKnowledgeBaseClick = (kb: KnowledgeBase) => {
@@ -144,7 +159,8 @@ export default function KnowledgeBasePage() {
   // 列表视图
   if (viewMode === "list") {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <Layout>
+        <div className="container mx-auto p-6 space-y-6">
         {/* 页面标题 */}
         <div className="flex items-center justify-between">
           <div>
@@ -255,10 +271,7 @@ export default function KnowledgeBasePage() {
                     ))}
                   </div>
                   
-                  {/* 没有更多数据提示 */}
-                  <div className="text-center py-4 text-muted-foreground">
-                    没有更多数据了 😮
-                  </div>
+       
                 </CardContent>
               </Card>
             )}
@@ -285,12 +298,14 @@ export default function KnowledgeBasePage() {
           onSuccess={HandleCreateKnowledgeBaseSuccess}
         />
       </div>
+      </Layout>
     );
   }
 
   // 详情视图
   return (
-    <div className="flex h-screen bg-background">
+    <Layout fullHeight={true} showFooter={false}>
+      <div className="flex h-screen bg-background">
       {/* 左侧导航栏 */}
       <div className="w-64 border-r bg-muted/30 flex flex-col">
         {/* 返回按钮 */}
@@ -423,7 +438,7 @@ export default function KnowledgeBasePage() {
 
                 <SimpleFileManagement
                   selectedKnowledgeBase={selectedKnowledgeBase}
-                  onRefresh={HandleRefresh}
+                  onRefresh={HandleUpdateKnowledgeBaseInfo}
                 />
               </div>
             </div>
@@ -472,5 +487,6 @@ export default function KnowledgeBasePage() {
         onSuccess={HandleCreateKnowledgeBaseSuccess}
       />
     </div>
+    </Layout>
   );
 } 

@@ -3,893 +3,549 @@
 
 "use client";
 
-import { 
-  Upload, 
-  Search, 
-  MoreHorizontal, 
-  Download, 
-  Trash2, 
-  RefreshCw,
-  FileText,
-  Eye,
-  Zap,
-  Loader2,
-  Settings,
-  BookOpen,
-  Code
-} from "lucide-react";
-
-import { useState } from "react";
-
+import React, { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Checkbox } from "~/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog";
-import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { FileUploadDialog } from "../file-upload-dialog";
-import type { FileDocument, FileFilter } from "../../types";
-import { mockFileDocuments, mockKnowledgeBases } from "../../mock-data";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
+import { Alert, AlertDescription } from "~/components/ui/alert";
+import { Progress } from "~/components/ui/progress";
+import { Separator } from "~/components/ui/separator";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { 
+  Upload, 
+  Download, 
+  Trash2, 
+  Search, 
+  Filter, 
+  RefreshCw, 
+  FileText, 
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  MoreHorizontal,
+  Eye,
+  Settings,
+  Play
+} from "lucide-react";
+import { knowledgeBaseApi, FileDocument, KnowledgeBase } from "~/core/api/knowledge-base";
+import { toast } from "sonner";
 
-// 向量化配置类型
-interface VectorizationConfig {
-  chunkSize: number;
-  chunkOverlap: number;
-  separators: string[];
-  embeddingModel: string;
-  customSeparators: string;
-  useCustomSeparators: boolean;
+interface FileManagementTabProps {
+  selectedKnowledgeBase: KnowledgeBase | null;
+  onRefresh: () => void;
 }
 
-// 向量化模板类型
-interface VectorizationTemplate {
-  id: string;
-  name: string;
-  description: string;
-  config: VectorizationConfig;
-  icon: React.ComponentType<{ className?: string }>;
-}
+export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: FileManagementTabProps) {
+  const [files, setFiles] = useState<FileDocument[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [batchProcessing, setBatchProcessing] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [showStats, setShowStats] = useState(false);
 
-export function FileManagementTab() {
-  const [files, setFiles] = useState<FileDocument[]>(mockFileDocuments);
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [showVectorizationDialog, setShowVectorizationDialog] = useState(false);
-  const [filter, setFilter] = useState<FileFilter>({});
-  const [sortBy, setSortBy] = useState<"name" | "uploadedAt" | "size">("uploadedAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [vectorizingFiles, setVectorizingFiles] = useState<Set<string>>(new Set());
-  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
-  const [vectorizationConfig, setVectorizationConfig] = useState<VectorizationConfig>({
-    chunkSize: 1000,
-    chunkOverlap: 200,
-    separators: ["\n\n", "\n", "。", "！", "？", ".", "!", "?"],
-    embeddingModel: "text-embedding-3-small",
-    customSeparators: "",
-    useCustomSeparators: false,
-  });
+  const pageSize = 20;
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  const getFileIcon = (type: string) => {
-    if (type.includes("pdf")) return "📄";
-    if (type.includes("word")) return "📝";
-    if (type.includes("excel") || type.includes("spreadsheet")) return "📊";
-    if (type.includes("text")) return "📄";
-    return "📁";
-  };
-
-  const getStatusBadge = (status: FileDocument["status"]) => {
-    const variants = {
-      uploaded: "secondary",
-      processing: "default",
-      vectorized: "default",
-      failed: "destructive",
-    } as const;
-
-    const labels = {
-      uploaded: "已上传",
-      processing: "处理中",
-      vectorized: "已向量化",
-      failed: "失败",
-    };
-
-    return (
-      <Badge variant={variants[status]}>
-        {labels[status]}
-      </Badge>
-    );
-  };
-
-  const filteredAndSortedFiles = files
-    .filter((file) => {
-      if (filter.status && file.status !== filter.status) return false;
-      if (filter.type && !file.type.includes(filter.type)) return false;
-      if (filter.knowledgeBaseId && file.knowledgeBaseId !== filter.knowledgeBaseId) return false;
-      if (filter.search && !file.name.toLowerCase().includes(filter.search.toLowerCase())) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      let aValue: string | number, bValue: string | number;
+  // 加载文件列表
+  const LoadFiles = async () => {
+    if (!selectedKnowledgeBase) return;
+    
+    setLoading(true);
+    try {
+      const response = await knowledgeBaseApi.GetFiles({
+        knowledge_base_id: selectedKnowledgeBase.id,
+        status: statusFilter || undefined,
+        file_type: typeFilter || undefined,
+        search: searchTerm || undefined,
+        page: currentPage,
+        page_size: pageSize,
+      });
       
-      switch (sortBy) {
-        case "name":
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-        case "uploadedAt":
-          aValue = new Date(a.uploadedAt).getTime();
-          bValue = new Date(b.uploadedAt).getTime();
-          break;
-        case "size":
-          aValue = a.size;
-          bValue = b.size;
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortOrder === "asc") {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
-    });
-
-  const handleDeleteFile = (fileId: string) => {
-    setFiles(prev => prev.filter(f => f.id !== fileId));
+      setFiles(response.files);
+      setTotalFiles(response.total);
+    } catch (error) {
+      console.error("加载文件列表失败:", error);
+      toast.error("加载文件列表失败");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRetryProcessing = (fileId: string) => {
-    setFiles(prev => prev.map(f => 
-      f.id === fileId ? { ...f, status: "processing", errorMessage: undefined } : f
-    ));
+  // 加载统计信息
+  const LoadStats = async () => {
+    try {
+      const response = await knowledgeBaseApi.GetStats();
+      setStats(response.stats);
+    } catch (error) {
+      console.error("加载统计信息失败:", error);
+    }
   };
 
-  const handleVectorizeFile = async (fileId: string) => {
-    const file = files.find(f => f.id === fileId);
-    if (!file) return;
-
-    // 检查文件状态是否可以进行向量化
-    if (file.status === "vectorized") {
-      console.log("文件已经向量化完成");
+  // 删除文件
+  const HandleDeleteFile = async (fileId: string) => {
+    if (!confirm("确定要删除这个文件吗？此操作不可撤销。")) {
       return;
     }
-
-    if (file.status === "processing") {
-      console.log("文件正在处理中");
-      return;
-    }
-
-    // 添加到向量化队列
-    setVectorizingFiles(prev => new Set(prev).add(fileId));
-
-    // 更新文件状态为处理中
-    setFiles(prev => prev.map(f => 
-      f.id === fileId ? { ...f, status: "processing", errorMessage: undefined } : f
-    ));
 
     try {
-      // 模拟向量化处理过程
-      await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
-
-      // 模拟成功或失败的概率
-      const isSuccess = Math.random() > 0.1; // 90% 成功率
-
-      if (isSuccess) {
-        // 向量化成功
-        const vectorCount = Math.floor(Math.random() * 200) + 50; // 50-250个向量
-        setFiles(prev => prev.map(f => 
-          f.id === fileId ? {
-            ...f,
-            status: "vectorized",
-            vectorCount,
-            lastVectorizedAt: new Date().toISOString(),
-            errorMessage: undefined
-          } : f
-        ));
-      } else {
-        // 向量化失败
-        setFiles(prev => prev.map(f => 
-          f.id === fileId ? {
-            ...f,
-            status: "failed",
-            errorMessage: "向量化处理失败，请检查文件格式或重新尝试"
-          } : f
-        ));
-      }
-    } catch {
-      // 处理异常
-      setFiles(prev => prev.map(f => 
-        f.id === fileId ? {
-          ...f,
-          status: "failed",
-          errorMessage: "向量化过程中发生错误"
-        } : f
-      ));
-    } finally {
-      // 从向量化队列中移除
-      setVectorizingFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(fileId);
-        return newSet;
-      });
+      await knowledgeBaseApi.DeleteFile(fileId);
+      toast.success("文件删除成功");
+      LoadFiles();
+      onRefresh();
+    } catch (error) {
+      console.error("删除文件失败:", error);
+      toast.error("删除文件失败");
     }
   };
 
-
-
-  // 选择相关函数
-  const handleSelectFile = (fileId: string, checked: boolean) => {
-    setSelectedFiles(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(fileId);
-      } else {
-        newSet.delete(fileId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      // 选择所有可选择的文件（已上传或失败状态）
-      const selectableFiles = filteredAndSortedFiles.filter(f => 
-        f.status === "uploaded" || f.status === "failed"
-      );
-      setSelectedFiles(new Set(selectableFiles.map(f => f.id)));
-    } else {
-      setSelectedFiles(new Set());
+  // 向量化文件
+  const HandleVectorizeFile = async (fileId: string) => {
+    try {
+      await knowledgeBaseApi.VectorizeFile(fileId);
+      toast.success("文件向量化已开始");
+      LoadFiles();
+    } catch (error) {
+      console.error("向量化文件失败:", error);
+      toast.error("向量化文件失败");
     }
   };
 
-  const getSelectableFilesCount = () => {
-    return filteredAndSortedFiles.filter(f => 
-      f.status === "uploaded" || f.status === "failed"
-    ).length;
-  };
-
-  const getSelectedCount = () => selectedFiles.size;
-
-  // 向量化模板定义
-  const vectorizationTemplates: VectorizationTemplate[] = [
-    {
-      id: "default",
-      name: "默认模板",
-      description: "适用于大多数文档的通用向量化配置",
-      icon: Settings,
-      config: {
-        chunkSize: 1000,
-        chunkOverlap: 200,
-        separators: ["\n\n", "\n", "。", "！", "？", ".", "!", "?"],
-        embeddingModel: "text-embedding-3-small",
-        customSeparators: "",
-        useCustomSeparators: false,
-      }
-    },
-    {
-      id: "technical",
-      name: "技术文档",
-      description: "针对技术文档、API文档等结构化内容优化",
-      icon: Code,
-      config: {
-        chunkSize: 800,
-        chunkOverlap: 150,
-        separators: ["\n\n", "\n", "```", "##", "###", "####", ".", "。", "！", "？"],
-        embeddingModel: "text-embedding-3-large",
-        customSeparators: "",
-        useCustomSeparators: false,
-      }
-    },
-    {
-      id: "literature",
-      name: "文学文档",
-      description: "适用于小说、散文等文学类文档",
-      icon: BookOpen,
-      config: {
-        chunkSize: 1200,
-        chunkOverlap: 100,
-        separators: ["\n\n", "\n", "。", "！", "？", "；", "：", ".", "!", "?", ";", ":"],
-        embeddingModel: "text-embedding-3-small",
-        customSeparators: "",
-        useCustomSeparators: false,
-      }
-    },
-    {
-      id: "legal",
-      name: "法律文档",
-      description: "针对法律条文、合同等正式文档优化",
-      icon: FileText,
-      config: {
-        chunkSize: 1500,
-        chunkOverlap: 300,
-        separators: ["\n\n", "\n", "。", "；", "：", "第", "条", ".", ";", ":", "Article", "Section"],
-        embeddingModel: "text-embedding-3-large",
-        customSeparators: "",
-        useCustomSeparators: false,
-      }
-    }
-  ];
-
-  const handleTemplateSelect = (template: VectorizationTemplate) => {
-    setVectorizationConfig(template.config);
-  };
-
-  const handleCustomSeparatorsChange = (value: string) => {
-    const separators = value.split(',').map(s => s.trim()).filter(s => s.length > 0);
-    setVectorizationConfig(prev => ({
-      ...prev,
-      customSeparators: value,
-      separators: prev.useCustomSeparators ? separators : prev.separators
-    }));
-  };
-
-  const handleUseCustomSeparatorsChange = (useCustom: boolean) => {
-    setVectorizationConfig(prev => ({
-      ...prev,
-      useCustomSeparators: useCustom,
-      separators: useCustom 
-        ? prev.customSeparators.split(',').map(s => s.trim()).filter(s => s.length > 0)
-        : ["\n\n", "\n", "。", "！", "？", ".", "!", "?"]
-    }));
-  };
-
-  const handleBatchVectorizeWithConfig = async () => {
-    // 获取选中的可以向量化的文件
-    const filesToVectorize = files.filter(f => 
-      selectedFiles.has(f.id) && 
-      (f.status === "uploaded" || f.status === "failed") && 
-      !vectorizingFiles.has(f.id)
-    );
-
-    if (filesToVectorize.length === 0) {
-      console.log("没有选中的可向量化文件");
+  // 批量向量化
+  const HandleBatchVectorize = async () => {
+    if (selectedFiles.length === 0) {
+      toast.error("请选择要向量化的文件");
       return;
     }
 
-    console.log("使用配置进行批量向量化:", vectorizationConfig);
-
-    // 批量向量化
-    for (const file of filesToVectorize) {
-      await handleVectorizeFile(file.id);
-      // 添加延迟避免同时处理太多文件
-      await new Promise(resolve => setTimeout(resolve, 500));
+    setBatchProcessing(true);
+    try {
+      const response = await knowledgeBaseApi.BatchVectorizeFiles({
+        file_ids: selectedFiles,
+      });
+      
+      const successCount = response.results.filter(r => r.status === "success").length;
+      const skippedCount = response.results.filter(r => r.status === "skipped").length;
+      const failedCount = response.results.filter(r => r.status === "failed").length;
+      
+      toast.success(`批量向量化完成: ${successCount}个成功, ${skippedCount}个跳过, ${failedCount}个失败`);
+      setSelectedFiles([]);
+      LoadFiles();
+    } catch (error) {
+      console.error("批量向量化失败:", error);
+      toast.error("批量向量化失败");
+    } finally {
+      setBatchProcessing(false);
     }
-
-    // 关闭对话框
-    setShowVectorizationDialog(false);
   };
+
+  // 下载文件
+  const HandleDownloadFile = async (file: FileDocument) => {
+    try {
+      const blob = await knowledgeBaseApi.DownloadFile(file.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("文件下载成功");
+    } catch (error) {
+      console.error("下载文件失败:", error);
+      toast.error("下载文件失败");
+    }
+  };
+
+  // 选择/取消选择文件
+  const ToggleFileSelection = (fileId: string) => {
+    setSelectedFiles(prev => 
+      prev.includes(fileId) 
+        ? prev.filter(id => id !== fileId)
+        : [...prev, fileId]
+    );
+  };
+
+  // 全选/取消全选
+  const ToggleSelectAll = () => {
+    if (selectedFiles.length === files.length) {
+      setSelectedFiles([]);
+    } else {
+      setSelectedFiles(files.map(f => f.id));
+    }
+  };
+
+  // 搜索和过滤
+  const HandleSearch = () => {
+    setCurrentPage(1);
+    LoadFiles();
+  };
+
+  // 重置过滤
+  const ResetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("");
+    setTypeFilter("");
+    setCurrentPage(1);
+    setSelectedFiles([]);
+  };
+
+  // 监听知识库变化
+  useEffect(() => {
+    if (selectedKnowledgeBase) {
+      setCurrentPage(1);
+      setSelectedFiles([]);
+      LoadFiles();
+      LoadStats();
+    }
+  }, [selectedKnowledgeBase]);
+
+  // 监听过滤条件变化
+  useEffect(() => {
+    if (selectedKnowledgeBase) {
+      LoadFiles();
+    }
+  }, [currentPage, statusFilter, typeFilter]);
+
+  if (!selectedKnowledgeBase) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-2 text-sm font-medium text-muted-foreground">请选择知识库</h3>
+          <p className="mt-1 text-sm text-muted-foreground">选择一个知识库来管理文件</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalPages = Math.ceil(totalFiles / pageSize);
 
   return (
     <div className="space-y-6">
-      {/* 操作栏 */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="搜索文件名..."
-              className="pl-10 w-64"
-              value={filter.search ?? ""}
-              onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
-            />
-          </div>
-          
-          <Select value={filter.status ?? "all"} onValueChange={(value) => setFilter(prev => ({ ...prev, status: value === "all" ? undefined : value as FileDocument["status"] }))}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="状态筛选" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
-              <SelectItem value="uploaded">已上传</SelectItem>
-              <SelectItem value="processing">处理中</SelectItem>
-              <SelectItem value="vectorized">已向量化</SelectItem>
-              <SelectItem value="failed">失败</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={filter.knowledgeBaseId ?? "all"} onValueChange={(value) => setFilter(prev => ({ ...prev, knowledgeBaseId: value === "all" ? undefined : value }))}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="知识库筛选" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部知识库</SelectItem>
-              {mockKnowledgeBases.map((kb) => (
-                <SelectItem key={kb.id} value={kb.id}>
-                  {kb.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => setShowVectorizationDialog(true)}
-            disabled={selectedFiles.size === 0}
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            批量向量化 ({getSelectedCount()})
-          </Button>
-        <Button onClick={() => setShowUploadDialog(true)}>
-          <Upload className="h-4 w-4 mr-2" />
-          上传文件
-        </Button>
-        </div>
-      </div>
-
-      {/* 统计信息 */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{filteredAndSortedFiles.length}</div>
-            <p className="text-xs text-muted-foreground">当前显示文件</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {filteredAndSortedFiles.filter(f => f.status === "vectorized").length}
-            </div>
-            <p className="text-xs text-muted-foreground">已向量化</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {filteredAndSortedFiles.filter(f => f.status === "processing").length}
-            </div>
-            <p className="text-xs text-muted-foreground">处理中</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {filteredAndSortedFiles.filter(f => f.status === "uploaded").length}
-            </div>
-            <p className="text-xs text-muted-foreground">待向量化</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
-              {formatFileSize(filteredAndSortedFiles.reduce((sum, f) => sum + f.size, 0))}
-            </div>
-            <p className="text-xs text-muted-foreground">总大小</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 排序选项和选择状态 */}
-      <div className="flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <span className="text-sm text-muted-foreground">排序:</span>
-        <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="uploadedAt">上传时间</SelectItem>
-            <SelectItem value="name">文件名</SelectItem>
-            <SelectItem value="size">文件大小</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
-        >
-          {sortOrder === "asc" ? "升序" : "降序"}
-        </Button>
-        </div>
-        
-        {getSelectedCount() > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>已选择 {getSelectedCount()} 个文件</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedFiles(new Set())}
-            >
-              取消选择
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* 文件列表 */}
+      {/* 统计信息卡片 */}
       <Card>
-        <CardHeader>
-          <CardTitle>文件列表</CardTitle>
-          <CardDescription>
-            管理您上传的文件，查看处理状态和向量化进度
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">文件统计</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowStats(!showStats)}
+          >
+            {showStats ? "隐藏详情" : "显示详情"}
+          </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox 
-                    checked={getSelectedCount() > 0 && getSelectedCount() === getSelectableFilesCount()}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="选择全部"
-                  />
-                </TableHead>
-                <TableHead>文件</TableHead>
-                <TableHead>知识库</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>大小</TableHead>
-                <TableHead>上传时间</TableHead>
-                <TableHead>向量数</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAndSortedFiles.map((file) => (
-                <TableRow key={file.id}>
-                  <TableCell>
-                    <Checkbox 
-                      checked={selectedFiles.has(file.id)}
-                      onCheckedChange={(checked) => handleSelectFile(file.id, checked as boolean)}
-                      disabled={file.status === "processing" || file.status === "vectorized"}
-                      aria-label={`选择 ${file.name}`}
-                    />
-                  </TableCell>
-                  <TableCell className="flex items-center gap-3">
-                    <span className="text-lg">{getFileIcon(file.type)}</span>
-                    <div>
-                      <div className="font-medium">{file.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {file.metadata?.pageCount && `${file.metadata.pageCount} 页 • `}
-                        {file.metadata?.wordCount && `${file.metadata.wordCount} 字`}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {mockKnowledgeBases.find(kb => kb.id === file.knowledgeBaseId)?.name}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                    {getStatusBadge(file.status)}
-                      {vectorizingFiles.has(file.id) && (
-                        <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-                      )}
-                    </div>
-                    {file.errorMessage && (
-                      <div className="text-xs text-red-600 mt-1">
-                        {file.errorMessage}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatFileSize(file.size)}</TableCell>
-                  <TableCell>
-                    {new Date(file.uploadedAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    {file.vectorCount ? `${file.vectorCount} 个` : "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent 
-                        align="end"
-                        sideOffset={8}
-                        avoidCollisions={true}
-                      >
-                        <DropdownMenuLabel>操作</DropdownMenuLabel>
-                        
-                        {/* 向量化选项 - 放在最前面 */}
-                        {(file.status === "uploaded" || file.status === "failed") && (
-                          <DropdownMenuItem 
-                            onClick={() => handleVectorizeFile(file.id)}
-                            disabled={vectorizingFiles.has(file.id)}
-                          >
-                            {vectorizingFiles.has(file.id) ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <Zap className="mr-2 h-4 w-4" />
-                            )}
-                            {vectorizingFiles.has(file.id) ? "向量化中..." : "开始向量化"}
-                          </DropdownMenuItem>
-                        )}
-                        
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          预览
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="mr-2 h-4 w-4" />
-                          下载
-                        </DropdownMenuItem>
-                        
-                        {file.status === "failed" && (
-                            <DropdownMenuItem onClick={() => handleRetryProcessing(file.id)}>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              重新处理
-                            </DropdownMenuItem>
-                        )}
-                        
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-red-600"
-                          onClick={() => handleDeleteFile(file.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          删除
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold">{totalFiles}</div>
+              <div className="text-xs text-muted-foreground">总文件数</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">
+                {files.filter(f => f.status === "vectorized").length}
+              </div>
+              <div className="text-xs text-muted-foreground">已向量化</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">
+                {files.filter(f => f.status === "processing").length}
+              </div>
+              <div className="text-xs text-muted-foreground">处理中</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">
+                {files.reduce((sum, f) => sum + (f.vector_count || 0), 0)}
+              </div>
+              <div className="text-xs text-muted-foreground">总向量数</div>
+            </div>
+          </div>
           
-          {filteredAndSortedFiles.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">暂无文件</h3>
-              <p className="text-muted-foreground mb-4">
-                {Object.keys(filter).length > 0 ? "没有找到符合条件的文件" : "开始上传您的第一个文件"}
-              </p>
-              <Button onClick={() => setShowUploadDialog(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                上传文件
-              </Button>
+          {showStats && stats && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-2">文件状态分布</h4>
+                  {Object.entries(stats.file_status).map(([status, count]) => (
+                    <div key={status} className="flex justify-between text-sm">
+                      <span>{knowledgeBaseApi.utils.getStatusText(status as any)}</span>
+                      <span className="font-medium">{count as number}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">文件类型分布</h4>
+                  {Object.entries(stats.file_type_stats).map(([type, count]) => (
+                    <div key={type} className="flex justify-between text-sm">
+                      <span>{type}</span>
+                      <span className="font-medium">{count as number}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* 上传对话框 */}
-      <FileUploadDialog
-        open={showUploadDialog}
-        onOpenChange={setShowUploadDialog}
-        onUploadComplete={(uploadedFiles) => {
-          // 这里可以添加上传完成后的处理逻辑
-          console.log("上传完成:", uploadedFiles);
-        }}
-      />
-
-      {/* 向量化配置对话框 */}
-      <Dialog open={showVectorizationDialog} onOpenChange={setShowVectorizationDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>批量向量化配置</DialogTitle>
-            <DialogDescription>
-              为选中的 {getSelectedCount()} 个文件配置向量化参数
-            </DialogDescription>
-          </DialogHeader>
-
-          <Tabs defaultValue="templates" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="templates">预设模板</TabsTrigger>
-              <TabsTrigger value="custom">自定义配置</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="templates" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {vectorizationTemplates.map((template) => {
-                  const Icon = template.icon;
-                  const isSelected = 
-                    vectorizationConfig.chunkSize === template.config.chunkSize &&
-                    vectorizationConfig.chunkOverlap === template.config.chunkOverlap &&
-                    vectorizationConfig.embeddingModel === template.config.embeddingModel;
-
-                  return (
-                    <Card 
-                      key={template.id} 
-                      className={`cursor-pointer transition-all ${
-                        isSelected ? 'ring-2 ring-primary' : 'hover:shadow-md'
-                      }`}
-                      onClick={() => handleTemplateSelect(template)}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-5 w-5 text-primary" />
-                          <CardTitle className="text-lg">{template.name}</CardTitle>
-                        </div>
-                        <CardDescription>{template.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">分块大小:</span>
-                            <span className="font-medium">{template.config.chunkSize}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">重叠大小:</span>
-                            <span className="font-medium">{template.config.chunkOverlap}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">嵌入模型:</span>
-                            <span className="font-medium">{template.config.embeddingModel}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+      {/* 操作栏 */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索文件..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && HandleSearch()}
+                  className="pl-8"
+                />
               </div>
-            </TabsContent>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部状态</SelectItem>
+                  <SelectItem value="uploaded">已上传</SelectItem>
+                  <SelectItem value="processing">处理中</SelectItem>
+                  <SelectItem value="vectorized">已向量化</SelectItem>
+                  <SelectItem value="failed">失败</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部类型</SelectItem>
+                  <SelectItem value="application/pdf">PDF</SelectItem>
+                  <SelectItem value="application/vnd.openxmlformats-officedocument.wordprocessingml.document">Word</SelectItem>
+                  <SelectItem value="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">Excel</SelectItem>
+                  <SelectItem value="text/plain">文本</SelectItem>
+                  <SelectItem value="text/markdown">Markdown</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={ResetFilters}
+              >
+                重置
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={LoadFiles}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </div>
 
-            <TabsContent value="custom" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="chunkSize">分块大小</Label>
-                    <Input
-                      id="chunkSize"
-                      type="number"
-                      value={vectorizationConfig.chunkSize}
-                      onChange={(e) => setVectorizationConfig(prev => ({
-                        ...prev,
-                        chunkSize: parseInt(e.target.value) ?? 1000
-                      }))}
-                      min="100"
-                      max="5000"
-                      step="100"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      每个文本块的最大字符数 (100-5000)
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="chunkOverlap">重叠大小</Label>
-                    <Input
-                      id="chunkOverlap"
-                      type="number"
-                      value={vectorizationConfig.chunkOverlap}
-                      onChange={(e) => setVectorizationConfig(prev => ({
-                        ...prev,
-                        chunkOverlap: parseInt(e.target.value) ?? 200
-                      }))}
-                      min="0"
-                      max={vectorizationConfig.chunkSize}
-                      step="50"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      相邻文本块之间的重叠字符数
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="embeddingModel">嵌入模型</Label>
-                    <Select 
-                      value={vectorizationConfig.embeddingModel}
-                      onValueChange={(value) => setVectorizationConfig(prev => ({
-                        ...prev,
-                        embeddingModel: value
-                      }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text-embedding-3-small">text-embedding-3-small (1536维)</SelectItem>
-                        <SelectItem value="text-embedding-3-large">text-embedding-3-large (3072维)</SelectItem>
-                        <SelectItem value="text-embedding-ada-002">text-embedding-ada-002 (1536维)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          {/* 批量操作 */}
+          {selectedFiles.length > 0 && (
+            <div className="mt-4 p-3 bg-muted rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">
+                  已选择 {selectedFiles.length} 个文件
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={HandleBatchVectorize}
+                    disabled={batchProcessing}
+                  >
+                    <Play className="h-4 w-4 mr-1" />
+                    {batchProcessing ? "处理中..." : "批量向量化"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedFiles([])}
+                  >
+                    取消选择
+                  </Button>
                 </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Checkbox 
-                        id="useCustomSeparators"
-                        checked={vectorizationConfig.useCustomSeparators}
-                        onCheckedChange={handleUseCustomSeparatorsChange}
+      {/* 文件列表 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>文件列表</span>
+            <span className="text-sm text-muted-foreground">
+              {totalFiles} 个文件
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <RefreshCw className="h-6 w-6 animate-spin" />
+            </div>
+          ) : files.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-2 text-sm font-medium text-muted-foreground">暂无文件</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                上传文件到知识库开始管理
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.length === files.length && files.length > 0}
+                        onChange={ToggleSelectAll}
+                        className="rounded"
                       />
-                      <Label htmlFor="useCustomSeparators">使用自定义分隔符</Label>
-                    </div>
-                    
-                    {vectorizationConfig.useCustomSeparators ? (
-                      <div>
-                        <Label htmlFor="customSeparators">自定义分隔符</Label>
-                        <Textarea
-                          id="customSeparators"
-                          placeholder="输入分隔符，用逗号分隔，例如: \n\n, \n, 。, ！, ？"
-                          value={vectorizationConfig.customSeparators}
-                          onChange={(e) => handleCustomSeparatorsChange(e.target.value)}
-                          rows={4}
+                    </TableHead>
+                    <TableHead>文件</TableHead>
+                    <TableHead>大小</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead>向量数</TableHead>
+                    <TableHead>上传时间</TableHead>
+                    <TableHead className="w-32">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {files.map((file) => (
+                    <TableRow key={file.id}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedFiles.includes(file.id)}
+                          onChange={() => ToggleFileSelection(file.id)}
+                          className="rounded"
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          用逗号分隔多个分隔符，支持转义字符
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        <Label>默认分隔符</Label>
-                        <div className="p-3 bg-muted rounded-md text-sm">
-                          {vectorizationConfig.separators.map((sep, index) => (
-                            <Badge key={index} variant="secondary" className="mr-1 mb-1">
-                              {sep === '\n' ? '\\n' : sep === '\n\n' ? '\\n\\n' : sep}
-                            </Badge>
-                          ))}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg">
+                            {knowledgeBaseApi.utils.getFileIcon(file.type)}
+                          </span>
+                          <div>
+                            <div className="font-medium">{file.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {file.metadata?.description || "无描述"}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      </TableCell>
+                      <TableCell>
+                        {knowledgeBaseApi.utils.formatFileSize(file.size)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={knowledgeBaseApi.utils.getStatusColor(file.status) as any}>
+                          {file.status === "processing" && <Clock className="h-3 w-3 mr-1" />}
+                          {file.status === "vectorized" && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {file.status === "failed" && <XCircle className="h-3 w-3 mr-1" />}
+                          {knowledgeBaseApi.utils.getStatusText(file.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {file.vector_count ? (
+                          <span className="font-medium">{file.vector_count}</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {new Date(file.uploaded_at).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(file.uploaded_at).toLocaleTimeString()}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => HandleDownloadFile(file)}
+                            title="下载文件"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          {file.status === "uploaded" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => HandleVectorizeFile(file.id)}
+                              title="向量化文件"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => HandleDeleteFile(file.id)}
+                            title="删除文件"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
-                  <div>
-                    <Label>配置预览</Label>
-                    <Card className="p-3">
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">分块大小:</span>
-                          <span>{vectorizationConfig.chunkSize}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">重叠大小:</span>
-                          <span>{vectorizationConfig.chunkOverlap}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">嵌入模型:</span>
-                          <span>{vectorizationConfig.embeddingModel}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">分隔符数量:</span>
-                          <span>{vectorizationConfig.separators.length}</span>
-                        </div>
-                      </div>
-                    </Card>
+              {/* 分页 */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    第 {currentPage} 页，共 {totalPages} 页
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      上一页
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      下一页
+                    </Button>
                   </div>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowVectorizationDialog(false)}>
-              取消
-            </Button>
-            <Button onClick={handleBatchVectorizeWithConfig}>
-              <Zap className="h-4 w-4 mr-2" />
-              开始向量化 ({getSelectedCount()} 个文件)
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 } 

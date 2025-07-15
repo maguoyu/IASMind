@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "~/components/ui/button";
-import { FileManagementTab } from "./components/tabs/file-management-tab";
+import FileManagementTab from "./components/tabs/file-management-tab";
 import { KnowledgeBaseManagementTab } from "./components/tabs/knowledge-base-management-tab";
 import { DataPreviewTab } from "./components/tabs/data-preview-tab";
 import { OverviewTab } from "./components/tabs/overview-tab";

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Upload, X, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -24,23 +24,27 @@ import {
 } from "~/components/ui/select";
 import { Progress } from "~/components/ui/progress";
 import { Badge } from "~/components/ui/badge";
-import type { UploadProgress, KnowledgeBase } from "../types";
-import { mockKnowledgeBases } from "../mock-data";
+import type { UploadProgress } from "~/app/knowledge_base/types";
+import { knowledgeBaseApi, type KnowledgeBase } from "~/core/api/knowledge-base";
 
 interface FileUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  selectedKnowledgeBase?: KnowledgeBase;
   onUploadComplete?: (files: File[]) => void;
 }
 
 export function FileUploadDialog({
   open,
   onOpenChange,
+  selectedKnowledgeBase: propSelectedKnowledgeBase,
   onUploadComplete,
 }: FileUploadDialogProps) {
   const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState<string>("");
   const [uploadFiles, setUploadFiles] = useState<UploadProgress[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -92,56 +96,93 @@ export function FileUploadDialog({
     setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const simulateUpload = async () => {
+  // 加载知识库列表
+  const loadKnowledgeBases = async () => {
+    try {
+      const response = await knowledgeBaseApi.GetKnowledgeBases({ page_size: 100 });
+      setKnowledgeBases(response.knowledge_bases);
+    } catch (error) {
+      console.error("加载知识库列表失败:", error);
+    }
+  };
+
+  // 当对话框打开时加载知识库列表
+  React.useEffect(() => {
+    if (open) {
+      loadKnowledgeBases();
+      // 如果有传入的知识库，设置它
+      if (propSelectedKnowledgeBase) {
+        setSelectedKnowledgeBase(propSelectedKnowledgeBase.id);
+      }
+    }
+  }, [open, propSelectedKnowledgeBase]);
+
+  const handleUpload = async () => {
     if (!selectedKnowledgeBase || uploadFiles.length === 0) return;
 
-    for (let i = 0; i < uploadFiles.length; i++) {
-      const file = uploadFiles[i];
-      
-      // 模拟上传进度
-      setUploadFiles((prev) =>
-        prev.map((f, idx) =>
-          idx === i ? { ...f, status: "uploading" } : f
-        )
-      );
+    setIsLoading(true);
 
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const file = uploadFiles[i];
+        
+        // 更新状态为上传中
         setUploadFiles((prev) =>
           prev.map((f, idx) =>
-            idx === i ? { ...f, progress } : f
+            idx === i ? { ...f, status: "uploading" } : f
           )
         );
+
+        try {
+          // 实际上传文件
+          const response = await knowledgeBaseApi.UploadFile(
+            file.file,
+            selectedKnowledgeBase,
+            file.file.name
+          );
+
+          if (response.success) {
+            // 上传成功
+            setUploadFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === i ? { ...f, status: "completed", progress: 100 } : f
+              )
+            );
+          } else {
+            // 上传失败
+            setUploadFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === i ? { ...f, status: "failed", error: response.message } : f
+              )
+            );
+          }
+        } catch (error) {
+          // 上传出错
+          setUploadFiles((prev) =>
+            prev.map((f, idx) =>
+              idx === i ? { ...f, status: "failed", error: error instanceof Error ? error.message : "上传失败" } : f
+            )
+          );
+        }
       }
 
-      // 模拟处理状态
-      setUploadFiles((prev) =>
-        prev.map((f, idx) =>
-          idx === i ? { ...f, status: "processing" } : f
-        )
-      );
+      // 通知上传完成
+      if (onUploadComplete) {
+        onUploadComplete(uploadFiles.map((f) => f.file));
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 延迟关闭对话框
+      setTimeout(() => {
+        onOpenChange(false);
+        setUploadFiles([]);
+        setSelectedKnowledgeBase("");
+      }, 1000);
 
-      // 完成上传
-      setUploadFiles((prev) =>
-        prev.map((f, idx) =>
-          idx === i ? { ...f, status: "completed", progress: 100 } : f
-        )
-      );
+    } catch (error) {
+      console.error("上传过程中发生错误:", error);
+    } finally {
+      setIsLoading(false);
     }
-
-    // 通知上传完成
-    if (onUploadComplete) {
-      onUploadComplete(uploadFiles.map((f) => f.file));
-    }
-
-    // 延迟关闭对话框
-    setTimeout(() => {
-      onOpenChange(false);
-      setUploadFiles([]);
-      setSelectedKnowledgeBase("");
-    }, 1000);
   };
 
   const getStatusColor = (status: UploadProgress["status"]) => {
@@ -197,12 +238,12 @@ export function FileUploadDialog({
                 <SelectValue placeholder="请选择知识库" />
               </SelectTrigger>
               <SelectContent>
-                {mockKnowledgeBases.map((kb) => (
+                {knowledgeBases.map((kb) => (
                   <SelectItem key={kb.id} value={kb.id}>
                     <div className="flex flex-col">
                       <span>{kb.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {kb.fileCount} 个文件 • {kb.vectorCount} 个向量
+                        {kb.file_count} 个文件 • {kb.vector_count} 个向量
                       </span>
                     </div>
                   </SelectItem>
@@ -297,10 +338,10 @@ export function FileUploadDialog({
             取消
           </Button>
           <Button
-            onClick={simulateUpload}
-            disabled={!selectedKnowledgeBase || uploadFiles.length === 0}
+            onClick={handleUpload}
+            disabled={!selectedKnowledgeBase || uploadFiles.length === 0 || isLoading}
           >
-            开始上传
+            {isLoading ? "上传中..." : "开始上传"}
           </Button>
         </DialogFooter>
       </DialogContent>

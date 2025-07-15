@@ -19,6 +19,7 @@ from src.server.routers.config_router import router as config_router
 from src.server.routers.sales_forecast_router import router as sales_forecast_router
 from src.server.routers.reports_router import router as reports_router
 from src.server.routers.auth_router import router as auth_router
+from src.server.routers.knowledge_base_router import router as knowledge_base_router
 
 logger = logging.getLogger(__name__)
 
@@ -51,3 +52,4 @@ app.include_router(config_router)
 app.include_router(sales_forecast_router)
 app.include_router(reports_router)
 app.include_router(auth_router)
+app.include_router(knowledge_base_router)

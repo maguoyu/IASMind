@@ -4,18 +4,17 @@
 "use client";
 
 import { BookOutlined } from "@ant-design/icons";
-import { Settings, BarChart3, FileText, Database } from "lucide-react";
+import { Settings, BarChart3, Database } from "lucide-react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "~/components/ui/button";
-import FileManagementTab from "./components/tabs/file-management-tab";
 import { KnowledgeBaseManagementTab } from "./components/tabs/knowledge-base-management-tab";
 import { DataPreviewTab } from "./components/tabs/data-preview-tab";
 import { OverviewTab } from "./components/tabs/overview-tab";
 import { SettingsDialog } from "../settings/dialogs/settings-dialog";
 
-type MenuItem = "overview" | "files" | "knowledge-bases" | "preview";
+type MenuItem = "overview" | "knowledge-bases" | "preview";
 
 interface MenuItemType {
   id: string;
@@ -29,7 +28,6 @@ export function KnowledgeBaseMain() {
   // 菜单项配置 - 一级菜单结构
   const menuItems: MenuItemType[] = [
     { id: "overview", label: "概览", icon: BarChart3 },
-    { id: "files", label: "文件管理", icon: FileText },
     { id: "knowledge-bases", label: "知识库管理", icon: Database },
     { id: "preview", label: "数据预览", icon: Settings },
   ];
@@ -56,8 +54,6 @@ export function KnowledgeBaseMain() {
     switch (activeMenu) {
       case "overview":
         return <OverviewTab />;
-      case "files":
-        return <FileManagementTab />;
       case "knowledge-bases":
         return <KnowledgeBaseManagementTab />;
       case "preview":

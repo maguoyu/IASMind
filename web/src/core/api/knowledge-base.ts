@@ -222,10 +222,12 @@ export const knowledgeBaseApi = {
   },
 
   // 上传文件
-  async UploadFile(file: File, knowledgeBaseId: string, description?: string): Promise<FileUploadResponse> {
+  async UploadFile(file: File, knowledgeBaseId?: string, description?: string): Promise<FileUploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("knowledge_base_id", knowledgeBaseId);
+    if (knowledgeBaseId) {
+      formData.append("knowledge_base_id", knowledgeBaseId);
+    }
     if (description) {
       formData.append("description", description);
     }

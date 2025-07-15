@@ -11,7 +11,7 @@ import logging
 import shutil
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Depends, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 import uuid
@@ -270,13 +270,28 @@ async def DeleteKnowledgeBase(kb_id: str):
 @router.post("/upload", response_model=FileUploadResponse)
 async def UploadFile(
     file: UploadFile = File(...),
-    knowledge_base_id: str = Form(...),
     description: str = Form("")
 ):
     """上传文件到知识库"""
     try:
+        # 直接使用默认知识库，不要求用户选择
+        # 获取第一个可用的知识库
+        all_kbs = KnowledgeBase.GetByStatus("active")
+        if all_kbs:
+            knowledge_base_id = all_kbs[0].id
+            logger.info(f"使用默认知识库: {all_kbs[0].name} (ID: {knowledge_base_id})")
+        else:
+            # 如果没有可用的知识库，创建一个默认知识库
+            default_kb = KnowledgeBase.Create(
+                name="默认知识库",
+                description="系统自动创建的默认知识库",
+                embedding_model="text-embedding-3-small"
+            )
+            knowledge_base_id = default_kb.id
+            logger.info(f"创建默认知识库: {default_kb.name} (ID: {knowledge_base_id})")
+        
         # 验证知识库是否存在
-        kb = KnowledgeBase.GetById(knowledge_base_id)
+        kb = KnowledgeBase.GetById(str(knowledge_base_id))
         if not kb:
             raise HTTPException(status_code=404, detail="知识库不存在")
         
@@ -320,7 +335,7 @@ async def UploadFile(
             name=file.filename,
             file_type=file.content_type,
             size=file.size,
-            knowledge_base_id=knowledge_base_id,
+            knowledge_base_id=str(knowledge_base_id),
             file_path=file_path,
             metadata=metadata
         )

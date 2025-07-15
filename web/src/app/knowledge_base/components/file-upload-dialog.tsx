@@ -15,13 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { Progress } from "~/components/ui/progress";
 import { Badge } from "~/components/ui/badge";
 import type { UploadProgress } from "~/app/knowledge_base/types";
@@ -40,10 +33,8 @@ export function FileUploadDialog({
   selectedKnowledgeBase: propSelectedKnowledgeBase,
   onUploadComplete,
 }: FileUploadDialogProps) {
-  const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState<string>("");
   const [uploadFiles, setUploadFiles] = useState<UploadProgress[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const formatFileSize = (bytes: number) => {
@@ -96,29 +87,8 @@ export function FileUploadDialog({
     setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // 加载知识库列表
-  const loadKnowledgeBases = async () => {
-    try {
-      const response = await knowledgeBaseApi.GetKnowledgeBases({ page_size: 100 });
-      setKnowledgeBases(response.knowledge_bases);
-    } catch (error) {
-      console.error("加载知识库列表失败:", error);
-    }
-  };
-
-  // 当对话框打开时加载知识库列表
-  React.useEffect(() => {
-    if (open) {
-      loadKnowledgeBases();
-      // 如果有传入的知识库，设置它
-      if (propSelectedKnowledgeBase) {
-        setSelectedKnowledgeBase(propSelectedKnowledgeBase.id);
-      }
-    }
-  }, [open, propSelectedKnowledgeBase]);
-
   const handleUpload = async () => {
-    if (!selectedKnowledgeBase || uploadFiles.length === 0) return;
+    if (uploadFiles.length === 0) return;
 
     setIsLoading(true);
 
@@ -134,10 +104,10 @@ export function FileUploadDialog({
         );
 
         try {
-          // 实际上传文件
+          // 实际上传文件，使用默认数据库
           const response = await knowledgeBaseApi.UploadFile(
             file.file,
-            selectedKnowledgeBase,
+            propSelectedKnowledgeBase?.id, // 不传递knowledge_base_id，使用默认数据库
             file.file.name
           );
 
@@ -175,7 +145,6 @@ export function FileUploadDialog({
       setTimeout(() => {
         onOpenChange(false);
         setUploadFiles([]);
-        setSelectedKnowledgeBase("");
       }, 1000);
 
     } catch (error) {
@@ -223,35 +192,13 @@ export function FileUploadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>上传文件到知识库</DialogTitle>
+          <DialogTitle>上传文件</DialogTitle>
           <DialogDescription>
-            选择要上传的文件，支持 PDF、Word、Excel、TXT 等格式
+            选择要上传的文件，系统将自动使用当前数据库存储
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* 知识库选择 */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">选择目标知识库</label>
-            <Select value={selectedKnowledgeBase} onValueChange={setSelectedKnowledgeBase}>
-              <SelectTrigger>
-                <SelectValue placeholder="请选择知识库" />
-              </SelectTrigger>
-              <SelectContent>
-                {knowledgeBases.map((kb) => (
-                  <SelectItem key={kb.id} value={kb.id}>
-                    <div className="flex flex-col">
-                      <span>{kb.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {kb.file_count} 个文件 • {kb.vector_count} 个向量
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* 文件拖拽区域 */}
           <div
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
@@ -339,7 +286,7 @@ export function FileUploadDialog({
           </Button>
           <Button
             onClick={handleUpload}
-            disabled={!selectedKnowledgeBase || uploadFiles.length === 0 || isLoading}
+            disabled={uploadFiles.length === 0 || isLoading}
           >
             {isLoading ? "上传中..." : "开始上传"}
           </Button>

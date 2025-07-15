@@ -17,9 +17,10 @@ import { toast } from "sonner";
 interface SimpleFileManagementProps {
   selectedKnowledgeBase: KnowledgeBase | null;
   onRefresh: () => void;
+  refreshTrigger?: number; // 添加刷新触发器
 }
 
-export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh }: SimpleFileManagementProps) {
+export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh, refreshTrigger }: SimpleFileManagementProps) {
   const [files, setFiles] = useState<FileDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,10 +98,10 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
     }
   };
 
-  // 监听知识库变化和分页变化
+  // 监听知识库变化、分页变化和外部刷新触发器
   useEffect(() => {
     LoadFiles();
-  }, [LoadFiles]);
+  }, [LoadFiles, refreshTrigger]);
 
   if (!selectedKnowledgeBase) {
     return (
@@ -126,9 +127,20 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>文件列表</span>
-            <span className="text-sm text-muted-foreground">
-              {totalFiles} 个文件
-            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={LoadFiles}
+                disabled={loading}
+                title="刷新文件列表"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {totalFiles} 个文件
+              </span>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>

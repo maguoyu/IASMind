@@ -12,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Input } from "~/components/ui/input";
-import { Switch } from "~/components/ui/switch";
 import { Separator } from "~/components/ui/separator";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { Label } from "~/components/ui/label";
 import { 
   Plus, 
   Database, 
@@ -29,8 +29,6 @@ import {
   Calendar,
   File,
   Search,
-  Play,
-  Download,
   ArrowLeft,
   TestTube,
   Network,
@@ -40,6 +38,7 @@ import {
 import { knowledgeBaseApi, KnowledgeBase } from "~/core/api/knowledge-base";
 import { toast } from "sonner";
 import { FileUploadDialog } from "./components/file-upload-dialog";
+import { CreateKnowledgeBaseDialog } from "./components/create-knowledge-base-dialog";
 import FileManagementTab from "./components/tabs/file-management-tab";
 import ApiDebugPanel from "./components/api-debug-panel";
 
@@ -51,6 +50,7 @@ export default function KnowledgeBasePage() {
   const [selectedKnowledgeBase, setSelectedKnowledgeBase] = useState<KnowledgeBase | null>(null);
   const [loading, setLoading] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [detailTab, setDetailTab] = useState<DetailTab>("dataset");
@@ -76,22 +76,9 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  // 创建知识库
-  const HandleCreateKnowledgeBase = async () => {
-    try {
-      const response = await knowledgeBaseApi.CreateKnowledgeBase({
-        name: `新知识库 ${new Date().toLocaleString()}`,
-        description: "这是一个新的知识库",
-      });
-      
-      if (response.success) {
-        toast.success("知识库创建成功");
-        LoadKnowledgeBases();
-      }
-    } catch (error) {
-      console.error("创建知识库失败:", error);
-      toast.error("创建知识库失败");
-    }
+  // 创建知识库成功回调
+  const HandleCreateKnowledgeBaseSuccess = () => {
+    LoadKnowledgeBases();
   };
 
   // 删除知识库
@@ -145,12 +132,7 @@ export default function KnowledgeBasePage() {
     kb.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // 获取解析状态
-  const getParseStatus = (kb: KnowledgeBase) => {
-    if (kb.file_count === 0) return { status: "未解析", color: "text-green-600" };
-    if (kb.vector_count > 0) return { status: "成功", color: "text-blue-600" };
-    return { status: "失败", color: "text-red-600" };
-  };
+
 
   // 列表视图
   if (viewMode === "list") {
@@ -173,7 +155,7 @@ export default function KnowledgeBasePage() {
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               刷新
             </Button>
-            <Button onClick={HandleCreateKnowledgeBase} disabled={loading}>
+            <Button onClick={() => setShowCreateDialog(true)} disabled={loading}>
               <Plus className="h-4 w-4 mr-2" />
               创建知识库
             </Button>
@@ -206,7 +188,7 @@ export default function KnowledgeBasePage() {
                     <p className="mt-1 text-sm text-muted-foreground">
                       创建您的第一个知识库开始管理文档
                     </p>
-                    <Button onClick={HandleCreateKnowledgeBase} className="mt-4">
+                    <Button onClick={() => setShowCreateDialog(true)} className="mt-4">
                       <Plus className="h-4 w-4 mr-2" />
                       创建知识库
                     </Button>
@@ -340,34 +322,10 @@ export default function KnowledgeBasePage() {
                               <Calendar className="h-4 w-4" />
                               <span>{new Date(kb.created_at).toLocaleDateString()} {new Date(kb.created_at).toLocaleTimeString()}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <Switch size="sm" defaultChecked={kb.status === "active"} />
-                              <span className={getParseStatus(kb).color}>
-                                {getParseStatus(kb).status}
-                              </span>
-                            </div>
+
                           </div>
 
-                          {/* 操作图标 */}
-                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Play className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Settings className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Edit3 className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <Download className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
+
                         </CardContent>
                       </Card>
                     ))}
@@ -461,6 +419,13 @@ export default function KnowledgeBasePage() {
             }}
           />
         )}
+
+        {/* 创建知识库对话框 */}
+        <CreateKnowledgeBaseDialog
+          open={showCreateDialog}
+          onOpenChange={setShowCreateDialog}
+          onSuccess={HandleCreateKnowledgeBaseSuccess}
+        />
       </div>
     );
   }
@@ -604,6 +569,13 @@ export default function KnowledgeBasePage() {
           }}
         />
       )}
+
+      {/* 创建知识库对话框 */}
+      <CreateKnowledgeBaseDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSuccess={HandleCreateKnowledgeBaseSuccess}
+      />
     </div>
   );
 } 

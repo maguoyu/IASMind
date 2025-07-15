@@ -110,6 +110,13 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh 
     }
   }, [currentPage, pageSize]);
 
+  // 监听知识库信息更新（用于文件上传后刷新）
+  useEffect(() => {
+    if (selectedKnowledgeBase) {
+      LoadFiles();
+    }
+  }, [selectedKnowledgeBase?.file_count, selectedKnowledgeBase?.vector_count]);
+
   if (!selectedKnowledgeBase) {
     return (
       <div className="flex items-center justify-center h-64">

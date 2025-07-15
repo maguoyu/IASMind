@@ -64,6 +64,12 @@ export default function KnowledgeBasePage() {
       // 如果没有选中的知识库，选择第一个
       if (!selectedKnowledgeBase && response.knowledge_bases.length > 0) {
         setSelectedKnowledgeBase(response.knowledge_bases[0]);
+      } else if (selectedKnowledgeBase) {
+        // 更新当前选中的知识库信息
+        const updatedKb = response.knowledge_bases.find(kb => kb.id === selectedKnowledgeBase.id);
+        if (updatedKb) {
+          setSelectedKnowledgeBase(updatedKb);
+        }
       }
     } catch (error) {
       console.error("加载知识库列表失败:", error);
@@ -515,7 +521,7 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* 文件上传对话框 */}
-      {showUploadDialog && selectedKnowledgeBase && (
+      {showUploadDialog && (
         <FileUploadDialog
           open={showUploadDialog}
           onOpenChange={setShowUploadDialog}

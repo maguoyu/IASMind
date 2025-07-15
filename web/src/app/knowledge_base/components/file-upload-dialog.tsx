@@ -104,10 +104,12 @@ export function FileUploadDialog({
         );
 
         try {
+
+
           // 实际上传文件，使用默认数据库
           const response = await knowledgeBaseApi.UploadFile(
             file.file,
-            propSelectedKnowledgeBase?.id, // 不传递knowledge_base_id，使用默认数据库
+            propSelectedKnowledgeBase?.id, 
             file.file.name
           );
 

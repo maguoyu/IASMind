@@ -6,7 +6,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Badge } from "~/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
@@ -39,8 +38,7 @@ import { knowledgeBaseApi, KnowledgeBase } from "~/core/api/knowledge-base";
 import { toast } from "sonner";
 import { FileUploadDialog } from "./components/file-upload-dialog";
 import { CreateKnowledgeBaseDialog } from "./components/create-knowledge-base-dialog";
-import FileManagementTab from "./components/tabs/file-management-tab";
-import ApiDebugPanel from "./components/api-debug-panel";
+import SimpleFileManagement from "./components/simple-file-management";
 
 type ViewMode = "list" | "detail";
 type DetailTab = "dataset" | "retrieval" | "config" | "knowledge-graph";
@@ -51,7 +49,6 @@ export default function KnowledgeBasePage() {
   const [loading, setLoading] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [detailTab, setDetailTab] = useState<DetailTab>("dataset");
   const [searchTerm, setSearchTerm] = useState("");
@@ -132,8 +129,6 @@ export default function KnowledgeBasePage() {
     kb.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-
-
   // 列表视图
   if (viewMode === "list") {
     return (
@@ -163,15 +158,9 @@ export default function KnowledgeBasePage() {
         </div>
 
         {/* 主要内容 */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">概览</TabsTrigger>
-            <TabsTrigger value="files">文件管理</TabsTrigger>
-            <TabsTrigger value="debug">API调试</TabsTrigger>
-          </TabsList>
-
-          {/* 概览标签页 */}
-          <TabsContent value="overview" className="space-y-6">
+        <div className="space-y-6">
+          {/* 概览内容 */}
+          <div className="space-y-6">
             {/* 知识库选择 */}
             <Card>
               <CardHeader>
@@ -322,10 +311,7 @@ export default function KnowledgeBasePage() {
                               <Calendar className="h-4 w-4" />
                               <span>{new Date(kb.created_at).toLocaleDateString()} {new Date(kb.created_at).toLocaleTimeString()}</span>
                             </div>
-
                           </div>
-
-
                         </CardContent>
                       </Card>
                     ))}
@@ -338,74 +324,8 @@ export default function KnowledgeBasePage() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          {/* 文件管理标签页 */}
-          <TabsContent value="files" className="space-y-6">
-            {selectedKnowledgeBase ? (
-              <>
-                {/* 文件管理头部 */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        {selectedKnowledgeBase.name} - 文件管理
-                      </div>
-                      <Button onClick={() => setShowUploadDialog(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        上传文件
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">{selectedKnowledgeBase.file_count}</div>
-                        <div className="text-xs text-muted-foreground">总文件数</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">{selectedKnowledgeBase.vector_count}</div>
-                        <div className="text-xs text-muted-foreground">向量总数</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">{selectedKnowledgeBase.embedding_model}</div>
-                        <div className="text-xs text-muted-foreground">嵌入模型</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">{selectedKnowledgeBase.chunk_size}</div>
-                        <div className="text-xs text-muted-foreground">分块大小</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* 文件管理内容 */}
-                <FileManagementTab
-                  selectedKnowledgeBase={selectedKnowledgeBase}
-                  onRefresh={HandleRefresh}
-                />
-              </>
-            ) : (
-              <Card>
-                <CardContent className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-2 text-sm font-medium text-muted-foreground">请选择知识库</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      选择一个知识库来管理文件
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* API调试标签页 */}
-          <TabsContent value="debug" className="space-y-6">
-            <ApiDebugPanel />
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
 
         {/* 文件上传对话框 */}
         {selectedKnowledgeBase && (
@@ -527,10 +447,47 @@ export default function KnowledgeBasePage() {
               </div>
 
               {/* 文件管理内容 */}
-              <FileManagementTab
-                selectedKnowledgeBase={selectedKnowledgeBase}
-                onRefresh={HandleRefresh}
-              />
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        {selectedKnowledgeBase?.name} - 文件管理
+                      </div>
+                      <Button onClick={() => setShowUploadDialog(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        上传文件
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{selectedKnowledgeBase?.file_count}</div>
+                        <div className="text-xs text-muted-foreground">总文件数</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{selectedKnowledgeBase?.vector_count}</div>
+                        <div className="text-xs text-muted-foreground">向量总数</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{selectedKnowledgeBase?.embedding_model}</div>
+                        <div className="text-xs text-muted-foreground">嵌入模型</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{selectedKnowledgeBase?.chunk_size}</div>
+                        <div className="text-xs text-muted-foreground">分块大小</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <SimpleFileManagement
+                  selectedKnowledgeBase={selectedKnowledgeBase}
+                  onRefresh={HandleRefresh}
+                />
+              </div>
             </div>
           )}
 

@@ -222,33 +222,39 @@ class FileDocument:
     
     @classmethod
     def GetAll(cls, limit: int = 100, offset: int = 0, status: Optional[str] = None, 
-               file_type: Optional[str] = None, search: Optional[str] = None) -> List['FileDocument']:
+               file_type: Optional[str] = None, search: Optional[str] = None,
+               sort_by: str = "uploaded_at", sort_order: str = "desc", knowledge_base_id: Optional[str] = None) -> List['FileDocument']:
         """获取所有文件文档，支持筛选"""
         conditions = []
         params = []
         
+        if knowledge_base_id:
+            conditions.append("knowledge_base_id = %s")
+            params.append(knowledge_base_id)
         if status:
             conditions.append("status = %s")
             params.append(status)
-        
         if file_type:
             conditions.append("type LIKE %s")
             params.append(f"%{file_type}%")
-        
         if search:
             conditions.append("name LIKE %s")
             params.append(f"%{search}%")
-        
         where_clause = " AND ".join(conditions) if conditions else "1=1"
+        
+        allowed_sort_fields = ["uploaded_at", "name", "size", "vector_count", "status"]
+        if sort_by not in allowed_sort_fields:
+            sort_by = "uploaded_at"
+        if sort_order not in ["asc", "desc"]:
+            sort_order = "desc"
         
         sql = f"""
         SELECT * FROM file_documents 
         WHERE {where_clause}
-        ORDER BY uploaded_at DESC 
+        ORDER BY {sort_by} {sort_order.upper()}
         LIMIT %s OFFSET %s
         """
         params.extend([limit, offset])
-        
         results = db_connection.ExecuteQuery(sql, tuple(params))
         documents = []
         for row in results:

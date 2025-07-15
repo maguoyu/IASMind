@@ -251,6 +251,8 @@ export const knowledgeBaseApi = {
     search?: string;
     page?: number;
     page_size?: number;
+    sort_by?: string;
+    sort_order?: "asc" | "desc";
   }): Promise<FileListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.knowledge_base_id) searchParams.append("knowledge_base_id", params.knowledge_base_id);
@@ -259,6 +261,8 @@ export const knowledgeBaseApi = {
     if (params?.search) searchParams.append("search", params.search);
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
+    if (params?.sort_by) searchParams.append("sort_by", params.sort_by);
+    if (params?.sort_order) searchParams.append("sort_order", params.sort_order);
 
     const response = await fetch(
       resolveServiceURL(`/api/knowledge_base/files?${searchParams.toString()}`),

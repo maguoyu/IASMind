@@ -3,18 +3,16 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Progress } from "~/components/ui/progress";
 import { Separator } from "~/components/ui/separator";
-import { ScrollArea } from "~/components/ui/scroll-area";
 import { Pagination } from "~/components/ui/pagination";
 import { 
   Upload, 
@@ -31,17 +29,30 @@ import {
   MoreHorizontal,
   Eye,
   Settings,
-  Play
+  Play,
+  ArrowUpDown,
+  SortAsc,
+  SortDesc,
+  Grid3X3,
+  List,
+  FileSpreadsheet,
+  FileImage,
+  FileVideo,
+  FileAudio
 } from "lucide-react";
 import { knowledgeBaseApi, FileDocument, KnowledgeBase } from "~/core/api/knowledge-base";
 import { toast } from "sonner";
 
-interface FileManagementTabProps {
+interface FileManagementEnhancedProps {
   selectedKnowledgeBase: KnowledgeBase | null;
   onRefresh: () => void;
 }
 
-export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: FileManagementTabProps) {
+type ViewMode = "table" | "grid";
+type SortField = "uploaded_at" | "name" | "size" | "vector_count" | "status";
+type SortOrder = "asc" | "desc";
+
+export default function FileManagementEnhanced({ selectedKnowledgeBase, onRefresh }: FileManagementEnhancedProps) {
   const [files, setFiles] = useState<FileDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,8 +65,25 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
   const [batchProcessing, setBatchProcessing] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [showStats, setShowStats] = useState(false);
-  const [sortBy, setSortBy] = useState<string>("uploaded_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<SortField>("uploaded_at");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+
+  // 计算总页数
+  const totalPages = useMemo(() => Math.ceil(totalFiles / pageSize), [totalFiles, pageSize]);
+
+  // 获取文件图标
+  const GetFileIcon = (type: string) => {
+    if (type.includes("pdf")) return "📄";
+    if (type.includes("word") || type.includes("document")) return "📝";
+    if (type.includes("excel") || type.includes("spreadsheet")) return "📊";
+    if (type.includes("image")) return "🖼️";
+    if (type.includes("video")) return "🎥";
+    if (type.includes("audio")) return "🎵";
+    if (type.includes("text") || type.includes("plain")) return "📄";
+    if (type.includes("markdown")) return "📝";
+    return "📁";
+  };
 
   // 加载文件列表
   const LoadFiles = async () => {
@@ -96,10 +124,8 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
 
   // 删除文件
   const HandleDeleteFile = async (fileId: string) => {
-    if (!confirm("确定要删除这个文件吗？此操作不可撤销。")) {
-      return;
-    }
-
+    if (!confirm("确定要删除这个文件吗？")) return;
+    
     try {
       await knowledgeBaseApi.DeleteFile(fileId);
       toast.success("文件删除成功");
@@ -115,8 +141,9 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
   const HandleVectorizeFile = async (fileId: string) => {
     try {
       await knowledgeBaseApi.VectorizeFile(fileId);
-      toast.success("文件向量化已开始");
+      toast.success("文件向量化成功");
       LoadFiles();
+      onRefresh();
     } catch (error) {
       console.error("向量化文件失败:", error);
       toast.error("向量化文件失败");
@@ -136,13 +163,10 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
         file_ids: selectedFiles,
       });
       
-      const successCount = response.results.filter(r => r.status === "success").length;
-      const skippedCount = response.results.filter(r => r.status === "skipped").length;
-      const failedCount = response.results.filter(r => r.status === "failed").length;
-      
-      toast.success(`批量向量化完成: ${successCount}个成功, ${skippedCount}个跳过, ${failedCount}个失败`);
+      toast.success(`批量向量化完成，成功处理 ${response.results.filter(r => r.status === 'success').length} 个文件`);
       setSelectedFiles([]);
       LoadFiles();
+      onRefresh();
     } catch (error) {
       console.error("批量向量化失败:", error);
       toast.error("批量向量化失败");
@@ -201,6 +225,18 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
     setTypeFilter("");
     setCurrentPage(1);
     setSelectedFiles([]);
+    setSortBy("uploaded_at");
+    setSortOrder("desc");
+  };
+
+  // 切换排序
+  const ToggleSort = (field: SortField) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("desc");
+    }
   };
 
   // 监听知识库变化
@@ -232,8 +268,6 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
     );
   }
 
-  const totalPages = Math.ceil(totalFiles / pageSize);
-
   return (
     <div className="space-y-6">
       {/* 统计信息卡片 */}
@@ -251,49 +285,44 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold">{totalFiles}</div>
+              <div className="text-2xl font-bold">{stats?.total_files || 0}</div>
               <div className="text-xs text-muted-foreground">总文件数</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">
-                {files.filter(f => f.status === "vectorized").length}
-              </div>
-              <div className="text-xs text-muted-foreground">已向量化</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {files.filter(f => f.status === "processing").length}
-              </div>
-              <div className="text-xs text-muted-foreground">处理中</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {files.reduce((sum, f) => sum + (f.vector_count || 0), 0)}
-              </div>
+              <div className="text-2xl font-bold">{stats?.total_vectors || 0}</div>
               <div className="text-xs text-muted-foreground">总向量数</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">{stats?.total_size || 0}</div>
+              <div className="text-xs text-muted-foreground">总大小(MB)</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">{stats?.knowledge_bases || 0}</div>
+              <div className="text-xs text-muted-foreground">知识库数</div>
             </div>
           </div>
           
           {showStats && stats && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-4 space-y-2">
+              <Separator />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <h4 className="text-sm font-medium mb-2">文件状态分布</h4>
-                  {Object.entries(stats.file_status).map(([status, count]) => (
-                    <div key={status} className="flex justify-between text-sm">
-                      <span>{knowledgeBaseApi.utils.getStatusText(status as any)}</span>
-                      <span className="font-medium">{count as number}</span>
-                    </div>
-                  ))}
+                  <div className="font-medium">文件状态分布</div>
+                  <div className="text-muted-foreground">
+                    已上传: {stats.status_counts?.uploaded || 0}<br />
+                    处理中: {stats.status_counts?.processing || 0}<br />
+                    已向量化: {stats.status_counts?.vectorized || 0}<br />
+                    失败: {stats.status_counts?.failed || 0}
+                  </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium mb-2">文件类型分布</h4>
-                  {Object.entries(stats.file_type_stats).map(([type, count]) => (
-                    <div key={type} className="flex justify-between text-sm">
-                      <span>{type}</span>
-                      <span className="font-medium">{count as number}</span>
-                    </div>
-                  ))}
+                  <div className="font-medium">文件类型分布</div>
+                  <div className="text-muted-foreground">
+                    PDF: {stats.type_counts?.pdf || 0}<br />
+                    Word: {stats.type_counts?.docx || 0}<br />
+                    Excel: {stats.type_counts?.xlsx || 0}<br />
+                    文本: {stats.type_counts?.txt || 0}
+                  </div>
                 </div>
               </div>
             </div>
@@ -301,7 +330,7 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
         </CardContent>
       </Card>
 
-      {/* 操作栏 */}
+      {/* 搜索和过滤 */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -342,7 +371,7 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
                 </SelectContent>
               </Select>
               
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortField)}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="排序" />
                 </SelectTrigger>
@@ -360,10 +389,17 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
                 onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
                 title={`当前排序: ${sortOrder === "asc" ? "升序" : "降序"}`}
               >
-                {sortOrder === "asc" ? "↑" : "↓"}
+                {sortOrder === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
               </Button>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewMode(viewMode === "table" ? "grid" : "table")}
+              >
+                {viewMode === "table" ? <Grid3X3 className="h-4 w-4" /> : <List className="h-4 w-4" />}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -435,7 +471,7 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
                 上传文件到知识库开始管理
               </p>
             </div>
-          ) : (
+          ) : viewMode === "table" ? (
             <div className="space-y-4">
               <Table>
                 <TableHeader>
@@ -448,11 +484,51 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
                         className="rounded"
                       />
                     </TableHead>
-                    <TableHead>文件</TableHead>
-                    <TableHead>大小</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>向量数</TableHead>
-                    <TableHead>上传时间</TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => ToggleSort("name")}
+                    >
+                      <div className="flex items-center gap-1">
+                        文件
+                        <ArrowUpDown className="h-3 w-3" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => ToggleSort("size")}
+                    >
+                      <div className="flex items-center gap-1">
+                        大小
+                        <ArrowUpDown className="h-3 w-3" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => ToggleSort("status")}
+                    >
+                      <div className="flex items-center gap-1">
+                        状态
+                        <ArrowUpDown className="h-3 w-3" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => ToggleSort("vector_count")}
+                    >
+                      <div className="flex items-center gap-1">
+                        向量数
+                        <ArrowUpDown className="h-3 w-3" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer"
+                      onClick={() => ToggleSort("uploaded_at")}
+                    >
+                      <div className="flex items-center gap-1">
+                        上传时间
+                        <ArrowUpDown className="h-3 w-3" />
+                      </div>
+                    </TableHead>
                     <TableHead className="w-32">操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -470,7 +546,7 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <span className="text-lg">
-                            {knowledgeBaseApi.utils.getFileIcon(file.type)}
+                            {GetFileIcon(file.type)}
                           </span>
                           <div>
                             <div className="font-medium">{file.name}</div>
@@ -551,6 +627,93 @@ export default function FileManagementTab({ selectedKnowledgeBase, onRefresh }: 
                 pageSize={pageSize}
                 onPageSizeChange={setPageSize}
                 pageSizeOptions={[10, 20, 50, 100]}
+                totalItems={totalFiles}
+              />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {files.map((file) => (
+                  <Card key={file.id} className="relative">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedFiles.includes(file.id)}
+                          onChange={() => ToggleFileSelection(file.id)}
+                          className="rounded mt-1"
+                        />
+                        <div className="text-2xl">
+                          {GetFileIcon(file.type)}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="font-medium text-sm truncate" title={file.name}>
+                          {file.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {knowledgeBaseApi.utils.formatFileSize(file.size)}
+                        </div>
+                        <Badge variant={knowledgeBaseApi.utils.getStatusColor(file.status) as any} className="text-xs">
+                          {knowledgeBaseApi.utils.getStatusText(file.status)}
+                        </Badge>
+                        {file.vector_count && (
+                          <div className="text-xs text-muted-foreground">
+                            向量数: {file.vector_count}
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(file.uploaded_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => HandleDownloadFile(file)}
+                            title="下载文件"
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                          {file.status === "uploaded" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => HandleVectorizeFile(file.id)}
+                              title="向量化文件"
+                            >
+                              <Settings className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => HandleDeleteFile(file.id)}
+                            title="删除文件"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* 分页 */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                showPageInfo={true}
+                showPageSize={true}
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[10, 20, 50, 100]}
+                totalItems={totalFiles}
               />
             </div>
           )}

@@ -15,6 +15,8 @@ import { Badge } from "~/components/ui/badge";
 import { knowledgeBaseApi, FileDocument, KnowledgeBase } from "~/core/api/knowledge-base";
 import { toast } from "sonner";
 
+import { BatchVectorizeDialog } from "./batch-vectorize-dialog";
+
 interface SimpleFileManagementProps {
   selectedKnowledgeBase: KnowledgeBase | null;
   onRefresh: () => void;
@@ -29,6 +31,9 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
   const [totalFiles, setTotalFiles] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [showBatchVectorizeDialog, setShowBatchVectorizeDialog] = useState(false);
 
   // 加载文件列表
   const LoadFiles = useCallback(async () => {
@@ -113,6 +118,54 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
     }
   };
 
+  // 批量向量化文件
+  const HandleBatchVectorize = () => {
+    if (selectedFiles.size === 0) {
+      toast.error("请选择要向量化的文件");
+      return;
+    }
+
+    const fileIds = Array.from(selectedFiles);
+    const canVectorizeFiles = files.filter(file => 
+      fileIds.includes(file.id) && file.status === "uploaded"
+    );
+
+    if (canVectorizeFiles.length === 0) {
+      toast.error("选中的文件中没有可以向量化的文件");
+      return;
+    }
+
+    setShowBatchVectorizeDialog(true);
+  };
+
+  // 批量向量化完成回调
+  const HandleBatchVectorizeComplete = () => {
+    setSelectedFiles(new Set());
+    LoadFiles();
+    onRefresh();
+  };
+
+  // 选择/取消选择文件
+  const HandleToggleFileSelection = (fileId: string) => {
+    const newSelected = new Set(selectedFiles);
+    if (newSelected.has(fileId)) {
+      newSelected.delete(fileId);
+    } else {
+      newSelected.add(fileId);
+    }
+    setSelectedFiles(newSelected);
+  };
+
+  // 全选/取消全选
+  const HandleToggleSelectAll = () => {
+    const canSelectFiles = files.filter(file => file.status === "uploaded");
+    if (selectedFiles.size === canSelectFiles.length) {
+      setSelectedFiles(new Set());
+    } else {
+      setSelectedFiles(new Set(canSelectFiles.map(f => f.id)));
+    }
+  };
+
   // 下载文件
   const HandleDownloadFile = async (file: FileDocument) => {
     try {
@@ -185,31 +238,62 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
               </span>
             </div>
           </CardTitle>
-          {/* 搜索框 */}
-          <div className="flex items-center gap-2 mt-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="搜索文件名称..."
-                value={searchTerm}
-                onChange={(e) => HandleSearchChange(e.target.value)}
-                className="pl-10 pr-10"
-              />
+          {/* 搜索框和批量操作 */}
+          <div className="flex items-center justify-between gap-2 mt-4">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索文件名称..."
+                  value={searchTerm}
+                  onChange={(e) => HandleSearchChange(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={HandleClearSearch}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {searchTerm && (
+                <span className="text-sm text-muted-foreground">
+                  搜索: &ldquo;{searchTerm}&rdquo; - 找到 {totalFiles} 个文件
+                </span>
+              )}
+            </div>
+            
+            {/* 批量操作按钮 */}
+            {selectedFiles.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  已选择 {selectedFiles.size} 个文件
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={HandleBatchVectorize}
+                  disabled={batchLoading}
+                >
+                  {batchLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Settings className="h-4 w-4 mr-2" />
+                  )}
+                  批量向量化
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={HandleClearSearch}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  onClick={() => setSelectedFiles(new Set())}
                 >
-                  <X className="h-4 w-4" />
+                  取消选择
                 </Button>
-              )}
-            </div>
-            {searchTerm && (
-              <span className="text-sm text-muted-foreground">
-                搜索: &ldquo;{searchTerm}&rdquo; - 找到 {totalFiles} 个文件
-              </span>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -236,6 +320,17 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={files.filter(f => f.status === "uploaded").length > 0 && 
+                                   selectedFiles.size === files.filter(f => f.status === "uploaded").length}
+                          onChange={HandleToggleSelectAll}
+                          className="rounded border-gray-300"
+                        />
+                      </div>
+                    </TableHead>
                     <TableHead>文件</TableHead>
                     <TableHead>大小</TableHead>
                     <TableHead>状态</TableHead>
@@ -247,6 +342,17 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
                 <TableBody>
                   {files.map((file) => (
                     <TableRow key={file.id}>
+                      <TableCell className="w-12">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedFiles.has(file.id)}
+                            onChange={() => HandleToggleFileSelection(file.id)}
+                            disabled={file.status !== "uploaded"}
+                            className="rounded border-gray-300"
+                          />
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <span className="text-lg">
@@ -356,6 +462,14 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
           )}
         </CardContent>
       </Card>
+
+      {/* 批量向量化对话框 */}
+      <BatchVectorizeDialog
+        open={showBatchVectorizeDialog}
+        onOpenChange={setShowBatchVectorizeDialog}
+        files={files.filter(file => selectedFiles.has(file.id))}
+        onComplete={HandleBatchVectorizeComplete}
+      />
     </div>
   );
 } 

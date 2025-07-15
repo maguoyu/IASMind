@@ -3,17 +3,6 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "~/components/ui/avatar";
-import { Input } from "~/components/ui/input";
-import { Separator } from "~/components/ui/separator";
-import { ScrollArea } from "~/components/ui/scroll-area";
-import { Label } from "~/components/ui/label";
 import { 
   Plus, 
   Database, 
@@ -34,10 +23,25 @@ import {
   ChevronDown,
   Eye
 } from "lucide-react";
-import { knowledgeBaseApi, KnowledgeBase } from "~/core/api/knowledge-base";
+import React, { useState, useEffect } from "react";
+
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Separator } from "~/components/ui/separator";
+
+import { knowledgeBaseApi, type KnowledgeBase } from "~/core/api/knowledge-base";
+
 import { toast } from "sonner";
-import { FileUploadDialog } from "./components/file-upload-dialog";
+
 import { CreateKnowledgeBaseDialog } from "./components/create-knowledge-base-dialog";
+import { FileUploadDialog } from "./components/file-upload-dialog";
 import SimpleFileManagement from "./components/simple-file-management";
 
 type ViewMode = "list" | "detail";
@@ -69,6 +73,8 @@ export default function KnowledgeBasePage() {
         const updatedKb = response.knowledge_bases.find(kb => kb.id === selectedKnowledgeBase.id);
         if (updatedKb) {
           setSelectedKnowledgeBase(updatedKb);
+        } else {
+          setSelectedKnowledgeBase(null);
         }
       }
     } catch (error) {
@@ -142,7 +148,7 @@ export default function KnowledgeBasePage() {
         {/* 页面标题 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">知识库管理</h1>
+            <h1 className="text-3xl font-bold">知识库</h1>
             <p className="text-muted-foreground mt-1">
               管理和组织您的文档知识库
             </p>
@@ -167,80 +173,6 @@ export default function KnowledgeBasePage() {
         <div className="space-y-6">
           {/* 概览内容 */}
           <div className="space-y-6">
-            {/* 知识库选择 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  选择知识库
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {knowledgeBases.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Database className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-2 text-sm font-medium text-muted-foreground">暂无知识库</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      创建您的第一个知识库开始管理文档
-                    </p>
-                    <Button onClick={() => setShowCreateDialog(true)} className="mt-4">
-                      <Plus className="h-4 w-4 mr-2" />
-                      创建知识库
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <Select
-                      value={selectedKnowledgeBase?.id || ""}
-                      onValueChange={(value) => {
-                        const kb = knowledgeBases.find(k => k.id === value);
-                        setSelectedKnowledgeBase(kb || null);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择知识库" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {knowledgeBases.filter(kb => kb.id && kb.id !== "").map((kb) => (
-                          <SelectItem key={kb.id} value={kb.id}>
-                            <div className="flex items-center justify-between w-full">
-                              <span>{kb.name}</span>
-                              <Badge variant="outline" className="ml-2">
-                                {kb.status}
-                              </Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {selectedKnowledgeBase && (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card>
-                          <CardContent className="pt-6">
-                            <div className="text-2xl font-bold">{selectedKnowledgeBase.file_count}</div>
-                            <p className="text-xs text-muted-foreground">文件数量</p>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="pt-6">
-                            <div className="text-2xl font-bold">{selectedKnowledgeBase.vector_count}</div>
-                            <p className="text-xs text-muted-foreground">向量数量</p>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="pt-6">
-                            <div className="text-2xl font-bold">{selectedKnowledgeBase.embedding_model}</div>
-                            <p className="text-xs text-muted-foreground">嵌入模型</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {/* 知识库列表 - 栅格卡片布局 */}
             {knowledgeBases.length > 0 && (
               <Card>

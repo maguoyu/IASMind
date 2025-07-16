@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import List
+from typing import List, Optional
 
 from fastapi import HTTPException
 from pymilvus.milvus_client import IndexParams
@@ -23,12 +23,12 @@ def delete_documentsByFileId(file_id :str):
     vector_store = milvus_vector_store()
     expr = f'metadata["file_id"] == "{file_id}"'
     pks = vector_store.get_pks(expr=expr)
-    if  pks:
-        vector_store.delete(ids=pks)
+    if pks:
+        vector_store.delete(ids=[str(pk) for pk in pks])
 
 
 
-def delete_documents(ids :List[str]=None):
+def delete_documents(ids: Optional[List[str]] = None):
     # 初始化  milvus 向量数据库
     vector_store = milvus_vector_store()
     vector_store.delete(ids=ids)
@@ -118,20 +118,16 @@ def create_vector_store(split_docs,drop_old_data=False):
 
 
 
-def vector_documents(drop_old_data:  bool=False,param: DocumentParams=None):
+def vector_documents(drop_old_data: bool = False, file_ids: List[str] = [], knowledge_base_id: Optional[str] = None):
     """
     启动文档向量化，并保存数据库
     """
 
-    if not param:
-        param = DocumentParams()
-        param.page_size = 10000
-        param.ids = None
-        param.page_num = 1
+    total_files = FileDocument.GetAll(limit=10000, knowledge_base_id=knowledge_base_id, file_ids=file_ids)
+
 
     split_docs = []
-    page = document_crud.page(params=param)
-    for doc in page.list:
+    for doc in total_files:
         docs = loadDocument(doc)
 
         if docs[0] == "txt":
@@ -155,4 +151,6 @@ def vector_documents(drop_old_data:  bool=False,param: DocumentParams=None):
 
    # 执行向量化（使用之前分割好的split_docs）
     return create_vector_store(split_docs,drop_old_data=drop_old_data)
+
+
 

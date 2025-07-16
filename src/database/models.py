@@ -223,7 +223,8 @@ class FileDocument:
     @classmethod
     def GetAll(cls, limit: int = 100, offset: int = 0, status: Optional[str] = None, 
                file_type: Optional[str] = None, search: Optional[str] = None,
-               sort_by: str = "uploaded_at", sort_order: str = "desc", knowledge_base_id: Optional[str] = None) -> List['FileDocument']:
+               sort_by: str = "uploaded_at", sort_order: str = "desc", knowledge_base_id: Optional[str] = None,
+               file_ids: Optional[List[str]] = None) -> List['FileDocument']:
         """获取所有文件文档，支持筛选"""
         conditions = []
         params = []
@@ -240,6 +241,10 @@ class FileDocument:
         if search:
             conditions.append("name LIKE %s")
             params.append(f"%{search}%")
+        if file_ids and len(file_ids) > 0:
+            placeholders = ", ".join(["%s"] * len(file_ids))
+            conditions.append(f"id IN ({placeholders})")
+            params.extend(file_ids)
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         
         allowed_sort_fields = ["uploaded_at", "name", "size", "vector_count", "status"]

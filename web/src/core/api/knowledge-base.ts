@@ -250,6 +250,7 @@ export const knowledgeBaseApi = {
     status?: string;
     file_type?: string;
     search?: string;
+    file_ids?: string[];
     page?: number;
     page_size?: number;
     sort_by?: string;
@@ -260,6 +261,7 @@ export const knowledgeBaseApi = {
     if (params?.status) searchParams.append("status", params.status);
     if (params?.file_type) searchParams.append("file_type", params.file_type);
     if (params?.search) searchParams.append("search", params.search);
+    if (params?.file_ids && params.file_ids.length > 0) searchParams.append("file_ids", params.file_ids.join(","));
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
     if (params?.sort_by) searchParams.append("sort_by", params.sort_by);

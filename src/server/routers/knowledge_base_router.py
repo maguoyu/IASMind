@@ -360,6 +360,7 @@ async def GetFiles(
     status: Optional[str] = Query(None, description="文件状态"),
     file_type: Optional[str] = Query(None, description="文件类型"),
     search: Optional[str] = Query(None, description="搜索关键词"),
+    file_ids: Optional[str] = Query(None, description="文件ID列表，用逗号分隔"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     sort_by: Optional[str] = Query("uploaded_at", description="排序字段"),
@@ -367,6 +368,11 @@ async def GetFiles(
 ):
     """获取文件列表"""
     try:
+        # 处理file_ids参数
+        file_ids_list = None
+        if file_ids:
+            file_ids_list = [fid.strip() for fid in file_ids.split(",") if fid.strip()]
+        
         files = FileDocument.GetAll(
             limit=page_size,
             offset=(page - 1) * page_size,
@@ -375,12 +381,13 @@ async def GetFiles(
             search=search,
             sort_by=sort_by or "uploaded_at",
             sort_order=sort_order or "desc",
-            knowledge_base_id=knowledge_base_id
+            knowledge_base_id=knowledge_base_id,
+            file_ids=file_ids_list
         )
         # Python层过滤已移除
         
         # 获取总数
-        total_files = FileDocument.GetAll(limit=10000, status=status, file_type=file_type, search=search, knowledge_base_id=knowledge_base_id)
+        total_files = FileDocument.GetAll(limit=10000, status=status, file_type=file_type, search=search, knowledge_base_id=knowledge_base_id, file_ids=file_ids_list)
         total = len(total_files)
         
         return FileListResponse(

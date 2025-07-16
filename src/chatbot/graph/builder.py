@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
-
+from src.utils.memory import get_redis_memory
 from src.chatbot.graph.types import State
 from src.chatbot.graph.nodes import initialize_node, chatbot_node, enhanced_chatbot_node
 
@@ -28,7 +27,7 @@ def _build_base_graph():
 def build_graph_with_memory():
     """Build and return the chatbot workflow graph with memory."""
     # Use persistent memory to save conversation history
-    memory = MemorySaver()
+    memory = get_redis_memory()
     
     # Build state graph
     builder = _build_base_graph()

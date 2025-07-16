@@ -281,7 +281,7 @@ async def DeleteKnowledgeBase(kb_id: str):
 
 # 文件管理API
 @router.post("/upload", response_model=FileUploadResponse)
-async def UploadFile(
+async def upload_file(
     file: UploadFile = File(...),
     knowledge_base_id: Optional[str] = Form(None),
     description: str = Form("")

@@ -43,7 +43,7 @@ def delete_documentsByKnowledgeBaseId(knowledge_base_id: str):
             deleted_count = len(pks)
             try:
                 # 将ID转换为字符串列表
-                vector_store.delete(ids=[str(pk) for pk in pks])
+                vector_store.delete(ids=pks)
             except Exception as e:
                 logger.error(f"删除知识库 {knowledge_base_id} 的向量数据失败: {e}")
                 raise

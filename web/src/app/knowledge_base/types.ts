@@ -26,6 +26,8 @@ export interface FileDocument {
   vectorCount?: number;
   lastVectorizedAt?: string;
   errorMessage?: string;
+  filePath?: string;
+  suffix?: string;
   metadata?: {
     pageCount?: number;
     wordCount?: number;

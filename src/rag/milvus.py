@@ -1,6 +1,7 @@
 from langchain_core.embeddings import Embeddings
 from langchain_milvus import Milvus, BM25BuiltInFunction
 from src.rag.retriever import Chunk, Document, Resource, Retriever
+from typing import  Optional
 
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 import os
@@ -36,7 +37,7 @@ class LocalMilvusProvider(Retriever):
 
     def query_relevant_documents(self, query: str, resources: list[Resource] = []):
             # 初始化检索，并配置
-
+        expr = f'metadata["knowledge_base_id"] in {resources}'
         base_retriever = self.vector_store.as_retriever(
         search_type="similarity",
         search_kwargs={
@@ -45,7 +46,8 @@ class LocalMilvusProvider(Retriever):
             # "search_type": "mmr",
             # "score_threshold": 0.7,  # 相似度阈值过滤
              "ranker_type": "weighted",
-            "ranker_params": {"weights": [0.6, 0.4]}
+            "ranker_params": {"weights": [0.6, 0.4]},
+            "expr": expr,
         }
     )
         return base_retriever.invoke(query)

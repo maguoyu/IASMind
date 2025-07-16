@@ -160,28 +160,35 @@ class FileDocument:
         self.last_vectorized_at = kwargs.get('last_vectorized_at')
         self.error_message = kwargs.get('error_message')
         self.file_path = kwargs.get('file_path', '')
+        self.suffix = kwargs.get('suffix', '')
         self.metadata = kwargs.get('metadata', {})
     
     @classmethod
     def Create(cls, name: str, file_type: str, size: int, knowledge_base_id: str, 
-               file_path: str, metadata: Optional[Dict] = None) -> 'FileDocument':
+               file_path: str, suffix: Optional[str] = None, metadata: Optional[Dict] = None) -> 'FileDocument':
         """创建新的文件文档"""
+        # 如果没有提供suffix，从文件名中提取
+        if suffix is None:
+            import os
+            suffix = os.path.splitext(name)[1].lower()
+        
         doc = cls(
             name=name,
             type=file_type,
             size=size,
             knowledge_base_id=knowledge_base_id,
             file_path=file_path,
+            suffix=suffix,
             metadata=metadata or {}
         )
         
         sql = """
-        INSERT INTO file_documents (id, name, type, size, knowledge_base_id, file_path, metadata)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO file_documents (id, name, type, size, knowledge_base_id, file_path, suffix, metadata)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         db_connection.ExecuteInsert(sql, (
             doc.id, doc.name, doc.type, doc.size, doc.knowledge_base_id, 
-            doc.file_path, json.dumps(doc.metadata)
+            doc.file_path, doc.suffix, json.dumps(doc.metadata)
         ))
         
         # 更新知识库的文件数量
@@ -345,5 +352,7 @@ class FileDocument:
             'vector_count': self.vector_count,
             'last_vectorized_at': self.last_vectorized_at,
             'error_message': self.error_message,
+            'file_path': self.file_path,
+            'suffix': self.suffix,
             'metadata': self.metadata
         } 

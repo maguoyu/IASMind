@@ -128,7 +128,7 @@ def vector_documents(drop_old_data: bool = False, file_ids: List[str] = [], know
 
     split_docs = []
     for doc in total_files:
-        docs = loadDocument(doc)
+        docs = loadDocument(doc,knowledge_base_id=knowledge_base_id)
 
         if docs[0] == "txt":
             txt_docs = docs[1]

@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Dep
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 import uuid
-
+from src.rag.vector import vector_documents
 from src.database.models import KnowledgeBase, FileDocument
 from src.database.connection import db_connection
 
@@ -70,6 +70,12 @@ class KnowledgeBaseListResponse(BaseModel):
 
 class BatchVectorizeRequest(BaseModel):
     file_ids: List[str] = Field(..., description="文件ID列表")
+    config: Optional[dict] = Field(None, description="向量化配置")
+    knowledge_base_id: Optional[str] = Field(None, description="知识库ID")
+
+
+class VectorizeFileRequest(BaseModel):
+    knowledge_base_id: Optional[str] = Field(None, description="知识库ID")
     config: Optional[dict] = Field(None, description="向量化配置")
 
 
@@ -335,12 +341,16 @@ async def UploadFile(
             "file_size_mb": round(file.size / (1024 * 1024), 2)
         }
         
+        # 提取文件后缀
+        file_suffix = os.path.splitext(file.filename)[1].lower()
+        
         doc = FileDocument.Create(
             name=file.filename,
             file_type=file.content_type,
             size=file.size,
             knowledge_base_id=str(knowledge_base_id),
             file_path=file_path,
+            suffix=file_suffix,
             metadata=metadata
         )
         
@@ -455,7 +465,7 @@ async def DeleteFile(file_id: str):
 
 
 @router.post("/files/{file_id}/vectorize", response_model=dict)
-async def VectorizeFile(file_id: str):
+async def VectorizeFile(file_id: str, request: VectorizeFileRequest):
     """向量化文件"""
     try:
         doc = FileDocument.GetById(file_id)
@@ -471,12 +481,10 @@ async def VectorizeFile(file_id: str):
         # 更新状态为处理中
         doc.UpdateStatus("processing")
         
-        # TODO: 这里应该调用实际的向量化服务
-        # 目前只是模拟向量化过程
-        import asyncio
-        await asyncio.sleep(2)  # 模拟处理时间
+        # 调用实际的向量化服务
+        vector_documents(file_ids=[file_id], knowledge_base_id=request.knowledge_base_id)
         
-        # 模拟向量化结果
+        # 向量化结果
         vector_count = 100 + (doc.size // 1000)  # 根据文件大小估算向量数量
         success = doc.UpdateVectorization(vector_count)
         
@@ -515,11 +523,10 @@ async def BatchVectorizeFiles(request: BatchVectorizeRequest):
                 # 更新状态为处理中
                 doc.UpdateStatus("processing")
                 
-                # 模拟向量化过程
-                import asyncio
-                await asyncio.sleep(1)
+                # 向量化过程
+                vector_documents(file_ids=[file_id],knowledge_base_id=request.knowledge_base_id)
                 
-                # 模拟向量化结果
+                # 向量化结果
                 vector_count = 100 + (doc.size // 1000)
                 success = doc.UpdateVectorization(vector_count)
                 

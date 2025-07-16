@@ -122,11 +122,13 @@ class DatabaseConnection:
                 last_vectorized_at TIMESTAMP NULL,
                 error_message TEXT,
                 file_path VARCHAR(500) NOT NULL,
+                suffix VARCHAR(20),
                 metadata JSON,
                 INDEX idx_knowledge_base_id (knowledge_base_id),
                 INDEX idx_status (status),
                 INDEX idx_uploaded_at (uploaded_at),
                 INDEX idx_type (type),
+                INDEX idx_suffix (suffix),
                 FOREIGN KEY (knowledge_base_id) REFERENCES knowledge_bases(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """

@@ -28,6 +28,8 @@ export interface FileDocument {
   vector_count?: number;
   last_vectorized_at?: string;
   error_message?: string;
+  file_path?: string;
+  suffix?: string;
   metadata?: {
     description?: string;
     original_filename?: string;
@@ -100,6 +102,7 @@ export interface HealthCheckResponse {
 export interface BatchVectorizeRequest {
   file_ids: string[];
   config?: Record<string, any>;
+  knowledge_base_id?: string;
 }
 
 export interface BatchVectorizeResponse {
@@ -312,9 +315,15 @@ export const knowledgeBaseApi = {
   },
 
   // 向量化文件
-  async VectorizeFile(fileId: string): Promise<{ success: boolean; message: string; vector_count?: number }> {
+  async VectorizeFile(fileId: string, knowledgeBaseId?: string): Promise<{ success: boolean; message: string; vector_count?: number }> {
     const response = await fetch(resolveServiceURL(`/api/knowledge_base/files/${fileId}/vectorize`), {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        knowledge_base_id: knowledgeBaseId
+      }),
     });
 
     if (!response.ok) {

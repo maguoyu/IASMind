@@ -18,13 +18,14 @@ import {
 import { Progress } from "~/components/ui/progress";
 import { Badge } from "~/components/ui/badge";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import { knowledgeBaseApi, type FileDocument } from "~/core/api/knowledge-base";
+import { knowledgeBaseApi, type FileDocument, type KnowledgeBase } from "~/core/api/knowledge-base";
 import { toast } from "sonner";
 
 interface BatchVectorizeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   files: FileDocument[];
+  selectedKnowledgeBase?: KnowledgeBase;
   onComplete: () => void;
 }
 
@@ -39,6 +40,7 @@ export function BatchVectorizeDialog({
   open,
   onOpenChange,
   files,
+  selectedKnowledgeBase,
   onComplete,
 }: BatchVectorizeDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,7 +62,8 @@ export function BatchVectorizeDialog({
 
     try {
       const response = await knowledgeBaseApi.BatchVectorizeFiles({
-        file_ids: canVectorizeFiles.map(f => f.id)
+        file_ids: canVectorizeFiles.map(f => f.id),
+        knowledge_base_id: selectedKnowledgeBase?.id
       });
 
       if (response.success) {

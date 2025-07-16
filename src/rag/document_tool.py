@@ -1,4 +1,5 @@
 import logging
+from tkinter.constants import N
 from typing import List
 
 import unicodedata
@@ -8,90 +9,79 @@ from langchain_core.documents import Document
 from starlette.exceptions import HTTPException
 import os
 from src.database.models import FileDocument
-
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 FILE_PATH = os.getenv("FILE_PATH", "uploads")
 
-def loadDocument( file_document: FileDocument,source_dir=FILE_PATH) -> (str,List[Document]):
+def loadDocument( file_document: FileDocument,source_dir=FILE_PATH,knowledge_base_id:Optional[str] = None) -> (str,List[Document]):
     if file_document is None:
         return []
-    txt_grob = []
-    pdf_grob=[]
-    md_grob = []
-    docx_grob = []
-    doc_grob = []
+    grob = [file_document.file_path.split("\\")[-1]]
+    docs = None
+    type = ""
     try:
-        if file_document.type == "txt":
-            txt_grob.append(file_document.name)
+        if file_document.suffix == ".txt":
             # 分别加载不同格式
             text_loader = DirectoryLoader(
                 path=source_dir,  # 指定读取文件的父目录
-                glob=txt_grob,  # 指定读取文件的格式
+                glob=grob,  # 指定读取文件的格式
                 show_progress=True,  # 显示加载进度
                 use_multithreading=True,  # 使用多线程
                 loader_cls=TextLoader,  # 指定加载器
                 loader_kwargs={"autodetect_encoding": True},  # 自动检测文件编码
             )
-            text_docs = text_loader.load()
-            formate_metadatas(text_docs, str(file_document.id))
-            return "txt",text_docs
-        elif file_document.type == "pdf":
-            pdf_grob.append(file_document.name)
+            docs = text_loader.load()
+            type =  "txt"
+        elif file_document.suffix == ".pdf":
             pdf_loader = DirectoryLoader(
                 path=source_dir,
-                glob=pdf_grob,
+                glob=grob,
                 show_progress=True,
                 use_multithreading=True,
                 loader_cls=PyPDFLoader,
             )
             # 初步清洗 PDF 文档的文本，删除多余空格。
             # TODO: 后续会修改，将单独优化 PDF 文档的分割。
-            pdf_docs = pdf_loader.load()
-            for doc in pdf_docs:
+            docs = pdf_loader.load()
+            for doc in docs:
                 doc.page_content = clean_text(doc.page_content)
-            formate_metadatas(pdf_docs, str(file_document.id))
-            return "pdf",pdf_docs
-        elif file_document.type == "docx":
-            docx_grob.append(file_document.name)
+            type =  "pdf"
+        elif file_document.suffix == ".docx":
             docx_loader = DirectoryLoader(
                 path=source_dir,
-                glob=docx_grob,
+                glob=grob,
                 show_progress=True,
                 use_multithreading=True,
                 loader_cls=Docx2txtLoader,
             )
-            docx_docs = docx_loader.load()
-            formate_metadatas(docx_docs, str(file_document.id))
-            return "docx",docx_docs
-        elif file_document.type == "doc":
-            doc_grob.append(file_document.name)
+            docs = docx_loader.load()
+            type =  "docx"
+        elif file_document.suffix == ".doc":
             doc_loader = DirectoryLoader(
                 path=source_dir,
-                glob=doc_grob,
+                glob=grob,
                 show_progress=True,
                 use_multithreading=True,
                 loader_cls=UnstructuredWordDocumentLoader,
                 loader_kwargs={"autodetect_encoding": True},
             )
-            doc_docs = doc_loader.load()
-            formate_metadatas(doc_docs, str(file_document.id))
-            return "doc",doc_docs
-        elif file_document.type == "md":
-            md_grob.append(file_document.name)
+            docs = doc_loader.load()
+            type =  "doc"
+        elif file_document.suffix == ".md":
             # 分别加载不同格式
             md_loader = DirectoryLoader(
                 path=source_dir,  # 指定读取文件的父目录
-                glob=md_grob,  # 指定读取文件的格式
+                glob=grob,  # 指定读取文件的格式
                 show_progress=True,  # 显示加载进度
                 use_multithreading=True,  # 使用多线程
                 loader_cls=TextLoader,  # 指定加载器
                 loader_kwargs={"autodetect_encoding": True},  # 自动检测文件编码
             )
-            md_docs = md_loader.load()
-            formate_metadatas(md_docs, str(file_document.id))
-            return "md",md_docs
-        return "",[]
+            docs = md_loader.load()
+            type = "md"
+        formate_metadatas(docs, str(file_document.id),knowledge_base_id)
+        return type,docs
 
     except Exception as e:
         logger.error(f"加载文档失败：{str(e)}")
@@ -122,9 +112,11 @@ def clean_text(text: str) -> str:
     for cn, en in replacements.items():
         cleaned = cleaned.replace(cn, en)
     return cleaned
-def formate_metadatas(docs,fileId:str=None ):
-    [formate_metadata(doc,fileId) for doc in docs]
-def formate_metadata(doc :Document,fileId:str=None):
+def formate_metadatas(docs,fileId:str=None ,knowledge_base_id:Optional[str] = None):
+    [formate_metadata(doc,fileId,knowledge_base_id) for doc in docs]
+    
+def formate_metadata(doc :Document,fileId:str=None,knowledge_base_id:Optional[str] = None):
     doc.metadata = {k.replace("-", "_"): v for k, v in doc.metadata.items()}
     doc.metadata["file_id"] = fileId
+    doc.metadata["knowledge_base_id"] = knowledge_base_id
 

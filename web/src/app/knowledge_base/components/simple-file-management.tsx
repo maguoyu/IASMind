@@ -107,7 +107,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
   // 向量化文件
   const HandleVectorizeFile = async (fileId: string) => {
     try {
-      await knowledgeBaseApi.VectorizeFile(fileId);
+      await knowledgeBaseApi.VectorizeFile(fileId, selectedKnowledgeBase?.id);
       toast.success("文件向量化成功");
       LoadFiles();
       // 通知父组件更新知识库信息（向量数量等）
@@ -464,12 +464,13 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
       </Card>
 
       {/* 批量向量化对话框 */}
-      <BatchVectorizeDialog
-        open={showBatchVectorizeDialog}
-        onOpenChange={setShowBatchVectorizeDialog}
-        files={files.filter(file => selectedFiles.has(file.id))}
-        onComplete={HandleBatchVectorizeComplete}
-      />
+              <BatchVectorizeDialog
+          open={showBatchVectorizeDialog}
+          onOpenChange={setShowBatchVectorizeDialog}
+          files={files.filter(file => selectedFiles.has(file.id))}
+          selectedKnowledgeBase={selectedKnowledgeBase}
+          onComplete={HandleBatchVectorizeComplete}
+        />
     </div>
   );
 } 

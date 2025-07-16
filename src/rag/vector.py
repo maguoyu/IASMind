@@ -26,7 +26,7 @@ def delete_documentsByFileId(file_id :str):
     if pks:
         try:
             # 将ID转换为字符串列表
-            vector_store.delete(ids=[str(pk) for pk in pks])
+            vector_store.delete(ids=pks)
         except Exception as e:
             logger.error(f"删除文件 {file_id} 的向量数据失败: {e}")
             raise

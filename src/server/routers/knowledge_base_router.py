@@ -320,10 +320,22 @@ async def UploadFile(
             'text/plain',
             'text/markdown',
             'application/json',
-            'text/csv'
+            'text/csv',
+            'application/octet-stream'  # 支持通用二进制流，通过扩展名进一步验证
         ]
         
+        # 获取文件扩展名
+        file_extension = os.path.splitext(file.filename)[1].lower() if file.filename else ""
+        
+        # 允许的文件扩展名
+        allowed_extensions = ['.pdf', '.docx', '.xlsx', '.txt', '.md', '.json', '.csv']
+        
+        # 验证文件类型和扩展名
         if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="不支持的文件类型")
+        
+        # 如果content_type是application/octet-stream，则必须通过扩展名验证
+        if file.content_type == 'application/octet-stream' and file_extension not in allowed_extensions:
             raise HTTPException(status_code=400, detail="不支持的文件类型")
         
         # 验证文件大小 (50MB)

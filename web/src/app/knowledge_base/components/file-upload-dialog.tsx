@@ -216,7 +216,7 @@ export function FileUploadDialog({
             <div className="space-y-2">
               <p className="text-lg font-medium">拖拽文件到此处或点击选择</p>
               <p className="text-sm text-muted-foreground">
-                支持 PDF、Word、Excel、TXT 格式，单文件最大 50MB
+                支持 PDF、Word、Excel、TXT、Markdown 格式，单文件最大 50MB
               </p>
               <Button
                 variant="outline"

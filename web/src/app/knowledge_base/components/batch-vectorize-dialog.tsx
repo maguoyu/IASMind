@@ -48,6 +48,16 @@ export function BatchVectorizeDialog({
   const [results, setResults] = useState<VectorizeResult[]>([]);
   const [currentFile, setCurrentFile] = useState<string>("");
 
+  // 当对话框打开时重置状态
+  useEffect(() => {
+    if (open) {
+      setIsProcessing(false);
+      setProgress(0);
+      setResults([]);
+      setCurrentFile("");
+    }
+  }, [open]);
+
   const canVectorizeFiles = files.filter(file => file.status === "uploaded");
 
   const HandleStartVectorize = async () => {
@@ -232,15 +242,17 @@ export function BatchVectorizeDialog({
         </div>
 
         <DialogFooter>
-          {!isProcessing && results.length === 0 && (
-            <Button onClick={HandleStartVectorize}>
-              开始向量化
-            </Button>
-          )}
-          {!isProcessing && results.length > 0 && (
-            <Button onClick={() => onOpenChange(false)}>
-              完成
-            </Button>
+          {!isProcessing && (
+            <div className="flex gap-2">
+              <Button onClick={HandleStartVectorize}>
+                {results.length > 0 ? "重新向量化" : "开始向量化"}
+              </Button>
+              {results.length > 0 && (
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  完成
+                </Button>
+              )}
+            </div>
           )}
           {isProcessing && (
             <Button disabled>

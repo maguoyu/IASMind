@@ -3,7 +3,7 @@
 
 "use client";
 
-import { RefreshCw, FileText, Download, Trash2, Settings, Search, X } from "lucide-react";
+import { RefreshCw, FileText, Download, Trash2, Settings, Search, X, Zap } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -282,7 +282,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
                   {batchLoading ? (
                     <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                   ) : (
-                    <Settings className="h-4 w-4 mr-2" />
+                    <Zap className="h-4 w-4 mr-2" />
                   )}
                   批量向量化
                 </Button>
@@ -406,7 +406,7 @@ export default function SimpleFileManagement({ selectedKnowledgeBase, onRefresh,
                               onClick={() => HandleVectorizeFile(file.id)}
                               title="向量化文件"
                             >
-                              <Settings className="h-4 w-4" />
+                              <Zap className="h-4 w-4" />
                             </Button>
                           )}
                           <Button

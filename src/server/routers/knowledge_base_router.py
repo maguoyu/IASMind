@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Dep
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 import uuid
-from src.rag.vector import vector_documents
+from src.rag.vector import vector_documents, delete_documentsByKnowledgeBaseId
 from src.database.models import KnowledgeBase, FileDocument
 from src.database.connection import db_connection
 
@@ -258,6 +258,13 @@ async def DeleteKnowledgeBase(kb_id: str):
             if os.path.exists(file.file_path):
                 os.remove(file.file_path)
             file.Delete()
+        
+        # 删除Milvus中对应的向量数据
+        try:
+            deleted_vector_count = delete_documentsByKnowledgeBaseId(kb_id)
+            logger.info(f"删除知识库 {kb_id} 的向量数据，共删除 {deleted_vector_count} 条记录")
+        except Exception as vector_error:
+            logger.warning(f"删除向量数据失败，但继续删除知识库: {vector_error}")
         
         # 删除知识库
         success = kb.Delete()

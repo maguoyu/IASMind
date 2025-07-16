@@ -24,7 +24,38 @@ def delete_documentsByFileId(file_id :str):
     expr = f'metadata["file_id"] == "{file_id}"'
     pks = vector_store.get_pks(expr=expr)
     if pks:
-        vector_store.delete(ids=[str(pk) for pk in pks])
+        try:
+            # 将ID转换为字符串列表
+            vector_store.delete(ids=[str(pk) for pk in pks])
+        except Exception as e:
+            logger.error(f"删除文件 {file_id} 的向量数据失败: {e}")
+            raise
+
+
+def delete_documentsByKnowledgeBaseId(knowledge_base_id: str):
+    """根据知识库ID删除Milvus中的向量数据"""
+    try:
+        # 初始化 milvus 向量数据库
+        vector_store = milvus_vector_store()
+        expr = f'metadata["knowledge_base_id"] == "{knowledge_base_id}"'
+        pks = vector_store.get_pks(expr=expr)
+        if pks:
+            deleted_count = len(pks)
+            try:
+                # 将ID转换为字符串列表
+                vector_store.delete(ids=[str(pk) for pk in pks])
+            except Exception as e:
+                logger.error(f"删除知识库 {knowledge_base_id} 的向量数据失败: {e}")
+                raise
+            
+            logger.info(f"删除知识库 {knowledge_base_id} 的向量数据，共删除 {deleted_count} 条记录")
+            return deleted_count
+        else:
+            logger.info(f"知识库 {knowledge_base_id} 没有找到对应的向量数据")
+            return 0
+    except Exception as e:
+        logger.error(f"删除知识库 {knowledge_base_id} 的向量数据失败: {e}")
+        raise
 
 
 

@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from src.chatbot.graph.builder import build_graph_with_memory, build_enhanced_graph_with_memory
+from src.chatbot.graph.builder import build_graph_with_memory
 from src.server.chat_request import ChatRequest
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,6 @@ router = APIRouter(
 )
 
 _graph = build_graph_with_memory()
-_enhanced_graph = build_enhanced_graph_with_memory()
 
 
 @router.post("/stream")
@@ -48,36 +47,6 @@ async def chatbot_stream(request: ChatRequest, http_request: Request):
         )
     except Exception as e:
         logger.exception(f"Error in chatbot stream endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR_DETAIL)
-
-
-@router.post("/enhanced/stream")
-async def enhanced_chatbot_stream(request: ChatRequest, http_request: Request):
-    """Stream enhanced chatbot responses with fusion retrieval (RAG + Web Search)."""
-    try:
-        thread_id = request.thread_id
-        if thread_id == "__default__":
-            thread_id = str(uuid4())
-
-        async def stream_with_disconnect_check():
-            async for chunk in astream_enhanced_chatbot_generator(
-                _enhanced_graph,
-                request.model_dump()["messages"],
-                thread_id or str(uuid4()),
-                request.resources or [],
-            ):
-                # Check if client has disconnected
-                if await http_request.is_disconnected():
-                    print(f"Client disconnected for enhanced chatbot thread {thread_id}, stopping backend task")
-                    break
-                yield chunk
-
-        return StreamingResponse(
-            stream_with_disconnect_check(),
-            media_type="text/event-stream",
-        )
-    except Exception as e:
-        logger.exception(f"Error in enhanced chatbot stream endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR_DETAIL)
 
 

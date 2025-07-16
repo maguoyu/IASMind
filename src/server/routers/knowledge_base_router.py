@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Dep
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 import uuid
-from src.rag.vector import vector_documents, delete_documentsByKnowledgeBaseId
+from src.rag.vector import vector_documents, delete_documentsByKnowledgeBaseId, delete_documentsByFileId
 from src.database.models import KnowledgeBase, FileDocument
 from src.database.connection import db_connection
 
@@ -453,6 +453,13 @@ async def DeleteFile(file_id: str):
         doc = FileDocument.GetById(file_id)
         if not doc:
             raise HTTPException(status_code=404, detail="文件不存在")
+        
+        # 删除Milvus中对应的向量数据
+        try:
+            delete_documentsByFileId(file_id)
+            logger.info(f"删除文件 {file_id} 的向量数据")
+        except Exception as vector_error:
+            logger.warning(f"删除向量数据失败，但继续删除文件: {vector_error}")
         
         # 删除物理文件
         if os.path.exists(doc.file_path):

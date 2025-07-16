@@ -3,11 +3,11 @@
 
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Lightbulb, X, FileText, TrendingUp, BarChart3, Settings, Globe } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { ArrowUp, Lightbulb, X, FileText, TrendingUp, BarChart3, Settings, Globe, Loader2 } from "lucide-react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { toast } from "sonner";
 
-import { mockKnowledgeBases } from "~/app/knowledge_base/mock-data";
-import type { KnowledgeBase } from "~/app/knowledge_base/types";
+import { knowledgeBaseApi, type KnowledgeBase } from "~/core/api/knowledge-base";
 import { Detective } from "~/components/deer-flow/icons/detective";
 import MessageInput, {
   type MessageInputRef,
@@ -106,6 +106,29 @@ export function InputBox({
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<typeof REPORT_TEMPLATES[0] | null>(null);
   const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>([]);
+
+  // 知识库数据状态
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [loadingKnowledgeBases, setLoadingKnowledgeBases] = useState(false);
+
+  // 加载知识库数据
+  const LoadKnowledgeBases = useCallback(async () => {
+    setLoadingKnowledgeBases(true);
+    try {
+      const response = await knowledgeBaseApi.GetKnowledgeBases();
+      setKnowledgeBases(response.knowledge_bases);
+    } catch (error) {
+      console.error("加载知识库列表失败:", error);
+      toast.error("加载知识库列表失败");
+    } finally {
+      setLoadingKnowledgeBases(false);
+    }
+  }, []);
+
+  // 组件挂载时加载知识库数据
+  useEffect(() => {
+    void LoadKnowledgeBases();
+  }, [LoadKnowledgeBases]);
 
   const handleSendMessage = useCallback(
     (message: string, resources: Array<Resource>) => {
@@ -407,7 +430,11 @@ export function InputBox({
                   selectedKnowledgeBases.length > 0 && "!border-brand !text-brand"
                 )}
                 variant="outline"
+                disabled={loadingKnowledgeBases}
               >
+                {loadingKnowledgeBases ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : null}
                 知识库检索
                 {selectedKnowledgeBases.length > 0 && (
                   <span className="ml-1 text-xs text-primary font-medium">
@@ -418,20 +445,33 @@ export function InputBox({
             </PopoverTrigger>
             <PopoverContent className="w-80 p-3">
               <div className="font-medium mb-2 text-sm text-muted-foreground">选择知识库（可多选）</div>
-              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
-                {mockKnowledgeBases.map((kb) => (
-                  <label key={kb.id} className="flex items-center gap-2 cursor-pointer rounded hover:bg-accent/40 px-2 py-1">
-                    <input
-                      type="checkbox"
-                      checked={selectedKnowledgeBases.includes(kb.id)}
-                      onChange={() => handleToggleKnowledgeBase(kb.id)}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm font-medium">{kb.name}</span>
-                    <span className="text-xs text-muted-foreground">{kb.description}</span>
-                  </label>
-                ))}
-              </div>
+              {loadingKnowledgeBases ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">加载知识库中...</span>
+                </div>
+              ) : knowledgeBases.length === 0 ? (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  暂无知识库，请先创建知识库
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                  {knowledgeBases.map((kb) => (
+                    <label key={kb.id} className="flex items-center gap-2 cursor-pointer rounded hover:bg-accent/40 px-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedKnowledgeBases.includes(kb.id)}
+                        onChange={() => handleToggleKnowledgeBase(kb.id)}
+                        className="accent-primary"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{kb.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{kb.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </PopoverContent>
           </Popover>
         </div>

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Search, BookOpen, X, Globe } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { mockKnowledgeBases } from "~/app/knowledge_base/mock-data";
 import { Detective } from "~/components/deer-flow/icons/detective";
 import MessageInput, {
   type MessageInputRef,
@@ -14,12 +15,12 @@ import { ReportStyleDialog } from "~/components/deer-flow/report-style-dialog";
 import { Tooltip } from "~/components/deer-flow/tooltip";
 import { BorderBeam } from "~/components/magicui/border-beam";
 import { Button } from "~/components/ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "~/components/ui/popover";
 import { enhancePrompt } from "~/core/api";
 import { getConfig } from "~/core/api/config";
 import type { Option, Resource } from "~/core/messages";
 import {
   setEnableOnlineSearch,
-  setEnableKnowledgeRetrieval,
   useSettingsStore,
 } from "~/core/store";
 import { cn } from "~/lib/utils";
@@ -49,9 +50,7 @@ export function InputBox({
   const enableOnlineSearch = useSettingsStore(
     (state) => state.general.enableOnlineSearch,
   );
-  const enableKnowledgeRetrieval = useSettingsStore(
-    (state) => state.general.enableKnowledgeRetrieval,
-  );
+
   const reasoningModel = useMemo(() => getConfig().models?.reasoning?.[0] ?? "", []);
   const reportStyle = useSettingsStore((state) => state.general.reportStyle);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,6 +61,7 @@ export function InputBox({
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isEnhanceAnimating, setIsEnhanceAnimating] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState("");
+  const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>([]);
 
   const handleSendMessage = useCallback(
     (message: string, resources: Array<Resource>) => {
@@ -125,9 +125,14 @@ export function InputBox({
     setEnableOnlineSearch(!enableOnlineSearch);
   }, [enableOnlineSearch]);
 
-  const handleKnowledgeRetrievalToggle = useCallback(() => {
-    setEnableKnowledgeRetrieval(!enableKnowledgeRetrieval);
-  }, [enableKnowledgeRetrieval]);
+
+
+  // 知识库多选切换
+  const handleToggleKnowledgeBase = (id: string) => {
+    setSelectedKnowledgeBases((prev) =>
+      prev.includes(id) ? prev.filter((kb) => kb !== id) : [...prev, id],
+    );
+  };
 
   return (
     <div
@@ -244,31 +249,42 @@ export function InputBox({
             </Button>
           </Tooltip>
 
-          <Tooltip
-            className="max-w-60"
-            title={
-              <div>
-                <h3 className="mb-2 font-bold">
-                  知识检索: {enableKnowledgeRetrieval ? "开启" : "关闭"}
-                </h3>
-                <p>
-                  开启后，系统将在知识库中进行深度检索，
-                  结合多个相关文档为您提供更全面的答案。
-                </p>
+          {/* 知识库检索多选 */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                className={cn(
+                  "rounded-2xl",
+                  selectedKnowledgeBases.length > 0 && "!border-brand !text-brand bg-brand/5"
+                )}
+                variant="outline"
+              >
+                <BookOpen size={16} /> 知识库检索
+                {selectedKnowledgeBases.length > 0 && (
+                  <span className="ml-1 text-xs text-primary font-medium">
+                    {selectedKnowledgeBases.length}个已选
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-3">
+              <div className="font-medium mb-2 text-sm text-muted-foreground">选择知识库（可多选）</div>
+              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                {mockKnowledgeBases.map((kb) => (
+                  <label key={kb.id} className="flex items-center gap-2 cursor-pointer rounded hover:bg-accent/40 px-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedKnowledgeBases.includes(kb.id)}
+                      onChange={() => handleToggleKnowledgeBase(kb.id)}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm font-medium">{kb.name}</span>
+                    <span className="text-xs text-muted-foreground">{kb.description}</span>
+                  </label>
+                ))}
               </div>
-            }
-          >
-            <Button
-              className={cn(
-                "rounded-2xl",
-                enableKnowledgeRetrieval && "!border-brand !text-brand bg-brand/5",
-              )}
-              variant="outline"
-              onClick={handleKnowledgeRetrievalToggle}
-            >
-              <BookOpen size={16} /> 知识检索
-            </Button>
-          </Tooltip>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Tooltip title="优化查询语句">

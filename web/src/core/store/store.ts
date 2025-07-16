@@ -94,9 +94,13 @@ export async function sendMessage(agentPath?: string,
   {
     interruptFeedback,
     resources,
+    enableOnlineSearch,
+    enableKnowledgeRetrieval,
   }: {
     interruptFeedback?: string;
     resources?: Array<Resource>;
+    enableOnlineSearch?: boolean;
+    enableKnowledgeRetrieval?: boolean;
   } = {},
   options: { abortSignal?: AbortSignal } = {},
 ) {
@@ -124,12 +128,14 @@ export async function sendMessage(agentPath?: string,
       // 参数名全部改为camelCase
       auto_accepted_plan: settings.autoAcceptedPlan,
       enable_deep_thinking: settings.enableDeepThinking ?? false,
-      enable_background_investigation: settings.enableBackgroundInvestigation ?? true,
+      enable_background_investigation: enableOnlineSearch ?? settings.enableBackgroundInvestigation ?? true,
       max_plan_iterations: settings.maxPlanIterations,
       max_step_num: settings.maxStepNum,
       max_search_results: settings.maxSearchResults,
       report_style: settings.reportStyle,
       mcp_settings: settings.mcpSettings,
+      enable_online_search: enableOnlineSearch,
+      enable_knowledge_retrieval: enableKnowledgeRetrieval,
     },
     options,
   );

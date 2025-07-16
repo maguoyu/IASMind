@@ -43,6 +43,8 @@ export function InputBox({
     options?: {
       interruptFeedback?: string;
       resources?: Array<Resource>;
+      enableOnlineSearch?: boolean;
+      enableKnowledgeRetrieval?: boolean;
     },
   ) => void;
   onCancel?: () => void;
@@ -96,9 +98,25 @@ export function InputBox({
           return;
         }
         if (onSend) {
+          // 构建知识库资源
+          const knowledgeBaseResources: Array<Resource> = selectedKnowledgeBases.map(kbId => {
+            const kb = knowledgeBases.find(kb => kb.id === kbId);
+            return {
+              uri: `rag://knowledge_base/${kbId}`,
+              title: kb?.name ?? `知识库 ${kbId}`,
+              description: kb?.description ?? "知识库资源",
+              type: "knowledge_base"
+            };
+          });
+
+          // 合并用户提供的资源和知识库资源
+          const allResources = [...resources, ...knowledgeBaseResources];
+
           onSend(message, {
             interruptFeedback: feedback?.option.value,
-            resources,
+            resources: allResources,
+            enableOnlineSearch: enableOnlineSearch,
+            enableKnowledgeRetrieval: selectedKnowledgeBases.length > 0,
           });
           onRemoveFeedback?.();
           // Clear enhancement animation after sending
@@ -106,7 +124,7 @@ export function InputBox({
         }
       }
     },
-    [responding, onCancel, onSend, feedback, onRemoveFeedback],
+    [responding, onCancel, onSend, feedback, onRemoveFeedback, selectedKnowledgeBases, knowledgeBases, enableOnlineSearch],
   );
 
   const handleEnhanceQuery = useCallback(async () => {

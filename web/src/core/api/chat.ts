@@ -26,6 +26,8 @@ export async function* chatStream(
     interrupt_feedback?: string;
     enable_deep_thinking?: boolean;
     enable_background_investigation: boolean;
+    enable_online_search?: boolean;
+    enable_knowledge_retrieval?: boolean;
     report_style?: "academic" | "popular_science" | "news" | "social_media";
     mcp_settings?: {
       servers: Record<

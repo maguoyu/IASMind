@@ -48,6 +48,14 @@ function mergeTextMessage(message: Message, event: MessageChunkEvent) {
     message.reasoningContentChunks = message.reasoningContentChunks ?? [];
     message.reasoningContentChunks.push(event.data.reasoning_content);
   }
+  
+  // 处理参考信息字段
+  if (event.data.knowledge_base_results) {
+    message.knowledgeBaseResults = event.data.knowledge_base_results;
+  }
+  if (event.data.web_search_results) {
+    message.webSearchResults = event.data.web_search_results;
+  }
 }
 
 function mergeToolCallMessage(

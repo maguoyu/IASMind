@@ -39,6 +39,21 @@ export interface MessageChunkEvent
     {
       content?: string;
       reasoning_content?: string;
+      knowledge_base_results?: Array<{
+        id?: string | null;
+        content?: string;
+        metadata?: {
+          file_name?: string;
+          source?: string;
+          [key: string]: any;
+        };
+      }>;
+      web_search_results?: Array<{
+        type?: string;
+        title?: string;
+        url?: string;
+        content?: string;
+      }>;
     }
   > {}
 

@@ -25,6 +25,21 @@ export interface Message {
   finishReason?: "stop" | "interrupt" | "tool_calls";
   interruptFeedback?: string;
   resources?: Array<Resource>;
+  knowledgeBaseResults?: Array<{
+    id?: string | null;
+    content?: string;
+    metadata?: {
+      file_name?: string;
+      source?: string;
+      [key: string]: any;
+    };
+  }>;
+  webSearchResults?: Array<{
+    type?: string;
+    title?: string;
+    url?: string;
+    content?: string;
+  }>;
 }
 
 export interface Option {

@@ -5,6 +5,7 @@ from typing import  Optional
 
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 import os
+import json
 def milvus_vector_store(drop_old:  bool = False):
     """Chroma 向量数据库"""
 
@@ -37,7 +38,7 @@ class LocalMilvusProvider(Retriever):
 
     def query_relevant_documents(self, query: str, resources: list[Resource] = []):
             # 初始化检索，并配置
-        expr = f'metadata["knowledge_base_id"] in {resources}'
+        expr = f'metadata["knowledge_base_id"] in {json.dumps([resource.uri.split("/")[-1] for resource in resources])}'
         base_retriever = self.vector_store.as_retriever(
         search_type="similarity",
         search_kwargs={

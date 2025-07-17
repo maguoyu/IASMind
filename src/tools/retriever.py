@@ -11,7 +11,7 @@ from langchain_core.callbacks import (
 from pydantic import BaseModel, Field
 
 from src.config.tools import SELECTED_RAG_PROVIDER
-from src.rag import Document, Retriever, Resource, build_retriever
+from src.rag import Document, Retriever, Resource, build_retriever, Chunk
 from src.config.tools import RAGProvider
 logger = logging.getLogger(__name__)
 
@@ -40,15 +40,19 @@ class RagFlowRetrieverTool(BaseTool):
         )
         documents = self.retriever.query_relevant_documents(keywords, self.resources)
         if not documents:
-            return "No results found from the local knowledge base."
-        return [doc.to_dict() for doc in documents]
+            return []
+        return self._parse_documents(documents)
+
+    def _parse_documents(self, documents: list) -> list[Document]:
+        return [Document(id=doc.id, title=doc.page_content, chunks=[Chunk(content=doc.page_content, similarity=1.0)]) for doc in documents]
 
     async def _arun(
         self,
         keywords: str,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> list[Document]:
-        return self._run(keywords, run_manager.get_sync())
+        sync_manager = run_manager.get_sync() if run_manager else None
+        return self._run(keywords, sync_manager)
 
 
 class LocalMilvusRetrieverTool(BaseTool):
@@ -71,15 +75,16 @@ class LocalMilvusRetrieverTool(BaseTool):
         )
         documents = self.retriever.query_relevant_documents(keywords, self.resources)
         if not documents:
-            return "No results found from the local knowledge base."
-        return [doc.to_dict() for doc in documents]
+            return []
+        return [Document(id=doc.id, chunks=[Chunk(content=doc.page_content, similarity=1.0)]) for doc in documents]
 
     async def _arun(
         self,
         keywords: str,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None,
     ) -> list[Document]:
-        return self._run(keywords, run_manager.get_sync())
+        sync_manager = run_manager.get_sync() if run_manager else None
+        return self._run(keywords, sync_manager)
 
 
 def get_retriever_tool(resources: List[Resource]) -> BaseTool | None:

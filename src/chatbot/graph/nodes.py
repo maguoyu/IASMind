@@ -15,7 +15,7 @@ from src.tools import get_retriever_tool, get_web_search_tool
 from src.config.configuration import Configuration
 from src.config.agents import AGENT_LLM_MAP
 from src.llms.llm import get_llm_by_type
-
+from src.rag import Document
 from src.chatbot.graph.types import State
 
 logger = logging.getLogger(__name__)
@@ -194,7 +194,8 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
                 title = result.get('title', f'Result {i}')
                 content = result.get('content', str(result))
                 context_info.append(f"{i}. {title}: {content[:200]}...")
-    
+            elif isinstance(result, Document):
+                context_info.append(f"{i}. {result.title}: {result.chunks[0].content[:200]}...")
     if web_search_results:
         context_info.append("\n**Web Search Information:**")
         for i, result in enumerate(web_search_results[:3], 1):  # Limit to top 3
@@ -223,7 +224,6 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
         fusion_instructions = HumanMessage(
             content="""You are an AI assistant with access to both knowledge base and web search results. 
             Please synthesize this information to provide a comprehensive, accurate answer. 
-            When appropriate, mention the sources of your information (knowledge base vs. web search).
             If the information conflicts, prioritize the most recent or authoritative source.""",
             name="system"
         )
@@ -238,11 +238,25 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     
     logger.info(f"Enhanced chatbot response generated: {len(response_content)} characters")
     
+    # Convert Document objects to dictionaries for JSON serialization
+    def convert_to_dict(obj):
+        if hasattr(obj, 'to_dict'):
+            return obj.to_dict()
+        elif hasattr(obj, 'model_dump'):
+            return obj.model_dump()
+        elif isinstance(obj, dict):
+            return obj
+        else:
+            return str(obj)
+    
+    serializable_kb_results = [convert_to_dict(result) for result in knowledge_base_results] if knowledge_base_results else []
+    serializable_web_results = [convert_to_dict(result) for result in web_search_results] if web_search_results else []
+    
     return {
         "messages": [AIMessage(content=response_content, name="chatbot")],
         "response": response_content,
-        "knowledge_base_results": knowledge_base_results,
-        "web_search_results": web_search_results
+        "knowledge_base_results": serializable_kb_results,
+        "web_search_results": serializable_web_results
     }
 
 
@@ -287,7 +301,7 @@ def basic_chatbot_node(state: State, config: RunnableConfig):
         response_content = response.content
         
         # Additional security check on response
-        if not is_safe_response(response_content):
+        if isinstance(response_content, str) and not is_safe_response(response_content):
             response_content = "I apologize, but I cannot provide that type of response. Please ask a different question."
         
     except Exception as e:

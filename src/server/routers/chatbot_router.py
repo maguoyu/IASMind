@@ -31,9 +31,7 @@ async def chatbot_stream(request: ChatRequest, http_request: Request):
         async def stream_with_disconnect_check():
             async for chunk in astream_chatbot_generator(
                 _graph,
-                request.model_dump()["messages"],
-                thread_id or str(uuid4()),
-                request.resources or [],
+                request
             ):
                 # Check if client has disconnected
                 if await http_request.is_disconnected():
@@ -50,17 +48,22 @@ async def chatbot_stream(request: ChatRequest, http_request: Request):
         raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR_DETAIL)
 
 
-async def astream_chatbot_generator(graph, messages, thread_id: str, resources):
+async def astream_chatbot_generator(graph, request: ChatRequest):
     """Streaming generator for chatbot responses using graph.astream."""
     import json
     from typing import cast, Any
     from langchain_core.messages import AIMessageChunk, BaseMessage
-    
+    messages = request.model_dump()["messages"]
+    thread_id = request.thread_id
+    resources = request.resources or []
     input_ = {
         "messages": messages,
         "locale": "zh-CN",
         "resources": resources,
         "user_query": messages[-1]["content"] if messages else "",
+        "enable_online_search": request.enable_online_search,
+        "enable_knowledge_retrieval": request.enable_knowledge_retrieval,
+
     }
     
     try:

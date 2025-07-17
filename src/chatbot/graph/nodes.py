@@ -143,6 +143,9 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     
     # Get the latest user message
     messages = state.get("messages", [])
+    enable_online_search = state.get("enable_online_search", False)
+    enable_knowledge_retrieval = state.get("enable_knowledge_retrieval", False)
+
     if not messages:
         return {"response": "Hello! How can I help you today?"}
     
@@ -160,12 +163,16 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
             # Submit both search tasks
-            kb_future = executor.submit(search_knowledge_base_sync, user_query, resources)
-            web_future = executor.submit(search_web_sync, user_query, max_search_results)
+            if enable_knowledge_retrieval:
+                kb_future = executor.submit(search_knowledge_base_sync, user_query, resources)
+                knowledge_base_results = kb_future.result()
+            if enable_online_search:
+                web_future = executor.submit(search_web_sync, user_query, max_search_results)
+                web_search_results = web_future.result()
+
             
             # Wait for both tasks to complete
-            knowledge_base_results = kb_future.result()
-            web_search_results = web_future.result()
+      
             
     except Exception as e:
         logger.exception(f"Error in parallel search execution: {str(e)}")
@@ -198,8 +205,9 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
                 context_info.append(f"{i}. {title}: {content[:200]}... (Source: {url})")
     
     if context_info:
-        context_message = "\n".join(context_info)
-        context_message += "\n\nPlease synthesize this information to provide a comprehensive answer to the user's question."
+        context_message = f"Question: {user_query}\n"
+        context_message += "Context:".join(context_info)
+        context_message += "\n\nUse the following context to answer the question. Keep the answer concise and accurate"
         
         system_context = HumanMessage(
             content=context_message,
@@ -238,8 +246,114 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     }
 
 
+def basic_chatbot_node(state: State, config: RunnableConfig):
+    """Basic secure chatbot node without external tools for safe conversations."""
+    logger.info("Basic secure chatbot node is processing user query.")
+    
+    # Get the latest user message
+    messages = state.get("messages", [])
+    if not messages:
+        return {"response": "Hello! I'm a secure AI assistant. How can I help you today?"}
+    
+    # Security check - filter sensitive content
+    user_query = messages[-1].content if messages else ""
+    if not isinstance(user_query, str):
+        user_query = str(user_query)
+    
+    # Security validation
+    if not is_safe_query(user_query):
+        return {
+            "response": "I apologize, but I cannot process that type of request for security reasons. Please ask a different question.",
+            "messages": [AIMessage(content="I apologize, but I cannot process that type of request for security reasons. Please ask a different question.", name="chatbot")]
+        }
+    
+    try:
+        # Use LLM directly without external tools for maximum security
+        llm = get_llm_by_type(AGENT_LLM_MAP.get("chatbot", "basic"))
+        
+        # Create secure conversation context
+        secure_messages = [
+            HumanMessage(content="""You are a secure AI assistant. Follow these guidelines:
+1. Provide helpful, accurate information
+2. Do not access external tools or databases
+3. Do not generate harmful, illegal, or inappropriate content
+4. If asked about sensitive topics, politely decline
+5. Focus on general knowledge and safe topics
+6. Be conversational and friendly while maintaining security""", name="system"),
+            *messages
+        ]
+        
+        response = llm.invoke(secure_messages)
+        response_content = response.content
+        
+        # Additional security check on response
+        if not is_safe_response(response_content):
+            response_content = "I apologize, but I cannot provide that type of response. Please ask a different question."
+        
+    except Exception as e:
+        logger.exception(f"Error in basic chatbot processing: {str(e)}")
+        response_content = "抱歉，处理您的请求时出现了错误。请稍后再试。"
+    
+    logger.info(f"Basic chatbot response generated: {len(response_content)} characters")
+    
+    return {
+        "messages": [AIMessage(content=response_content, name="chatbot")],
+        "response": response_content
+    }
+
+
+def is_safe_query(query: str) -> bool:
+    """Check if the user query is safe to process."""
+    if not query or not isinstance(query, str):
+        return False
+    
+    # Convert to lowercase for case-insensitive matching
+    query_lower = query.lower()
+    
+    # Define unsafe patterns
+    unsafe_patterns = [
+        "hack", "exploit", "bypass", "crack", "steal", "illegal", "weapon", "bomb",
+        "kill", "harm", "attack", "virus", "malware", "phishing", "scam", "fraud",
+        "password", "credit card", "ssn", "social security", "personal data",
+        "private key", "encryption key", "admin", "root access", "privilege escalation"
+    ]
+    
+    # Check for unsafe patterns
+    for pattern in unsafe_patterns:
+        if pattern in query_lower:
+            logger.warning(f"Unsafe query detected: {pattern} in '{query}'")
+            return False
+    
+    return True
+
+
+def is_safe_response(response: str) -> bool:
+    """Check if the AI response is safe to return."""
+    if not response or not isinstance(response, str):
+        return False
+    
+    # Convert to lowercase for case-insensitive matching
+    response_lower = response.lower()
+    
+    # Define unsafe response patterns
+    unsafe_patterns = [
+        "hack", "exploit", "bypass", "crack", "steal", "illegal", "weapon", "bomb",
+        "kill", "harm", "attack", "virus", "malware", "phishing", "scam", "fraud",
+        "password", "credit card", "ssn", "social security", "personal data",
+        "private key", "encryption key", "admin", "root access", "privilege escalation"
+    ]
+    
+    # Check for unsafe patterns
+    for pattern in unsafe_patterns:
+        if pattern in response_lower:
+            logger.warning(f"Unsafe response detected: {pattern} in response")
+            return False
+    
+    return True
+
+
 def initialize_node(state: State, config: RunnableConfig):
-    """Initialize the chatbot conversation."""
+    """Initialize the chatbot conversation with configurable features."""
     configurable = Configuration.from_runnable_config(config)
     
     # Extract user query from the latest message
@@ -248,8 +362,14 @@ def initialize_node(state: State, config: RunnableConfig):
     if messages:
         user_query = messages[-1].content if hasattr(messages[-1], 'content') else str(messages[-1])
     
+    # Get feature flags from config or use defaults
+    enable_online_search = state.get("enable_online_search", False)
+    enable_knowledge_retrieval = state.get("enable_knowledge_retrieval", False)
+    
     return {
         "locale": state.get("locale", "zh-CN"),
         "resources": configurable.resources or [],
         "user_query": user_query,
+        "enable_online_search": enable_online_search,
+        "enable_knowledge_retrieval": enable_knowledge_retrieval,
     } 

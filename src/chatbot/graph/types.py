@@ -16,6 +16,10 @@ class State(MessagesState):
     user_query: str
     response: Optional[str]
     
+    # Feature flags
+    enable_online_search: bool
+    enable_knowledge_retrieval: bool
+    
     # Enhanced retrieval results
     knowledge_base_results: Optional[List[Dict[str, Any]]]
     web_search_results: Optional[List[Dict[str, Any]]]

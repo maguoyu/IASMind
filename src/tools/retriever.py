@@ -67,7 +67,7 @@ class LocalMilvusRetrieverTool(BaseTool):
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> list[Document]:
         logger.info(
-            f"Retriever tool query: {keywords}", extra={"resources": self.resources}
+            f"Retriever LocalMilvusRetrieverTool query: {keywords}", extra={"resources": self.resources}
         )
         documents = self.retriever.query_relevant_documents(keywords, self.resources)
         if not documents:

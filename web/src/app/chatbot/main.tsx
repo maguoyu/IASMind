@@ -16,6 +16,7 @@ export function ChatbotMain() {
     () => openResearchId !== null,
     [openResearchId],
   );
+
   return (
     <div
       className={cn(

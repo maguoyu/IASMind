@@ -21,90 +21,6 @@ from src.chatbot.graph.types import State
 logger = logging.getLogger(__name__)
 
 
-def chatbot_node(state: State, config: RunnableConfig):
-    """Main chatbot node that handles conversation with RAG and web search support."""
-    logger.info("Chatbot node is processing user query.")
-    configurable = Configuration.from_runnable_config(config)
-    
-    # Get the latest user message
-    messages = state.get("messages", [])
-    if not messages:
-        return {"response": "Hello! How can I help you today?"}
-    
-    # Setup tools including RAG retriever and web search
-    tools = []
-    
-    # Add RAG retriever tool if resources are available
-    retriever_tool = get_retriever_tool(state.get("resources", []))
-    if retriever_tool:
-        tools.append(retriever_tool)
-        logger.info("RAG retriever tool added to chatbot")
-    
-    # Add web search tool for online information
-    web_search_tool = get_web_search_tool(configurable.max_search_results or 3)
-    if web_search_tool:
-        tools.append(web_search_tool)
-        logger.info("Web search tool added to chatbot")
-    
-    # Add reminder about available tools
-    enhanced_messages = list(messages)
-    tool_instructions = []
-    
-    if state.get("resources"):
-        resources_info = "**Available knowledge base resources:**\n\n"
-        for resource in state.get("resources"):
-            resources_info += f"- {resource.title}: {resource.description}\n"
-        tool_instructions.append(resources_info + "\nPlease use the **local_search_tool** to search for relevant information from these resources when answering user questions.")
-    
-    if web_search_tool:
-        tool_instructions.append("You also have access to **web_search** tool to search for current information from the internet when needed.")
-    
-    if tool_instructions:
-        combined_instructions = "\n\n".join(tool_instructions)
-        system_reminder = HumanMessage(
-            content=combined_instructions,
-            name="system"
-        )
-        enhanced_messages.append(system_reminder)
-    
-    try:
-        if tools:
-            # Create agent with tools (including RAG and web search)
-            agent = create_agent("chatbot", "chatbot", tools, "chatbot")
-            
-            # Set recursion limit
-            recursion_limit = 10  # Lower limit for chatbot compared to researcher
-            
-            logger.info(f"Chatbot agent input: {len(enhanced_messages)} messages with {len(tools)} tools")
-            result = agent.invoke(
-                {"messages": enhanced_messages}, 
-                config={"recursion_limit": recursion_limit}
-            )
-            
-            # Extract response
-            response_content = result["messages"][-1].content
-        else:
-            # Use LLM directly without tools for basic conversation
-            logger.info("No tools available, using LLM directly for conversation")
-            llm = get_llm_by_type(AGENT_LLM_MAP.get("chatbot", "basic"))
-            
-            # Create a simple conversation context
-            conversation_messages = enhanced_messages
-            
-            response = llm.invoke(conversation_messages)
-            response_content = response.content
-    
-    except Exception as e:
-        logger.exception(f"Error in chatbot processing: {str(e)}")
-        response_content = f"抱歉，处理您的请求时出现了错误。请稍后再试。"
-    
-    logger.info(f"Chatbot response generated: {len(response_content)} characters")
-    
-    return {
-        "messages": [AIMessage(content=response_content, name="chatbot")],
-        "response": response_content
-    }
-
 
 def search_knowledge_base_sync(user_query: str, resources: List) -> List[Dict[str, Any]]:
     """Synchronous function to search local knowledge base."""
@@ -241,11 +157,21 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     # Convert Document objects to dictionaries for JSON serialization
     def convert_to_dict(obj):
         if hasattr(obj, 'to_dict'):
-            return obj.to_dict()
+            res =  obj.to_dict()
+            res["content"] = ""
+            res["raw_content"] = ""
+            res["metadata"]["source"] = ""
+            return res
         elif hasattr(obj, 'model_dump'):
-            return obj.model_dump()
+             res =  obj.model_dump()
+             res["content"] = ""
+             res["raw_content"] = ""
+             return res
         elif isinstance(obj, dict):
+            obj["content"] = ""
+            obj["raw_content"] = ""
             return obj
+
         else:
             return str(obj)
     
@@ -253,10 +179,15 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     serializable_web_results = [convert_to_dict(result) for result in web_search_results] if web_search_results else []
     
     return {
-        "messages": [AIMessage(content=response_content, name="chatbot")],
+        "messages": [AIMessage(
+            content=response_content, 
+            name="chatbot",
+            additional_kwargs={
+                "knowledge_base_results": serializable_kb_results,
+                "web_search_results": serializable_web_results
+            }
+        )],
         "response": response_content,
-        "knowledge_base_results": serializable_kb_results,
-        "web_search_results": serializable_web_results
     }
 
 

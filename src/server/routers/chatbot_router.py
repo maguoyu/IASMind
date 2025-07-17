@@ -84,12 +84,18 @@ async def astream_chatbot_generator(graph, request: ChatRequest):
                 tuple[BaseMessage, dict[str, Any]], event_data
             )
             
+            # 从消息的 additional_kwargs 中获取参考信息
+            knowledge_base_results = message_chunk.additional_kwargs.get("knowledge_base_results", [])
+            web_search_results = message_chunk.additional_kwargs.get("web_search_results", [])
+            
             event_stream_message: dict[str, Any] = {
                 "thread_id": thread_id,
                 "agent": "chatbot",
                 "id": message_chunk.id,
                 "role": "assistant",
                 "content": message_chunk.content,
+                "knowledge_base_results": knowledge_base_results,
+                "web_search_results": web_search_results
             }
             
             if message_chunk.response_metadata.get("finish_reason"):

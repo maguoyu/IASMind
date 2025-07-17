@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: MIT
 
 import abc
+from sys import meta_path
+from typing import Any
 from pydantic import BaseModel, Field
-
+import json
 
 class Chunk:
     content: str
@@ -23,6 +25,7 @@ class Document:
     url: str | None = None
     title: str | None = None
     chunks: list[Chunk] = []
+    metadata: dict | None = None
 
     def __init__(
         self,
@@ -30,14 +33,16 @@ class Document:
         url: str | None = None,
         title: str | None = None,
         chunks: list[Chunk] = [],
+        metadata: dict | None = None,
     ):
         self.id = id
         self.url = url
         self.title = title
         self.chunks = chunks
+        self.metadata = metadata
 
     def to_dict(self) -> dict:
-        d = {
+        d: dict[str, Any] = {
             "id": self.id,
             "content": "\n\n".join([chunk.content for chunk in self.chunks]),
         }
@@ -45,6 +50,8 @@ class Document:
             d["url"] = self.url
         if self.title:
             d["title"] = self.title
+        if self.metadata:
+            d["metadata"] = self.metadata
         return d
 
 

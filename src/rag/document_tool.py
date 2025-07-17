@@ -80,7 +80,7 @@ def loadDocument( file_document: FileDocument,source_dir=FILE_PATH,knowledge_bas
             )
             docs = md_loader.load()
             type = "md"
-        formate_metadatas(docs, str(file_document.id),knowledge_base_id)
+        formate_metadatas(docs, str(file_document.id),knowledge_base_id,file_document.name)
         return type,docs
 
     except Exception as e:
@@ -112,11 +112,12 @@ def clean_text(text: str) -> str:
     for cn, en in replacements.items():
         cleaned = cleaned.replace(cn, en)
     return cleaned
-def formate_metadatas(docs,fileId:str=None ,knowledge_base_id:Optional[str] = None):
-    [formate_metadata(doc,fileId,knowledge_base_id) for doc in docs]
+def formate_metadatas(docs,fileId:str=None ,knowledge_base_id:Optional[str] = None,file_name:Optional[str] = None):
+    [formate_metadata(doc,fileId,knowledge_base_id,file_name) for doc in docs]
     
-def formate_metadata(doc :Document,fileId:str=None,knowledge_base_id:Optional[str] = None):
+def formate_metadata(doc :Document,fileId:str=None,knowledge_base_id:Optional[str] = None,file_name:Optional[str] = None):
     doc.metadata = {k.replace("-", "_"): v for k, v in doc.metadata.items()}
     doc.metadata["file_id"] = fileId
     doc.metadata["knowledge_base_id"] = knowledge_base_id
+    doc.metadata["file_name"] = file_name
 

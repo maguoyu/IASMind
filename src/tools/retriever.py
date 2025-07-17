@@ -76,7 +76,7 @@ class LocalMilvusRetrieverTool(BaseTool):
         documents = self.retriever.query_relevant_documents(keywords, self.resources)
         if not documents:
             return []
-        return [Document(id=doc.id, chunks=[Chunk(content=doc.page_content, similarity=1.0)]) for doc in documents]
+        return [Document(id=doc.id,metadata=doc.metadata,chunks=[Chunk(content=doc.page_content, similarity=1.0)]) for doc in documents]
 
     async def _arun(
         self,

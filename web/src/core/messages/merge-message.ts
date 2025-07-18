@@ -117,11 +117,20 @@ function mergeInterruptMessage(message: Message, event: InterruptEvent) {
 }
 
 function mergeReferenceInformationMessage(event: ReferenceInformationEvent) {
-  debugger
   const task_id = event.data.task_id
   const message = useStore.getState().messages.get(task_id)
   if (message) {
-    message.knowledgeBaseResults = event.data.knowledge_base_results;
-    message.webSearchResults = event.data.web_search_results;
+    // 按 metadata.file_id 去重知识库结果
+    if (event.data.knowledge_base_results) {
+      const uniqueResults = event.data.knowledge_base_results.filter((result, index, self) => 
+        index === self.findIndex(r => r.metadata?.file_id === result.metadata?.file_id)
+      );
+      message.knowledgeBaseResults = uniqueResults;
+    }
+    
+    // 处理网络搜索结果
+    if (event.data.web_search_results) {
+      message.webSearchResults = event.data.web_search_results;
+    }
   }
 }

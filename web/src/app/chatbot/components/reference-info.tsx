@@ -108,20 +108,19 @@ export function ReferenceInfo({
                       className="bg-white dark:bg-gray-800 rounded p-3 border-l-4 border-green-500"
                     >
                       <div className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        🌐 {result.title || `搜索结果 ${index + 1}`}
-                      </div>
-                      {result.url && (
-                        <div className="mb-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                        {result.url ? (
                           <a
                             href={result.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline break-all"
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline"
                           >
-                            {result.url}
+                            🌐 {result.title || `搜索结果 ${index + 1}`}
                           </a>
-                        </div>
-                      )}
+                        ) : (
+                          <span>🌐 {result.title || `搜索结果 ${index + 1}`}</span>
+                        )}
+                      </div>
                       {result.content && (
                         <div className="text-sm text-gray-600 dark:text-gray-300">
                           {result.content}

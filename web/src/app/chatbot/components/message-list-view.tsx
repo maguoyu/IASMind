@@ -136,7 +136,6 @@ function MessageListItem({
   onToggleResearch?: () => void;
 }) {
   const message = useMessage(messageId);
-  console.log("message", message);
   const researchIds = useStore((state) => state.researchIds);
   const startOfResearch = useMemo(() => {
     return researchIds.includes(messageId);
@@ -254,38 +253,8 @@ function MessageBubble({
           </div>
           {/* 使用测试数据 */}
           <ReferenceInfo
-            knowledgeBaseResults={[
-              {
-                id: "1",
-                content: "虹桥油库轻油污水处理作业指导书包含了详细的处理流程和安全要求，确保污水处理符合环保标准。",
-                metadata: {
-                  file_name: "2023年虹桥油库管理文件汇编 - 作业指导书.md",
-                  source: "knowledge_base",
-                },
-              },
-              {
-                id: "2",
-                content: "危险化学品信息管理要求严格的安全操作规程，包括存储、运输和应急处理措施。",
-                metadata: {
-                  file_name: "虹桥油库危险化学品信息.md",
-                  source: "knowledge_base",
-                },
-              },
-            ]}
-            webSearchResults={[
-              {
-                type: "page",
-                title: "上海城投污水处理有限公司虹桥污水处理厂",
-                url: "https://www.mee.gov.cn/home/ztbd/rdzl/sskf/kfss/shs/qh_31358/202104/t20210408_827725.shtml",
-                content: "上海市虹桥污水处理厂是重要的环保设施，负责处理区域内的污水，确保水质达标排放。",
-              },
-              {
-                type: "page",
-                title: "上海市人民政府关于印发《上海市生态环境保护十四五规划》的通知",
-                url: "https://www.shanghai.gov.cn/nw12344/20210818/fc1556f37984428a856b523aba5b6f21.html",
-                content: "上海市生态环境保护规划明确了未来五年的环保目标和重点任务，包括水环境治理、大气污染防治等。",
-              },
-            ]}
+            knowledgeBaseResults={message.knowledgeBaseResults}
+            webSearchResults={message.webSearchResults}
           />
         </>
       )}

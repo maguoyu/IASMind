@@ -1,6 +1,9 @@
 // Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 // SPDX-License-Identifier: MIT
 
+
+import {useStore} from "~/core/store";
+
 import type {
   ChatEvent,
   InterruptEvent,
@@ -8,6 +11,7 @@ import type {
   ToolCallChunksEvent,
   ToolCallResultEvent,
   ToolCallsEvent,
+  ReferenceInformationEvent,
 } from "../api";
 import { deepClone } from "../utils/deep-clone";
 
@@ -22,6 +26,8 @@ export function mergeMessage(message: Message, event: ChatEvent) {
     mergeToolCallResultMessage(message, event);
   } else if (event.type === "interrupt") {
     mergeInterruptMessage(message, event);
+  } else if (event.type === "reference_information") {
+    mergeReferenceInformationMessage(event);
   }
   if (event.data.finish_reason) {
     message.finishReason = event.data.finish_reason;
@@ -62,6 +68,8 @@ function mergeToolCallMessage(
   message: Message,
   event: ToolCallsEvent | ToolCallChunksEvent,
 ) {
+  
+
   if (event.type === "tool_calls" && event.data.tool_calls[0]?.name) {
     message.toolCalls = event.data.tool_calls.map((raw) => ({
       id: raw.id,
@@ -106,4 +114,14 @@ function mergeToolCallResultMessage(
 function mergeInterruptMessage(message: Message, event: InterruptEvent) {
   message.isStreaming = false;
   message.options = event.data.options;
+}
+
+function mergeReferenceInformationMessage(event: ReferenceInformationEvent) {
+  debugger
+  const task_id = event.data.task_id
+  const message = useStore.getState().messages.get(task_id)
+  if (message) {
+    message.knowledgeBaseResults = event.data.knowledge_base_results;
+    message.webSearchResults = event.data.web_search_results;
+  }
 }

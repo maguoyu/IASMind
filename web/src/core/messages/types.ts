@@ -31,14 +31,18 @@ export interface Message {
     metadata?: {
       file_name?: string;
       source?: string;
-      [key: string]: any;
+      [key: string]: string | undefined;
     };
+    raw_content?: string;
   }>;
   webSearchResults?: Array<{
     type?: string;
     title?: string;
     url?: string;
     content?: string;
+    engines?: string[];
+    category?: string;
+    raw_content?: string;
   }>;
 }
 

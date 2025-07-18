@@ -190,7 +190,7 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
                 "web_search_results": serializable_web_results
             }
         )],
-        "response": response_content,
+   
     }
 
 

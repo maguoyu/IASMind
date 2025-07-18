@@ -27,6 +27,7 @@ interface GenericEvent<T extends string, D extends object> {
   data: {
     id: string;
     thread_id: string;
+    task_id: string;
     agent: "coordinator" | "planner" | "researcher" | "coder" | "reporter";
     role: "user" | "assistant" | "tool";
     finish_reason?: "stop" | "tool_calls" | "interrupt";
@@ -45,7 +46,7 @@ export interface MessageChunkEvent
         metadata?: {
           file_name?: string;
           source?: string;
-          [key: string]: any;
+          [key: string]: string | undefined;
         };
       }>;
       web_search_results?: Array<{
@@ -91,9 +92,37 @@ export interface InterruptEvent
     }
   > {}
 
+export interface ReferenceInformationEvent
+  extends GenericEvent<
+    "reference_information",
+    {
+      knowledge_base_results?: Array<{
+        id?: string | null;
+        content?: string;
+        metadata?: {
+          file_name?: string;
+          source?: string;
+          [key: string]: string | undefined;
+        };
+        raw_content?: string;
+      }>;
+      web_search_results?: Array<{
+        type?: string;
+        title?: string;
+        url?: string;
+        content?: string;
+        engines?: string[];
+        category?: string;
+        raw_content?: string;
+      }>;
+      tool_name?: string;
+    }
+  > {}
+
 export type ChatEvent =
   | MessageChunkEvent
   | ToolCallsEvent
   | ToolCallChunksEvent
   | ToolCallResultEvent
-  | InterruptEvent;
+  | InterruptEvent
+  | ReferenceInformationEvent;

@@ -133,6 +133,7 @@ async function* chatReplayStream(
       } else if (chatEvent.type === "tool_call_result") {
         await sleepInReplay(500);
       }
+      
       yield chatEvent;
       if (chatEvent.type === "tool_call_result") {
         await sleepInReplay(800);

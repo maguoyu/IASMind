@@ -136,6 +136,7 @@ function MessageListItem({
   onToggleResearch?: () => void;
 }) {
   const message = useMessage(messageId);
+  console.log("message", message);
   const researchIds = useStore((state) => state.researchIds);
   const startOfResearch = useMemo(() => {
     return researchIds.includes(messageId);
@@ -247,7 +248,7 @@ function MessageBubble({
         <>
           {/* 调试信息 */}
           <div className="text-xs text-muted-foreground mt-2">
-            Debug: agent={message.agent}, role={message.role}, 
+            Debug: agent={message.agent}, role={message.role}, id={message.id},
             kb={message.knowledgeBaseResults?.length || 0}, 
             web={message.webSearchResults?.length || 0}
           </div>

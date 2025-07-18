@@ -56,6 +56,7 @@ async def astream_chatbot_generator(graph, request: ChatRequest):
     messages = request.model_dump()["messages"]
     thread_id = request.thread_id
     resources = request.resources or []
+    task_id = ""
     input_ = {
         "messages": messages,
         "locale": "zh-CN",
@@ -104,11 +105,14 @@ async def astream_chatbot_generator(graph, request: ChatRequest):
                 )
             
             if isinstance(message_chunk, AIMessageChunk):
+                task_id = message_chunk.id
                 # AI Message - Raw message tokens
                 yield f"event: message_chunk\ndata: {json.dumps(event_stream_message, ensure_ascii=False)}\n\n"
             else:
                 # Tool Message - Tool call results
                 event_stream_message["role"] = "tool"
+                event_stream_message["content"] = ""
+                event_stream_message["task_id"] = task_id
                 if hasattr(message_chunk, 'name'):
                     event_stream_message["tool_name"] = message_chunk.name
                 tool_input = getattr(message_chunk, 'tool_input', None)
@@ -117,7 +121,7 @@ async def astream_chatbot_generator(graph, request: ChatRequest):
                 tool_output = getattr(message_chunk, 'tool_output', None)
                 if tool_output is not None:
                     event_stream_message["tool_output"] = tool_output
-                yield f"event: tool_call\ndata: {json.dumps(event_stream_message, ensure_ascii=False)}\n\n"
+                yield f"event: reference_information\ndata: {json.dumps(event_stream_message, ensure_ascii=False)}\n\n"
     
     except Exception as e:
         logger.exception(f"Error in chatbot streaming: {str(e)}")

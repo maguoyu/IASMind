@@ -245,12 +245,6 @@ function MessageBubble({
       {/* 为聊天机器人回答显示参考信息 */}
       {message.agent === "chatbot" && message.role === "assistant" && (
         <>
-          {/* 调试信息 */}
-          <div className="text-xs text-muted-foreground mt-2">
-            Debug: agent={message.agent}, role={message.role}, id={message.id},
-            kb={message.knowledgeBaseResults?.length || 0}, 
-            web={message.webSearchResults?.length || 0}
-          </div>
           {/* 使用测试数据 */}
           <ReferenceInfo
             knowledgeBaseResults={message.knowledgeBaseResults}

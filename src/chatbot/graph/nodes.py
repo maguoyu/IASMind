@@ -47,6 +47,9 @@ def search_web_sync(user_query: str, max_results: int) -> List[Dict[str, Any]]:
             if isinstance(web_results, list):
                 logger.info(f"Found {len(web_results)} results from web search")
                 return web_results
+            if isinstance(web_results, str):
+                web_results = json.loads(web_results)
+                return web_results
     except Exception as e:
         logger.warning(f"Error searching web: {e}")
     return []

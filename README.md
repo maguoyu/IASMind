@@ -287,16 +287,7 @@ curl --location 'http://localhost:8000/api/tts' \
 
 Run the test suite:
 
-```bash
-# Run all tests
-make test
 
-# Run specific test file
-pytest tests/integration/test_workflow.py
-
-# Run with coverage
-make coverage
-```
 
 ### Code Quality
 

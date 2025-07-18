@@ -278,7 +278,7 @@ Ejecuta el conjunto de pruebas:
 make test
 
 # Ejecutar archivo de prueba específico
-pytest tests/integration/test_workflow.py
+
 
 # Ejecutar con cobertura
 make coverage

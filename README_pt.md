@@ -286,7 +286,7 @@ Rode o conjunto de testes:
 make test
 
 # Roda um arquivo de teste específico
-pytest tests/integration/test_workflow.py
+
 
 # Roda com coverage
 make coverage

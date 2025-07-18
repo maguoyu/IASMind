@@ -267,7 +267,7 @@ Führen Sie die Testsuite aus:
 make test
 
 # Spezifische Testdatei ausführen
-pytest tests/integration/test_workflow.py
+
 
 # Mit Abdeckung ausführen
 make coverage

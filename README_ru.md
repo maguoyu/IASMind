@@ -278,7 +278,7 @@ curl --location 'http://localhost:8000/api/tts' \
 make test
 
 # Запустить определенный тестовый файл
-pytest tests/integration/test_workflow.py
+
 
 # Запустить с покрытием
 make coverage

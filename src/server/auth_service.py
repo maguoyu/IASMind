@@ -60,43 +60,9 @@ class MockUserDatabase:
         self.authorization_codes: Dict[str, Dict[str, Any]] = {}
         self.captchas: Dict[str, Dict[str, Any]] = {}
         
-        # 添加默认测试用户
-        self.AddTestUsers()
+
     
-    def AddTestUsers(self):
-        """添加测试用户"""
-        test_users = [
-            {
-                "id": "admin-001",
-                "username": "admin",
-                "password": "admin123",
-                "email": "admin@iasmind.com",
-                "role": UserRole.ADMIN,
-                "permissions": ["read", "write", "delete", "admin"]
-            },
-            {
-                "id": "user-001", 
-                "username": "testuser",
-                "password": "user123",
-                "email": "user@iasmind.com",
-                "role": UserRole.USER,
-                "permissions": ["read", "write"]
-            },
-            {
-                "id": "guest-001",
-                "username": "guest",
-                "password": "guest123",
-                "email": "guest@iasmind.com", 
-                "role": UserRole.GUEST,
-                "permissions": ["read"]
-            }
-        ]
-        
-        for user_data in test_users:
-            password = user_data.pop("password")
-            password_hash = guomi_crypto.EncryptPassword(password)
-            user_info = UserInfo(**user_data, password_hash=password_hash)
-            self.users[user_info.username] = user_info
+
     
     def GetUserByUsername(self, username: str) -> Optional[UserInfo]:
         """根据用户名获取用户"""

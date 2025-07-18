@@ -28,7 +28,6 @@ There are many ways you can contribute to DeerFlow:
 
    # For development, install additional dependencies
    uv pip install -e ".[dev]"
-   uv pip install -e ".[test]"
    ```
 4. Configure pre-commit hooks:
    ```bash
@@ -46,15 +45,13 @@ There are many ways you can contribute to DeerFlow:
 2. Make your changes following our coding standards:
    - Write clear, documented code
    - Follow PEP 8 style guidelines
-   - Add tests for new features
+   
    - Update documentation as needed
 
-3. Run tests and checks:
+3. Run checks:
    ```bash
-   make test      # Run tests
    make lint      # Run linting
    make format    # Format code
-   make coverage  # Check test coverage
    ```
 
 4. Commit your changes:
@@ -72,9 +69,9 @@ There are many ways you can contribute to DeerFlow:
 ## Pull Request Guidelines
 
 - Fill in the pull request template completely
-- Include tests for new features
+
 - Update documentation as needed
-- Ensure all tests pass and there are no linting errors
+- Ensure there are no linting errors
 - Keep pull requests focused on a single feature or fix
 - Reference any related issues
 
@@ -87,19 +84,7 @@ There are many ways you can contribute to DeerFlow:
 - Comment complex logic
 - Python version requirement: >= 3.12
 
-## Testing
 
-Run the test suite:
-```bash
-# Run all tests
-make test
-
-# Run specific test file
-pytest tests/integration/test_workflow.py
-
-# Run with coverage
-make coverage
-```
 
 ## Code Quality
 

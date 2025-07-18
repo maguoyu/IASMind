@@ -44,24 +44,4 @@ def build_graph():
     return builder.compile()
 
 
-async def _test_workflow():
-    workflow = build_graph()
-    events = workflow.astream(
-        {
-            "content": "The weather in Beijing is sunny",
-            "option": "continue",
-        },
-        stream_mode="messages",
-        subgraphs=True,
-    )
-    async for node, event in events:
-        e = event[0]
-        print({"id": e.id, "object": "chat.completion.chunk", "content": e.content})
 
-
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(_test_workflow())

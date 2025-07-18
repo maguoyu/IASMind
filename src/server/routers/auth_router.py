@@ -438,14 +438,4 @@ async def HealthCheck():
     return {"status": "healthy", "service": "auth"}
 
 
-@router.get("/test")
-async def TestEndpoint():
-    """测试端点"""
-    return {
-        "message": "认证服务正常运行",
-        "test_users": {
-            "admin": "admin123",
-            "testuser": "user123", 
-            "guest": "guest123"
-        }
-    } 
+ 

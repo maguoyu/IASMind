@@ -71,6 +71,13 @@ export default function HomePage() {
       color: "bg-gradient-to-br from-pink-500 to-rose-600"
     },
     {
+    title: "系统管理",
+    description: "个人设置、用户管理、系统配置等管理功能",
+    icon: <Settings className="text-2xl" />,
+    href: "/system",
+    color: "bg-gradient-to-br from-violet-500 to-purple-600"
+  },
+    {
       title: "LLM 代理",
       description: "通过后端安全代理直接访问大语言模型，保证API密钥安全",
       icon: <RobotOutlined className="text-2xl" />,

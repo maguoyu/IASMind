@@ -60,9 +60,53 @@ class MockUserDatabase:
         self.authorization_codes: Dict[str, Dict[str, Any]] = {}
         self.captchas: Dict[str, Dict[str, Any]] = {}
         
-
+        # 添加测试用户
+        self._AddTestUsers()
     
-
+    def _AddTestUsers(self):
+        """添加预设测试用户"""
+        import uuid
+        
+        # 管理员用户
+        admin_user = UserInfo(
+            id=str(uuid.uuid4()),
+            username="admin",
+            password_hash=guomi_crypto.EncryptPassword("admin123"),
+            email="admin@example.com",
+            role=UserRole.ADMIN,
+            permissions=["read", "write", "delete", "admin"],
+            created_at=datetime.now(CHINA_TIMEZONE),
+            status=UserStatus.ACTIVE
+        )
+        
+        # 普通用户
+        user = UserInfo(
+            id=str(uuid.uuid4()),
+            username="testuser",
+            password_hash=guomi_crypto.EncryptPassword("user123"),
+            email="user@example.com",
+            role=UserRole.USER,
+            permissions=["read", "write"],
+            created_at=datetime.now(CHINA_TIMEZONE),
+            status=UserStatus.ACTIVE
+        )
+        
+        # 访客用户
+        guest_user = UserInfo(
+            id=str(uuid.uuid4()),
+            username="guest",
+            password_hash=guomi_crypto.EncryptPassword("guest123"),
+            email="guest@example.com",
+            role=UserRole.GUEST,
+            permissions=["read"],
+            created_at=datetime.now(CHINA_TIMEZONE),
+            status=UserStatus.ACTIVE
+        )
+        
+        # 添加到用户字典
+        self.users["admin"] = admin_user
+        self.users["testuser"] = user
+        self.users["guest"] = guest_user
     
     def GetUserByUsername(self, username: str) -> Optional[UserInfo]:
         """根据用户名获取用户"""

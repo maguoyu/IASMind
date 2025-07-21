@@ -27,6 +27,9 @@ conf.yaml
 coverage.xml
 coverage/
 uv.lock
-src/tools/chart_visualization/node_modules/
-src/tools/chart_visualization/dist/
-src/tools/chart_visualization/pnpm-lock.yaml
+web/node_modules/
+web/pnpm-lock.yaml
+web/package-lock.json
+node_modules/
+pnpm-lock.yaml
+package-lock.json

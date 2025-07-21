@@ -3,7 +3,7 @@
 
 "use client";
 
-import { MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined, LineChartOutlined } from "@ant-design/icons";
+import { MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined, LineChartOutlined, RobotOutlined } from "@ant-design/icons";
 import { Settings } from "lucide-react";
 import { useMemo } from "react";
 import Link from "next/link";
@@ -71,61 +71,41 @@ export default function HomePage() {
       color: "bg-gradient-to-br from-pink-500 to-rose-600"
     },
     {
-      title: "系统管理",
-      description: "个人设置、用户管理、系统配置等管理功能",
-      icon: <Settings className="text-2xl" />,
-      href: "/system",
-      color: "bg-gradient-to-br from-violet-500 to-purple-600"
-    },
+      title: "LLM 代理",
+      description: "通过后端安全代理直接访问大语言模型，保证API密钥安全",
+      icon: <RobotOutlined className="text-2xl" />,
+      href: "/llm-demo",
+      color: "bg-gradient-to-br from-purple-500 to-violet-600"
+    }
   ], []);
 
   return (
     <Layout>
-      <div className="container mx-auto px-6 pb-12">
-        {/* Welcome Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-            欢迎使用 IAS_Mind
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            一个强大的AI工作平台，集成了智能对话、数据分析、思维导图等多种功能，提升您的工作效率
+      <div className="container mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">欢迎使用 IAS Mind</h1>
+          <p className="text-lg text-muted-foreground">
+            选择以下任意功能开始您的智能分析之旅
           </p>
         </div>
-
-        {/* Work Panel Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {workPanelItems.map((item, index) => (
-            <Link key={index} href={item.href} className="group">
-              <Card className="h-full transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer border-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
-                <CardHeader className="pb-4">
-                  <div className={`w-12 h-12 rounded-lg ${item.color} flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform duration-300`}>
+            <Link href={item.href} key={index}>
+              <Card className="h-full transition-all hover:shadow-lg hover:-translate-y-1">
+                <CardHeader className="pb-2">
+                  <div className={`w-12 h-12 rounded-xl ${item.color} flex items-center justify-center text-white mb-4`}>
                     {item.icon}
                   </div>
-                  <CardTitle className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {item.title}
-                  </CardTitle>
-                  <CardDescription className="text-slate-600 dark:text-slate-400">
-                    {item.description}
-                  </CardDescription>
+                  <CardTitle>{item.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-500 dark:text-slate-400">
-                      点击进入
-                    </span>
-                    <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center group-hover:bg-slate-300 dark:group-hover:bg-slate-600 transition-colors duration-300">
-                      <svg className="w-3 h-3 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
+                <CardContent>
+                  <CardDescription className="text-sm">{item.description}</CardDescription>
                 </CardContent>
               </Card>
             </Link>
           ))}
         </div>
-
-
       </div>
     </Layout>
   );

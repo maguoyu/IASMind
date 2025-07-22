@@ -10,12 +10,13 @@ import os
 import json
 import tempfile
 import uuid
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, HTTPException
 from fastapi.responses import JSONResponse
 import pandas as pd
 import numpy as np
 from pydantic import BaseModel
+from datetime import datetime
 
 from ..auth_middleware import GetCurrentUser
 from ...database.models import FileExploration
@@ -41,7 +42,7 @@ class FileExplorationCreate(BaseModel):
     file_path: str
     suffix: Optional[str] = None
     metadata: Optional[Dict] = None
-    preview_data: Optional[Dict] = None
+    preview_data: Optional[Union[List, Dict]] = None
 
 
 class FileExplorationResponse(BaseModel):
@@ -56,7 +57,7 @@ class FileExplorationResponse(BaseModel):
     status: str
     suffix: Optional[str] = None
     metadata: Optional[Dict] = None
-    preview_data: Optional[Dict] = None
+    preview_data: Optional[Union[List, Dict]] = None
     data_insights: Optional[Dict] = None
     last_accessed_at: Optional[str] = None
 
@@ -81,7 +82,9 @@ def process_file_data(file_path: str, file_type: str) -> Dict[str, Any]:
                 "dtypes": {col: str(dtype) for col, dtype in zip(df.columns, df.dtypes)},
                 "shape": df.shape,
             }
+            # 将DataFrame转换为记录列表，确保None替换NaN
             preview_data = df.head(preview_rows).replace({np.nan: None}).to_dict(orient="records")
+            print(f"CSV预览数据类型: {type(preview_data)}, 样本: {preview_data[:2] if preview_data else []}")
             
         elif file_type.startswith("application/vnd.openxmlformats-officedocument.spreadsheetml") or \
              file_path.endswith((".xlsx", ".xls")):
@@ -92,7 +95,9 @@ def process_file_data(file_path: str, file_type: str) -> Dict[str, Any]:
                 "dtypes": {col: str(dtype) for col, dtype in zip(df.columns, df.dtypes)},
                 "shape": df.shape,
             }
+            # 将DataFrame转换为记录列表，确保None替换NaN
             preview_data = df.head(preview_rows).replace({np.nan: None}).to_dict(orient="records")
+            print(f"Excel预览数据类型: {type(preview_data)}, 样本: {preview_data[:2] if preview_data else []}")
             
         elif file_type == "application/json" or file_path.endswith(".json"):
             # 处理JSON文件
@@ -101,19 +106,37 @@ def process_file_data(file_path: str, file_type: str) -> Dict[str, Any]:
             
             if isinstance(data, list):
                 # 如果是记录列表
-                df = pd.DataFrame(data[:preview_rows])
-                metadata = {
-                    "columns": df.columns.tolist(),
-                    "dtypes": {col: str(dtype) for col, dtype in zip(df.columns, df.dtypes)},
-                    "shape": df.shape,
-                }
-                preview_data = df.head(preview_rows).replace({np.nan: None}).to_dict(orient="records")
+                if data:
+                    df = pd.DataFrame(data[:preview_rows])
+                    metadata = {
+                        "columns": df.columns.tolist(),
+                        "dtypes": {col: str(dtype) for col, dtype in zip(df.columns, df.dtypes)},
+                        "shape": df.shape,
+                    }
+                    # 将DataFrame转换为记录列表，确保None替换NaN
+                    preview_data = df.head(preview_rows).replace({np.nan: None}).to_dict(orient="records")
+                else:
+                    metadata = {"structure": "empty_list"}
+                    preview_data = []
             else:
                 # 如果是嵌套的JSON
                 preview_data = data
                 metadata = {"structure": "nested_json"}
+            print(f"JSON预览数据类型: {type(preview_data)}, 样本: {preview_data if isinstance(preview_data, dict) else preview_data[:2] if preview_data else []}")
+        else:
+            # 不支持的文件类型
+            metadata = {"error": "不支持的文件类型"}
+            preview_data = []
+            print(f"不支持的文件类型: {file_type}")
     except Exception as e:
-        metadata = {"error": str(e)}
+        error_msg = str(e)
+        metadata = {"error": error_msg}
+        preview_data = []
+        print(f"处理文件数据时出错: {error_msg}")
+    
+    # 确保preview_data是列表或字典
+    if not isinstance(preview_data, (list, dict)):
+        print(f"警告: 预览数据类型错误 - {type(preview_data)}，转换为空列表")
         preview_data = []
     
     return {
@@ -128,10 +151,11 @@ async def upload_file(
     user=Depends(GetCurrentUser)
 ):
     """上传数据探索文件"""
-    if not user or not user.id:
+    if not user or not user.sub:
         raise HTTPException(status_code=401, detail="需要用户身份认证")
     
-    user_id = user.id
+    user_id = user.sub
+    print(f"用户 {user_id} 正在上传文件: {file.filename}, 类型: {file.content_type}")
     
     # 创建用户目录
     user_dir = os.path.join(DATA_EXPLORATION_DIR, user_id)
@@ -156,32 +180,55 @@ async def upload_file(
         # 处理文件数据
         file_data = process_file_data(file_path, file.content_type)
         
-        # 创建文件记录
-        file_doc = FileExploration.Create(
-            name=file.filename,
-            file_type=file.content_type,
-            size=file_size,
-            user_id=user_id,
-            file_path=file_path,
-            suffix=file_suffix,
-            metadata=file_data["metadata"],
-            preview_data=file_data["preview_data"]
-        )
+        if isinstance(file_data["metadata"], dict) and "error" in file_data["metadata"]:
+            print(f"处理文件数据时出错: {file_data['metadata']['error']}")
+            raise HTTPException(status_code=400, detail=f"文件处理失败: {file_data['metadata']['error']}")
         
-        # 验证文件记录是否创建成功
-        created_file = FileExploration.GetById(file_doc.id)
-        if not created_file:
-            raise HTTPException(status_code=500, detail="文件记录创建失败")
+        print(f"预览数据类型: {type(file_data['preview_data'])}")
+        
+        try:
+            # 创建文件记录
+            file_doc = FileExploration.Create(
+                name=file.filename,
+                file_type=file.content_type,
+                size=file_size,
+                user_id=user_id,
+                file_path=file_path,
+                suffix=file_suffix,
+                metadata=file_data["metadata"],
+                preview_data=file_data["preview_data"]
+            )
             
-        return FileExplorationResponse(**file_doc.ToDict())
+            # 验证文件记录是否创建成功
+            created_file = FileExploration.GetById(file_doc.id)
+            if not created_file:
+                raise ValueError("文件记录创建失败")
+                
+            print(f"文件记录创建成功: {file_doc.id}")
+            response_data = file_doc.ToDict()
+            return FileExplorationResponse(**response_data)
+        except Exception as e:
+            print(f"创建文件记录时出错: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"创建文件记录失败: {str(e)}")
+            
+    except HTTPException as he:
+        # 传递HTTP异常
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                print(f"已删除文件: {file_path}")
+            except Exception as e:
+                print(f"删除文件失败: {str(e)}")
+        raise he
     except Exception as e:
         # 如果处理过程中出现异常，记录日志并清理临时文件
         print(f"上传文件失败: {str(e)}")
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-            except:
-                pass
+                print(f"已删除文件: {file_path}")
+            except Exception as delete_error:
+                print(f"删除文件失败: {str(delete_error)}")
         raise HTTPException(status_code=500, detail=f"文件上传失败: {str(e)}")
 
 
@@ -196,29 +243,48 @@ async def list_files(
     user=Depends(GetCurrentUser)
 ):
     """获取用户的数据探索文件列表"""
-    if not user or not user.id:
+    if not user or not user.sub:
         raise HTTPException(status_code=401, detail="需要用户身份认证")
     
-    user_id = user.id
+    user_id = user.sub
     
-    # 获取文件总数
-    total = FileExploration.Count(user_id, file_type, search)
-    
-    # 获取文件列表
-    files = FileExploration.GetByUserId(
-        user_id=user_id,
-        limit=limit,
-        offset=offset,
-        file_type=file_type,
-        search=search,
-        sort_by=sort_by,
-        sort_order=sort_order
-    )
-    
-    return FileListResponse(
-        total=total,
-        files=[FileExplorationResponse(**file.ToDict()) for file in files]
-    )
+    try:
+        # 获取文件总数
+        total = FileExploration.Count(user_id, file_type, search)
+        
+        # 获取文件列表
+        files = FileExploration.GetByUserId(
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+            file_type=file_type,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        
+        # 转换为响应模型
+        response_files = []
+        for file in files:
+            try:
+                file_dict = file.ToDict()
+                # 确保所有日期字段都是字符串
+                for date_field in ['created_at', 'updated_at', 'last_accessed_at']:
+                    if isinstance(file_dict.get(date_field), datetime):
+                        file_dict[date_field] = file_dict[date_field].isoformat()
+                response_files.append(FileExplorationResponse(**file_dict))
+            except Exception as e:
+                print(f"转换文件记录时出错: {str(e)}")
+                # 跳过此文件，不影响整个列表的返回
+                continue
+        
+        return FileListResponse(
+            total=total,
+            files=response_files
+        )
+    except Exception as e:
+        print(f"获取文件列表时出错: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")
 
 
 @router.get("/files/{file_id}", response_model=FileExplorationResponse)
@@ -227,18 +293,33 @@ async def get_file(
     user=Depends(GetCurrentUser)
 ):
     """获取文件详情"""
-    if not user or not user.id:
+    if not user or not user.sub:
         raise HTTPException(status_code=401, detail="需要用户身份认证")
     
-    file = FileExploration.GetById(file_id)
-    if not file:
-        raise HTTPException(status_code=404, detail="文件不存在")
-    
-    # 检查是否是文件的所有者
-    if file.user_id != user.id:
-        raise HTTPException(status_code=403, detail="无权访问该文件")
-    
-    return FileExplorationResponse(**file.ToDict())
+    try:
+        # 获取文件
+        file = FileExploration.GetById(file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="文件不存在")
+        
+        # 检查是否是文件的所有者
+        if file.user_id != user.sub:
+            raise HTTPException(status_code=403, detail="无权访问该文件")
+        
+        # 转换为响应模型
+        file_dict = file.ToDict()
+        # 确保所有日期字段都是字符串
+        for date_field in ['created_at', 'updated_at', 'last_accessed_at']:
+            if isinstance(file_dict.get(date_field), datetime):
+                file_dict[date_field] = file_dict[date_field].isoformat()
+        
+        return FileExplorationResponse(**file_dict)
+    except HTTPException as he:
+        # 传递HTTP异常
+        raise he
+    except Exception as e:
+        print(f"获取文件详情时出错: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取文件详情失败: {str(e)}")
 
 
 @router.delete("/files/{file_id}")
@@ -247,7 +328,7 @@ async def delete_file(
     user=Depends(GetCurrentUser)
 ):
     """删除文件"""
-    if not user or not user.id:
+    if not user or not user.sub:
         raise HTTPException(status_code=401, detail="需要用户身份认证")
     
     file = FileExploration.GetById(file_id)
@@ -255,7 +336,7 @@ async def delete_file(
         raise HTTPException(status_code=404, detail="文件不存在")
     
     # 检查是否是文件的所有者
-    if file.user_id != user.id:
+    if file.user_id != user.sub:
         raise HTTPException(status_code=403, detail="无权删除该文件")
     
     # 删除文件
@@ -281,76 +362,88 @@ async def generate_insights(
     user=Depends(GetCurrentUser)
 ):
     """为文件生成数据洞察"""
-    if not user or not user.id:
+    if not user or not user.sub:
         raise HTTPException(status_code=401, detail="需要用户身份认证")
     
-    file = FileExploration.GetById(file_id)
-    if not file:
-        raise HTTPException(status_code=404, detail="文件不存在")
-    
-    # 检查是否是文件的所有者
-    if file.user_id != user.id:
-        raise HTTPException(status_code=403, detail="无权访问该文件")
-    
-    # TODO: 实现AI生成数据洞察的功能
-    # 这里使用一些示例洞察
-    insights = {
-        "data_quality": {
-            "completeness": 95,
-            "accuracy": 90,
-            "consistency": 85,
-            "summary": "数据完整性良好，无明显异常值"
-        },
-        "statistics": {
-            "numeric_fields": {},
-            "categorical_fields": {}
-        },
-        "recommendations": [
-            {
-                "type": "visualization",
-                "chart_type": "bar",
-                "description": "建议使用柱状图展示分类数据"
+    try:
+        # 获取文件
+        file = FileExploration.GetById(file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="文件不存在")
+        
+        # 检查是否是文件的所有者
+        if file.user_id != user.sub:
+            raise HTTPException(status_code=403, detail="无权访问该文件")
+        
+        # TODO: 实现AI生成数据洞察的功能
+        # 这里使用一些示例洞察
+        insights = {
+            "data_quality": {
+                "completeness": 95,
+                "accuracy": 90,
+                "consistency": 85,
+                "summary": "数据完整性良好，无明显异常值"
             },
-            {
-                "type": "visualization",
-                "chart_type": "line",
-                "description": "建议使用折线图展示时间序列趋势"
-            }
-        ]
-    }
-    
-    # 如果有预览数据，尝试生成一些简单的统计信息
-    if file.preview_data and isinstance(file.preview_data, list) and len(file.preview_data) > 0:
-        try:
-            df = pd.DataFrame(file.preview_data)
-            
-            # 处理数值字段
-            numeric_cols = df.select_dtypes(include=['number']).columns
-            for col in numeric_cols:
-                insights["statistics"]["numeric_fields"][col] = {
-                    "min": float(df[col].min()) if not pd.isna(df[col].min()) else None,
-                    "max": float(df[col].max()) if not pd.isna(df[col].max()) else None,
-                    "mean": float(df[col].mean()) if not pd.isna(df[col].mean()) else None,
-                    "median": float(df[col].median()) if not pd.isna(df[col].median()) else None,
+            "statistics": {
+                "numeric_fields": {},
+                "categorical_fields": {}
+            },
+            "recommendations": [
+                {
+                    "type": "visualization",
+                    "chart_type": "bar",
+                    "description": "建议使用柱状图展示分类数据"
+                },
+                {
+                    "type": "visualization",
+                    "chart_type": "line",
+                    "description": "建议使用折线图展示时间序列趋势"
                 }
-            
-            # 处理分类字段
-            cat_cols = df.select_dtypes(include=['object', 'category']).columns
-            for col in cat_cols:
-                value_counts = df[col].value_counts().head(5).to_dict()
-                insights["statistics"]["categorical_fields"][col] = {
-                    "unique_values": df[col].nunique(),
-                    "top_values": value_counts
-                }
-        except:
-            # 如果处理失败，使用空统计
-            pass
-    
-    # 更新文件的洞察信息
-    file.UpdateInsights(insights)
-    
-    return JSONResponse({
-        "status": "success", 
-        "message": "数据洞察已生成",
-        "insights": insights
-    }) 
+            ]
+        }
+        
+        # 如果有预览数据，尝试生成一些简单的统计信息
+        if file.preview_data and (isinstance(file.preview_data, list) and len(file.preview_data) > 0 or isinstance(file.preview_data, dict)):
+            try:
+                if isinstance(file.preview_data, list):
+                    df = pd.DataFrame(file.preview_data)
+                    
+                    # 处理数值字段
+                    numeric_cols = df.select_dtypes(include=['number']).columns
+                    for col in numeric_cols:
+                        insights["statistics"]["numeric_fields"][col] = {
+                            "min": float(df[col].min()) if not pd.isna(df[col].min()) else None,
+                            "max": float(df[col].max()) if not pd.isna(df[col].max()) else None,
+                            "mean": float(df[col].mean()) if not pd.isna(df[col].mean()) else None,
+                            "median": float(df[col].median()) if not pd.isna(df[col].median()) else None,
+                        }
+                    
+                    # 处理分类字段
+                    cat_cols = df.select_dtypes(include=['object', 'category']).columns
+                    for col in cat_cols:
+                        value_counts = df[col].value_counts().head(5).to_dict()
+                        insights["statistics"]["categorical_fields"][col] = {
+                            "unique_values": df[col].nunique(),
+                            "top_values": value_counts
+                        }
+            except Exception as e:
+                print(f"生成统计信息时出错: {str(e)}")
+                # 使用空统计信息
+                pass
+        
+        # 更新文件的洞察信息
+        success = file.UpdateInsights(insights)
+        if not success:
+            raise HTTPException(status_code=500, detail="更新数据洞察失败")
+        
+        return JSONResponse({
+            "status": "success", 
+            "message": "数据洞察已生成",
+            "insights": insights
+        })
+    except HTTPException as he:
+        # 传递HTTP异常
+        raise he
+    except Exception as e:
+        print(f"生成数据洞察时出错: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"生成数据洞察失败: {str(e)}") 

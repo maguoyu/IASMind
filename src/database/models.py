@@ -9,7 +9,7 @@
 import uuid
 import json
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from .connection import db_connection
 
 
@@ -380,7 +380,7 @@ class FileExploration:
     @classmethod
     def Create(cls, name: str, file_type: str, size: int, user_id: str, file_path: str, 
                suffix: Optional[str] = None, metadata: Optional[Dict] = None,
-               preview_data: Optional[Dict] = None) -> 'FileExploration':
+               preview_data: Optional[Union[List, Dict]] = None) -> 'FileExploration':
         """创建新的数据探索文件"""
         # 如果没有提供suffix，从文件名中提取
         if suffix is None:
@@ -395,8 +395,11 @@ class FileExploration:
             file_path=file_path,
             suffix=suffix,
             metadata=metadata or {},
-            preview_data=preview_data or {}
+            preview_data=preview_data or []
         )
+        
+        # 将preview_data转换为有效的JSON
+        preview_data_json = json.dumps(file.preview_data if file.preview_data else [])
         
         sql = """
         INSERT INTO file_exploration (id, name, type, size, user_id, file_path, suffix, metadata, preview_data)
@@ -405,7 +408,7 @@ class FileExploration:
         db_connection.ExecuteInsert(sql, (
             file.id, file.name, file.type, file.size, file.user_id, 
             file.file_path, file.suffix, json.dumps(file.metadata), 
-            json.dumps(file.preview_data)
+            preview_data_json
         ))
         
         return file
@@ -417,12 +420,23 @@ class FileExploration:
         result = db_connection.ExecuteQuery(sql, (file_id,))
         if result:
             row = result[0]
+            # 解析JSON字段
             if row.get('metadata'):
-                row['metadata'] = json.loads(row['metadata'])
+                try:
+                    row['metadata'] = json.loads(row['metadata'])
+                except json.JSONDecodeError:
+                    row['metadata'] = {}
             if row.get('preview_data'):
-                row['preview_data'] = json.loads(row['preview_data'])
+                try:
+                    row['preview_data'] = json.loads(row['preview_data'])
+                except json.JSONDecodeError:
+                    row['preview_data'] = []
             if row.get('data_insights'):
-                row['data_insights'] = json.loads(row['data_insights'])
+                try:
+                    row['data_insights'] = json.loads(row['data_insights'])
+                except json.JSONDecodeError:
+                    row['data_insights'] = {}
+            
             # 更新最后访问时间
             cls.UpdateLastAccessed(file_id)
             return cls(**row)
@@ -461,12 +475,23 @@ class FileExploration:
         results = db_connection.ExecuteQuery(sql, tuple(params))
         files = []
         for row in results:
+            # 解析JSON字段
             if row.get('metadata'):
-                row['metadata'] = json.loads(row['metadata'])
+                try:
+                    row['metadata'] = json.loads(row['metadata'])
+                except json.JSONDecodeError:
+                    row['metadata'] = {}
             if row.get('preview_data'):
-                row['preview_data'] = json.loads(row['preview_data'])
+                try:
+                    row['preview_data'] = json.loads(row['preview_data'])
+                except json.JSONDecodeError:
+                    row['preview_data'] = []
             if row.get('data_insights'):
-                row['data_insights'] = json.loads(row['data_insights'])
+                try:
+                    row['data_insights'] = json.loads(row['data_insights'])
+                except json.JSONDecodeError:
+                    row['data_insights'] = {}
+            
             files.append(cls(**row))
         return files
     
@@ -535,7 +560,7 @@ class FileExploration:
         """
         return db_connection.ExecuteUpdate(sql, (json.dumps(insights), self.id)) > 0
     
-    def UpdatePreviewData(self, preview_data: Dict) -> bool:
+    def UpdatePreviewData(self, preview_data: Union[List, Dict]) -> bool:
         """更新预览数据"""
         self.preview_data = preview_data
         
@@ -564,19 +589,24 @@ class FileExploration:
     
     def ToDict(self) -> Dict[str, Any]:
         """转换为字典"""
+        # 确保日期时间字段转换为字符串格式
+        created_at = self.created_at.isoformat() if isinstance(self.created_at, datetime) else self.created_at
+        updated_at = self.updated_at.isoformat() if isinstance(self.updated_at, datetime) else self.updated_at
+        last_accessed_at = self.last_accessed_at.isoformat() if isinstance(self.last_accessed_at, datetime) else self.last_accessed_at
+        
         return {
             'id': self.id,
             'name': self.name,
             'type': self.type,
             'size': self.size,
             'user_id': self.user_id,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'created_at': created_at,
+            'updated_at': updated_at,
             'file_path': self.file_path,
             'status': self.status,
             'suffix': self.suffix,
             'metadata': self.metadata,
             'preview_data': self.preview_data,
             'data_insights': self.data_insights,
-            'last_accessed_at': self.last_accessed_at
+            'last_accessed_at': last_accessed_at
         } 

@@ -65,11 +65,14 @@ class MockUserDatabase:
     
     def _AddTestUsers(self):
         """添加预设测试用户"""
-        import uuid
+        # 使用固定的用户ID，而不是随机生成
+        admin_id = "00000000-0000-0000-0000-000000000001"
+        user_id = "00000000-0000-0000-0000-000000000002"
+        guest_id = "00000000-0000-0000-0000-000000000003"
         
         # 管理员用户
         admin_user = UserInfo(
-            id=str(uuid.uuid4()),
+            id=admin_id,
             username="admin",
             password_hash=guomi_crypto.EncryptPassword("admin123"),
             email="admin@example.com",
@@ -81,7 +84,7 @@ class MockUserDatabase:
         
         # 普通用户
         user = UserInfo(
-            id=str(uuid.uuid4()),
+            id=user_id,
             username="testuser",
             password_hash=guomi_crypto.EncryptPassword("user123"),
             email="user@example.com",
@@ -93,7 +96,7 @@ class MockUserDatabase:
         
         # 访客用户
         guest_user = UserInfo(
-            id=str(uuid.uuid4()),
+            id=guest_id,
             username="guest",
             password_hash=guomi_crypto.EncryptPassword("guest123"),
             email="guest@example.com",

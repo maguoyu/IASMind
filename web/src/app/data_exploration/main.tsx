@@ -5,6 +5,8 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ScatterChart, Scatter, AreaChart, Area, Legend } from 'recharts';
 import { DataExplorationAPI } from "~/core/api/data-exploration";
 import { toast } from "sonner";
+import { useAuthStore } from '~/core/store/auth-store';
+import { useRouter } from 'next/navigation';
 
 interface DataFile {
   id: string;
@@ -21,12 +23,41 @@ export function DataExplorationMain() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'visualization' | 'insights'>('preview');
+  const router = useRouter();
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+
+  // 处理认证错误
+  const handleAuthError = useCallback(() => {
+    toast.error("需要登录才能使用此功能");
+    setTimeout(() => {
+      router.push('/auth/login');
+    }, 1500);
+  }, [router]);
+
+  // 检查认证状态
+  useEffect(() => {
+    if (!isAuthenticated) {
+      handleAuthError();
+    }
+  }, [isAuthenticated, handleAuthError]);
 
   // 加载文件列表
   const fetchFiles = useCallback(async () => {
+    if (!isAuthenticated) {
+      handleAuthError();
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await DataExplorationAPI.getFiles();
+      
+      if (response.status === 401 || response.status === 403) {
+        handleAuthError();
+        return;
+      }
+      
       if (response.data && Array.isArray(response.data.files)) {
         const files = response.data.files.map(file => ({
           id: file.id,
@@ -48,13 +79,18 @@ export function DataExplorationMain() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, handleAuthError]);
 
   useEffect(() => {
     fetchFiles();
   }, [fetchFiles]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAuthenticated) {
+      handleAuthError();
+      return;
+    }
+    
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -64,6 +100,12 @@ export function DataExplorationMain() {
     const uploadPromises = Array.from(files).map(async (file) => {
       try {
         const response = await DataExplorationAPI.uploadFile(file);
+        
+        if (response.status === 401 || response.status === 403) {
+          handleAuthError();
+          return null;
+        }
+        
         if (response.data) {
           console.log("文件上传成功:", response.data);
           
@@ -103,7 +145,7 @@ export function DataExplorationMain() {
         const fileInput = document.getElementById('file-upload') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
       });
-  }, []);
+  }, [isAuthenticated, handleAuthError]);
 
   const generateMockPreview = (fileName: string) => {
     // 生成模拟数据预览
@@ -175,11 +217,22 @@ export function DataExplorationMain() {
   }, []);
 
   const handleFileSelect = useCallback(async (file: DataFile) => {
+    if (!isAuthenticated) {
+      handleAuthError();
+      return;
+    }
+    
     setSelectedFile(file);
     
     // 如果需要获取最新的文件详情（例如获取完整预览数据）
     try {
       const response = await DataExplorationAPI.getFile(file.id);
+      
+      if (response.status === 401 || response.status === 403) {
+        handleAuthError();
+        return;
+      }
+      
       if (response.data) {
         const updatedFile = {
           ...file,
@@ -202,11 +255,22 @@ export function DataExplorationMain() {
     
     // 自动切换到可视化标签页
     setActiveTab('visualization');
-  }, []);
+  }, [isAuthenticated, handleAuthError]);
 
   const handleFileDelete = useCallback(async (fileId: string) => {
+    if (!isAuthenticated) {
+      handleAuthError();
+      return;
+    }
+    
     try {
-      await DataExplorationAPI.deleteFile(fileId);
+      const response = await DataExplorationAPI.deleteFile(fileId);
+      
+      if (response.status === 401 || response.status === 403) {
+        handleAuthError();
+        return;
+      }
+      
       setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
       if (selectedFile?.id === fileId) {
         setSelectedFile(null);
@@ -216,13 +280,24 @@ export function DataExplorationMain() {
       console.error("删除文件失败:", error);
       toast.error("无法删除文件，请稍后重试");
     }
-  }, [selectedFile]);
+  }, [selectedFile, isAuthenticated, handleAuthError]);
 
   const handleGenerateInsights = useCallback(async (fileId: string) => {
+    if (!isAuthenticated) {
+      handleAuthError();
+      return;
+    }
+    
     if (!fileId) return;
     
     try {
       const response = await DataExplorationAPI.generateInsights(fileId);
+      
+      if (response.status === 401 || response.status === 403) {
+        handleAuthError();
+        return;
+      }
+      
       if (response.data && response.data.insights) {
         toast.success("数据洞察已生成");
         // 这里可以更新UI显示洞察结果
@@ -231,7 +306,7 @@ export function DataExplorationMain() {
       console.error("生成数据洞察失败:", error);
       toast.error("无法生成数据洞察，请稍后重试");
     }
-  }, []);
+  }, [isAuthenticated, handleAuthError]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';

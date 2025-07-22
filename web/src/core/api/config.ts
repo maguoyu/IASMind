@@ -16,6 +16,24 @@ export interface ApiResponse<T = any> {
   status?: number;
 }
 
+// 从auth-store获取访问令牌
+const getAccessToken = () => {
+  // 避免在服务端渲染时报错
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  
+  try {
+    // 从localStorage直接获取，避免循环依赖
+    const authStore = JSON.parse(localStorage.getItem('auth-store') || '{}');
+    const state = authStore?.state;
+    return state?.accessToken || null;
+  } catch (error) {
+    console.error('获取访问令牌失败:', error);
+    return null;
+  }
+};
+
 // 通用API客户端
 export const apiClient = {
   async get<T = any>(endpoint: string, options: { params?: Record<string, any> } = {}): Promise<ApiResponse<T>> {
@@ -29,11 +47,19 @@ export const apiClient = {
         });
       }
 
+      // 添加认证令牌
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      const token = getAccessToken();
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(url.toString(), {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -62,6 +88,12 @@ export const apiClient = {
         'Content-Type': 'application/json',
         ...options.headers,
       };
+
+      // 添加认证令牌
+      const token = getAccessToken();
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
 
       // 如果是FormData，不设置Content-Type，让浏览器自动处理
       if (body instanceof FormData) {
@@ -96,11 +128,19 @@ export const apiClient = {
 
   async put<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
     try {
+      // 添加认证令牌
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      const token = getAccessToken();
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
       const response = await fetch(resolveServiceURL(endpoint), {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(body),
       });
 
@@ -126,11 +166,19 @@ export const apiClient = {
 
   async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     try {
+      // 添加认证令牌
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      const token = getAccessToken();
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
       const response = await fetch(resolveServiceURL(endpoint), {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {

@@ -8,6 +8,152 @@ declare global {
   }
 }
 
+// API响应类型
+export interface ApiResponse<T = any> {
+  data: T;
+  error?: string;
+  message?: string;
+  status?: number;
+}
+
+// 通用API客户端
+export const apiClient = {
+  async get<T = any>(endpoint: string, options: { params?: Record<string, any> } = {}): Promise<ApiResponse<T>> {
+    try {
+      const url = new URL(resolveServiceURL(endpoint));
+      if (options.params) {
+        Object.entries(options.params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.append(key, String(value));
+          }
+        });
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: null as any,
+          error: errorData.detail || response.statusText,
+          status: response.status,
+        };
+      }
+
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error('API请求失败:', error);
+      return { 
+        data: null as any,
+        error: error instanceof Error ? error.message : '未知错误',
+      };
+    }
+  },
+
+  async post<T = any>(endpoint: string, body?: any, options: { headers?: Record<string, string> } = {}): Promise<ApiResponse<T>> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+
+      // 如果是FormData，不设置Content-Type，让浏览器自动处理
+      if (body instanceof FormData) {
+        delete headers['Content-Type'];
+      }
+
+      const response = await fetch(resolveServiceURL(endpoint), {
+        method: 'POST',
+        headers,
+        body: body instanceof FormData ? body : JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: null as any,
+          error: errorData.detail || response.statusText,
+          status: response.status,
+        };
+      }
+
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error('API请求失败:', error);
+      return {
+        data: null as any,
+        error: error instanceof Error ? error.message : '未知错误',
+      };
+    }
+  },
+
+  async put<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(resolveServiceURL(endpoint), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: null as any,
+          error: errorData.detail || response.statusText,
+          status: response.status,
+        };
+      }
+
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error('API请求失败:', error);
+      return {
+        data: null as any,
+        error: error instanceof Error ? error.message : '未知错误',
+      };
+    }
+  },
+
+  async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(resolveServiceURL(endpoint), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: null as any,
+          error: errorData.detail || response.statusText,
+          status: response.status,
+        };
+      }
+
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error('API请求失败:', error);
+      return {
+        data: null as any,
+        error: error instanceof Error ? error.message : '未知错误',
+      };
+    }
+  },
+};
+
 export async function loadConfig() {
   // 在构建时或服务器端渲染时返回默认配置
   if (typeof window === 'undefined') {

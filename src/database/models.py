@@ -356,3 +356,227 @@ class FileDocument:
             'suffix': self.suffix,
             'metadata': self.metadata
         } 
+
+
+class FileExploration:
+    """数据探索临时文件模型类"""
+    
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id', str(uuid.uuid4()))
+        self.name = kwargs.get('name', '')
+        self.type = kwargs.get('type', '')  # 文件类型，如csv, excel, json等
+        self.size = kwargs.get('size', 0)  # 文件大小，以字节为单位
+        self.user_id = kwargs.get('user_id', '')  # 上传用户ID
+        self.created_at = kwargs.get('created_at', datetime.now().isoformat())
+        self.updated_at = kwargs.get('updated_at', datetime.now().isoformat())
+        self.file_path = kwargs.get('file_path', '')  # 文件存储路径
+        self.status = kwargs.get('status', 'active')  # 文件状态：active, deleted
+        self.suffix = kwargs.get('suffix', '')  # 文件扩展名
+        self.metadata = kwargs.get('metadata', {})  # 元数据，如列名、数据类型等
+        self.preview_data = kwargs.get('preview_data', {})  # 预览数据，存储JSON格式的数据样本
+        self.data_insights = kwargs.get('data_insights', {})  # 数据洞察，存储AI生成的分析结果
+        self.last_accessed_at = kwargs.get('last_accessed_at')  # 最后访问时间
+    
+    @classmethod
+    def Create(cls, name: str, file_type: str, size: int, user_id: str, file_path: str, 
+               suffix: Optional[str] = None, metadata: Optional[Dict] = None,
+               preview_data: Optional[Dict] = None) -> 'FileExploration':
+        """创建新的数据探索文件"""
+        # 如果没有提供suffix，从文件名中提取
+        if suffix is None:
+            import os
+            suffix = os.path.splitext(name)[1].lower()
+        
+        file = cls(
+            name=name,
+            type=file_type,
+            size=size,
+            user_id=user_id,
+            file_path=file_path,
+            suffix=suffix,
+            metadata=metadata or {},
+            preview_data=preview_data or {}
+        )
+        
+        sql = """
+        INSERT INTO file_exploration (id, name, type, size, user_id, file_path, suffix, metadata, preview_data)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        db_connection.ExecuteInsert(sql, (
+            file.id, file.name, file.type, file.size, file.user_id, 
+            file.file_path, file.suffix, json.dumps(file.metadata), 
+            json.dumps(file.preview_data)
+        ))
+        
+        return file
+    
+    @classmethod
+    def GetById(cls, file_id: str) -> Optional['FileExploration']:
+        """根据ID获取文件"""
+        sql = "SELECT * FROM file_exploration WHERE id = %s"
+        result = db_connection.ExecuteQuery(sql, (file_id,))
+        if result:
+            row = result[0]
+            if row.get('metadata'):
+                row['metadata'] = json.loads(row['metadata'])
+            if row.get('preview_data'):
+                row['preview_data'] = json.loads(row['preview_data'])
+            if row.get('data_insights'):
+                row['data_insights'] = json.loads(row['data_insights'])
+            # 更新最后访问时间
+            cls.UpdateLastAccessed(file_id)
+            return cls(**row)
+        return None
+    
+    @classmethod
+    def GetByUserId(cls, user_id: str, limit: int = 100, offset: int = 0, 
+                    file_type: Optional[str] = None, search: Optional[str] = None,
+                    sort_by: str = "updated_at", sort_order: str = "desc") -> List['FileExploration']:
+        """根据用户ID获取文件列表"""
+        conditions = ["user_id = %s", "status = 'active'"]
+        params = [user_id]
+        
+        if file_type:
+            conditions.append("type LIKE %s")
+            params.append(f"%{file_type}%")
+        if search:
+            conditions.append("name LIKE %s")
+            params.append(f"%{search}%")
+        
+        where_clause = " AND ".join(conditions)
+        
+        allowed_sort_fields = ["created_at", "updated_at", "name", "size", "last_accessed_at"]
+        if sort_by not in allowed_sort_fields:
+            sort_by = "updated_at"
+        if sort_order not in ["asc", "desc"]:
+            sort_order = "desc"
+        
+        sql = f"""
+        SELECT * FROM file_exploration 
+        WHERE {where_clause}
+        ORDER BY {sort_by} {sort_order.upper()}
+        LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+        results = db_connection.ExecuteQuery(sql, tuple(params))
+        files = []
+        for row in results:
+            if row.get('metadata'):
+                row['metadata'] = json.loads(row['metadata'])
+            if row.get('preview_data'):
+                row['preview_data'] = json.loads(row['preview_data'])
+            if row.get('data_insights'):
+                row['data_insights'] = json.loads(row['data_insights'])
+            files.append(cls(**row))
+        return files
+    
+    @classmethod
+    def Count(cls, user_id: Optional[str] = None, file_type: Optional[str] = None, 
+              search: Optional[str] = None) -> int:
+        """获取文件总数"""
+        conditions = ["status = 'active'"]
+        params = []
+        
+        if user_id:
+            conditions.append("user_id = %s")
+            params.append(user_id)
+        if file_type:
+            conditions.append("type LIKE %s")
+            params.append(f"%{file_type}%")
+        if search:
+            conditions.append("name LIKE %s")
+            params.append(f"%{search}%")
+        
+        where_clause = " AND ".join(conditions)
+        
+        sql = f"SELECT COUNT(*) as count FROM file_exploration WHERE {where_clause}"
+        result = db_connection.ExecuteQuery(sql, tuple(params))
+        return result[0]['count'] if result else 0
+    
+    @classmethod
+    def UpdateLastAccessed(cls, file_id: str) -> bool:
+        """更新最后访问时间"""
+        sql = """
+        UPDATE file_exploration 
+        SET last_accessed_at = CURRENT_TIMESTAMP 
+        WHERE id = %s
+        """
+        return db_connection.ExecuteUpdate(sql, (file_id,)) > 0
+    
+    def Update(self, **kwargs) -> bool:
+        """更新文件信息"""
+        update_fields = []
+        params = []
+        
+        for field, value in kwargs.items():
+            if hasattr(self, field) and field != 'id':
+                if field in ['metadata', 'preview_data', 'data_insights'] and isinstance(value, dict):
+                    value = json.dumps(value)
+                update_fields.append(f"{field} = %s")
+                params.append(value)
+                setattr(self, field, value)
+        
+        if not update_fields:
+            return False
+        
+        update_fields.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(self.id)
+        sql = f"UPDATE file_exploration SET {', '.join(update_fields)} WHERE id = %s"
+        return db_connection.ExecuteUpdate(sql, tuple(params)) > 0
+    
+    def UpdateInsights(self, insights: Dict) -> bool:
+        """更新数据洞察信息"""
+        self.data_insights = insights
+        
+        sql = """
+        UPDATE file_exploration 
+        SET data_insights = %s, updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+        """
+        return db_connection.ExecuteUpdate(sql, (json.dumps(insights), self.id)) > 0
+    
+    def UpdatePreviewData(self, preview_data: Dict) -> bool:
+        """更新预览数据"""
+        self.preview_data = preview_data
+        
+        sql = """
+        UPDATE file_exploration 
+        SET preview_data = %s, updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+        """
+        return db_connection.ExecuteUpdate(sql, (json.dumps(preview_data), self.id)) > 0
+    
+    def Delete(self) -> bool:
+        """删除文件（标记为已删除）"""
+        self.status = "deleted"
+        
+        sql = """
+        UPDATE file_exploration 
+        SET status = 'deleted', updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+        """
+        return db_connection.ExecuteUpdate(sql, (self.id,)) > 0
+    
+    def PermanentDelete(self) -> bool:
+        """永久删除文件"""
+        sql = "DELETE FROM file_exploration WHERE id = %s"
+        return db_connection.ExecuteUpdate(sql, (self.id,)) > 0
+    
+    def ToDict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'type': self.type,
+            'size': self.size,
+            'user_id': self.user_id,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+            'file_path': self.file_path,
+            'status': self.status,
+            'suffix': self.suffix,
+            'metadata': self.metadata,
+            'preview_data': self.preview_data,
+            'data_insights': self.data_insights,
+            'last_accessed_at': self.last_accessed_at
+        } 

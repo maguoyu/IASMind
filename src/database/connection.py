@@ -133,8 +133,36 @@ class DatabaseConnection:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """
             
+            # 创建数据探索文件表
+            file_exploration_sql = """
+            CREATE TABLE IF NOT EXISTS file_exploration (
+                id VARCHAR(36) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                type VARCHAR(100) NOT NULL,
+                size BIGINT NOT NULL,
+                user_id VARCHAR(36) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                file_path VARCHAR(500) NOT NULL,
+                status ENUM('active', 'deleted') DEFAULT 'active',
+                suffix VARCHAR(20),
+                metadata JSON,
+                preview_data JSON,
+                data_insights JSON,
+                last_accessed_at TIMESTAMP NULL,
+                INDEX idx_user_id (user_id),
+                INDEX idx_status (status),
+                INDEX idx_created_at (created_at),
+                INDEX idx_updated_at (updated_at),
+                INDEX idx_type (type),
+                INDEX idx_suffix (suffix),
+                INDEX idx_last_accessed_at (last_accessed_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+            
             self.ExecuteUpdate(knowledge_base_sql)
             self.ExecuteUpdate(file_documents_sql)
+            self.ExecuteUpdate(file_exploration_sql)
             
             logger.info("数据库表初始化完成")
             

@@ -1,0 +1,114 @@
+---
+title: TypeScript/React 代码规范
+---
+
+# TypeScript/React 代码规范
+
+## 代码风格
+
+- 使用 **2个空格** 作为缩进，不使用制表符
+- 最大行长度为 **80个字符**
+- 使用 **驼峰命名法** 命名变量和函数（`camelCase`）
+- 使用 **帕斯卡命名法** 命名类、接口、类型和组件（`PascalCase`）
+- 使用分号结束语句
+- 使用单引号作为字符串引号
+
+## 类型系统
+
+- 使用 TypeScript 的静态类型系统提高代码质量
+- 尽量避免使用 `any` 类型，必要时使用 `unknown`
+- 为函数参数和返回值提供明确的类型注解
+- 使用接口（`interface`）定义对象的形状
+- 使用类型别名（`type`）创建复杂类型
+- 导出公共接口和类型以供其他模块使用
+
+示例类型定义:
+```typescript
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  preferences?: UserPreferences;
+}
+
+type UserPreferences = {
+  theme: 'light' | 'dark';
+  notifications: boolean;
+};
+```
+
+## React 组件规范
+
+- 优先使用函数组件和React钩子，而非类组件
+- 每个文件只包含一个组件
+- 组件文件名应与组件名相同
+- 组件属性应使用接口定义类型
+- 解构props参数，避免重复引用`props.xxx`
+
+```tsx
+interface ButtonProps {
+  text: string;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+  disabled?: boolean;
+}
+
+const Button: React.FC<ButtonProps> = ({
+  text,
+  onClick,
+  variant = 'primary',
+  disabled = false
+}) => {
+  // 组件实现
+};
+```
+
+## React Hooks 使用规范
+
+- 遵循钩子的使用规则（只在组件顶层调用，不在循环、条件或嵌套函数中调用）
+- 使用 `useCallback` 和 `useMemo` 优化性能
+- 自定义钩子应以 `use` 前缀命名
+- 提供自定义钩子的清晰文档
+
+## 状态管理
+
+- 对于简单组件，使用 `useState` 和 `useReducer`
+- 对于复杂状态逻辑，使用 Zustand（项目中使用的状态管理库）
+- 状态应被规范化，避免重复数据
+- 使用不可变的方式更新状态
+
+## 样式规范
+
+- 使用 Tailwind CSS 实用类进行样式设计
+- 遵循组件化设计，保持样式的局部性
+- 对于复杂UI组件，使用项目中的UI组件库（基于Radix UI）
+- 确保布局响应式设计
+
+## 错误处理
+
+- 使用 try/catch 捕获预期的错误
+- 对用户展示友好的错误消息
+- 记录错误信息以便调试
+- 实现错误边界以防止整个应用崩溃
+
+## API 交互
+
+- 使用项目中定义的API客户端进行后端通信
+- 使用async/await处理异步操作
+- 实现适当的加载状态和错误处理
+- 对API响应数据进行类型定义
+
+## 注释规范
+
+- 代码应尽量自解释，避免不必要的注释
+- 对于复杂逻辑，添加清晰的解释性注释
+- 使用JSDoc风格为函数和组件添加文档
+- 注释应使用中文，便于团队内部理解
+
+## 可访问性
+
+- 确保组件具有适当的ARIA属性
+- 使用语义化HTML元素
+- 确保键盘导航支持
+- 遵循WCAG可访问性指南

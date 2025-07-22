@@ -1,8 +1,10 @@
 "use client";
 
 import { UploadOutlined, EyeOutlined, BarChartOutlined, FileTextOutlined, DeleteOutlined } from "@ant-design/icons";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ScatterChart, Scatter, AreaChart, Area, Legend } from 'recharts';
+import { DataExplorationAPI } from "~/core/api/data-exploration";
+import { toast } from "sonner";
 
 interface DataFile {
   id: string;
@@ -14,75 +16,93 @@ interface DataFile {
 }
 
 export function DataExplorationMain() {
-  const [uploadedFiles, setUploadedFiles] = useState<DataFile[]>(() => [
-    // 预设一些测试数据文件
-    {
-      id: 'sample-1',
-      name: '销售数据分析.csv',
-      size: 24576,
-      type: 'text/csv',
-      uploadTime: new Date('2024-01-15'),
-      preview: [
-        { id: 1, name: "华东地区", value: 1200, category: "A", date: "2024-01-01" },
-        { id: 2, name: "华南地区", value: 1800, category: "B", date: "2024-01-02" },
-        { id: 3, name: "华北地区", value: 1500, category: "A", date: "2024-01-03" },
-        { id: 4, name: "西南地区", value: 3000, category: "C", date: "2024-01-04" },
-        { id: 5, name: "东北地区", value: 2500, category: "B", date: "2024-01-05" }
-      ]
-    },
-    {
-      id: 'sample-2',
-      name: '财务趋势分析.xlsx',
-      size: 51200,
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      uploadTime: new Date('2024-01-10'),
-      preview: [
-        { month: "1月", revenue: 1200, expenses: 800, profit: 400 },
-        { month: "2月", revenue: 1400, expenses: 900, profit: 500 },
-        { month: "3月", revenue: 1100, expenses: 700, profit: 400 },
-        { month: "4月", revenue: 1600, expenses: 1000, profit: 600 },
-        { month: "5月", revenue: 1800, expenses: 1200, profit: 600 }
-      ]
-    },
-    {
-      id: 'sample-3',
-      name: '用户行为数据.json',
-      size: 15360,
-      type: 'application/json',
-      uploadTime: new Date('2024-01-08'),
-      preview: [
-        { user_id: "U001", page_views: 25, session_duration: 180, conversion: true },
-        { user_id: "U002", page_views: 15, session_duration: 120, conversion: false },
-        { user_id: "U003", page_views: 35, session_duration: 240, conversion: true },
-        { user_id: "U004", page_views: 10, session_duration: 90, conversion: false },
-        { user_id: "U005", page_views: 30, session_duration: 200, conversion: true }
-      ]
-    }
-  ]);
+  const [uploadedFiles, setUploadedFiles] = useState<DataFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<DataFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'visualization' | 'insights'>('preview');
+
+  // 加载文件列表
+  const fetchFiles = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await DataExplorationAPI.getFiles();
+      if (response.data && Array.isArray(response.data.files)) {
+        const files = response.data.files.map(file => ({
+          id: file.id,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uploadTime: new Date(file.created_at),
+          preview: Array.isArray(file.preview_data) 
+            ? file.preview_data 
+            : file.preview_data 
+              ? [file.preview_data] 
+              : []
+        }));
+        setUploadedFiles(files);
+      }
+    } catch (error) {
+      console.error("获取文件列表失败:", error);
+      toast.error("无法获取文件列表，请稍后重试");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFiles();
+  }, [fetchFiles]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
     
-    // 模拟文件上传处理
-    setTimeout(() => {
-      const newFiles: DataFile[] = Array.from(files).map((file, index) => ({
-        id: `file-${Date.now()}-${index}`,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uploadTime: new Date(),
-        preview: generateMockPreview(file.name)
-      }));
+    // 实际API上传处理
+    const uploadPromises = Array.from(files).map(async (file) => {
+      try {
+        const response = await DataExplorationAPI.uploadFile(file);
+        if (response.data) {
+          console.log("文件上传成功:", response.data);
+          
+          // 将API返回的数据转换为本地格式
+          return {
+            id: response.data.id,
+            name: response.data.name,
+            size: response.data.size,
+            type: response.data.type,
+            uploadTime: new Date(response.data.created_at),
+            preview: Array.isArray(response.data.preview_data) 
+              ? response.data.preview_data 
+              : response.data.preview_data 
+                ? [response.data.preview_data] 
+                : []
+          };
+        }
+        throw new Error("上传响应异常");
+      } catch (error) {
+        console.error("文件上传失败:", error);
+        toast.error(`文件 ${file.name} 上传失败`);
+        return null;
+      }
+    });
 
-      setUploadedFiles(prev => [...prev, ...newFiles]);
-      setIsUploading(false);
-    }, 2000);
+    Promise.all(uploadPromises)
+      .then(newFiles => {
+        const validFiles = newFiles.filter(Boolean) as DataFile[];
+        if (validFiles.length > 0) {
+          setUploadedFiles(prev => [...prev, ...validFiles]);
+          toast.success(`成功上传 ${validFiles.length} 个文件`);
+        }
+      })
+      .finally(() => {
+        setIsUploading(false);
+        // 清除input的值，允许重复上传同一文件
+        const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      });
   }, []);
 
   const generateMockPreview = (fileName: string) => {
@@ -154,18 +174,64 @@ export function DataExplorationMain() {
     return { barData, pieData, lineData, scatterData, areaData };
   }, []);
 
-  const handleFileSelect = (file: DataFile) => {
+  const handleFileSelect = useCallback(async (file: DataFile) => {
     setSelectedFile(file);
+    
+    // 如果需要获取最新的文件详情（例如获取完整预览数据）
+    try {
+      const response = await DataExplorationAPI.getFile(file.id);
+      if (response.data) {
+        const updatedFile = {
+          ...file,
+          preview: Array.isArray(response.data.preview_data) 
+            ? response.data.preview_data 
+            : response.data.preview_data 
+              ? [response.data.preview_data] 
+              : []
+        };
+        setSelectedFile(updatedFile);
+        
+        // 更新文件列表中的对应文件
+        setUploadedFiles(prev => 
+          prev.map(f => f.id === file.id ? updatedFile : f)
+        );
+      }
+    } catch (error) {
+      console.error("获取文件详情失败:", error);
+    }
+    
     // 自动切换到可视化标签页
     setActiveTab('visualization');
-  };
+  }, []);
 
-  const handleFileDelete = (fileId: string) => {
-    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
-    if (selectedFile?.id === fileId) {
-      setSelectedFile(null);
+  const handleFileDelete = useCallback(async (fileId: string) => {
+    try {
+      await DataExplorationAPI.deleteFile(fileId);
+      setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
+      if (selectedFile?.id === fileId) {
+        setSelectedFile(null);
+      }
+      toast.success("文件已成功删除");
+    } catch (error) {
+      console.error("删除文件失败:", error);
+      toast.error("无法删除文件，请稍后重试");
     }
-  };
+  }, [selectedFile]);
+
+  const handleGenerateInsights = useCallback(async (fileId: string) => {
+    if (!fileId) return;
+    
+    try {
+      const response = await DataExplorationAPI.generateInsights(fileId);
+      if (response.data && response.data.insights) {
+        toast.success("数据洞察已生成");
+        // 这里可以更新UI显示洞察结果
+      }
+    } catch (error) {
+      console.error("生成数据洞察失败:", error);
+      toast.error("无法生成数据洞察，请稍后重试");
+    }
+  }, []);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -205,35 +271,43 @@ export function DataExplorationMain() {
         </div>
 
         <div className="space-y-2">
-          {uploadedFiles.map((file) => (
-            <div
-              key={file.id}
-              className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                selectedFile?.id === file.id 
-                  ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                  : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}
-              onClick={() => handleFileSelect(file)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">{file.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {formatFileSize(file.size)} • {file.uploadTime.toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleFileDelete(file.id);
-                  }}
-                >
-                  <DeleteOutlined className="h-3 w-3 text-gray-400" />
-                </button>
-              </div>
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">加载中...</div>
+          ) : uploadedFiles.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              暂无数据文件，请点击上方"上传数据文件"按钮
             </div>
-          ))}
+          ) : (
+            uploadedFiles.map((file) => (
+              <div
+                key={file.id}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  selectedFile?.id === file.id 
+                    ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+                onClick={() => handleFileSelect(file)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">{file.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatFileSize(file.size)} • {file.uploadTime.toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFileDelete(file.id);
+                    }}
+                  >
+                    <DeleteOutlined className="h-3 w-3 text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -271,7 +345,10 @@ export function DataExplorationMain() {
                     ? 'bg-blue-500 text-white' 
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                 }`}
-                onClick={() => setActiveTab('insights')}
+                onClick={() => {
+                  setActiveTab('insights');
+                  handleGenerateInsights(selectedFile.id);
+                }}
               >
                 <FileTextOutlined />
                 智能洞察

@@ -66,9 +66,17 @@ export function DataExplorationMain() {
           type: file.type,
           uploadTime: new Date(file.created_at),
           preview: Array.isArray(file.preview_data) 
-            ? file.preview_data 
+            ? file.preview_data.map(item => {
+                // 确保所有值为null或undefined的情况都处理为空字符串
+                if (!item) return {};
+                return Object.fromEntries(
+                  Object.entries(item).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+                );
+              }) 
             : file.preview_data 
-              ? [file.preview_data] 
+              ? [Object.fromEntries(
+                  Object.entries(file.preview_data).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+                )] 
               : []
         }));
         setUploadedFiles(files);
@@ -117,9 +125,17 @@ export function DataExplorationMain() {
             type: response.data.type,
             uploadTime: new Date(response.data.created_at),
             preview: Array.isArray(response.data.preview_data) 
-              ? response.data.preview_data 
+              ? response.data.preview_data.map(item => {
+                  // 确保所有值为null或undefined的情况都处理为空字符串
+                  if (!item) return {};
+                  return Object.fromEntries(
+                    Object.entries(item).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+                  );
+                })
               : response.data.preview_data 
-                ? [response.data.preview_data] 
+                ? [Object.fromEntries(
+                    Object.entries(response.data.preview_data).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+                  )]
                 : []
           };
         }
@@ -237,9 +253,17 @@ export function DataExplorationMain() {
         const updatedFile = {
           ...file,
           preview: Array.isArray(response.data.preview_data) 
-            ? response.data.preview_data 
+            ? response.data.preview_data.map(item => {
+                // 确保所有值为null或undefined的情况都处理为空字符串
+                if (!item) return {};
+                return Object.fromEntries(
+                  Object.entries(item).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+                );
+              })
             : response.data.preview_data 
-              ? [response.data.preview_data] 
+              ? [Object.fromEntries(
+                  Object.entries(response.data.preview_data).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+                )]
               : []
         };
         setSelectedFile(updatedFile);
@@ -440,7 +464,7 @@ export function DataExplorationMain() {
                       数据预览 - {selectedFile.name}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      查看数据文件的前几行内容
+                      查看数据文件的前 20 行内容
                     </p>
                   </div>
                   {selectedFile.preview && selectedFile.preview.length > 0 ? (
@@ -456,11 +480,11 @@ export function DataExplorationMain() {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedFile.preview.map((row, index) => (
+                          {selectedFile.preview.slice(0, 20).map((row, index) => (
                             <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                               {Object.values(row).map((value, cellIndex) => (
                                 <td key={cellIndex} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
-                                  {String(value)}
+                                  {value !== null && value !== undefined ? String(value) : ""}
                                 </td>
                               ))}
                             </tr>

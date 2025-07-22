@@ -420,26 +420,44 @@ class FileExploration:
         result = db_connection.ExecuteQuery(sql, (file_id,))
         if result:
             row = result[0]
-            # 解析JSON字段
-            if row.get('metadata'):
-                try:
-                    row['metadata'] = json.loads(row['metadata'])
-                except json.JSONDecodeError:
-                    row['metadata'] = {}
-            if row.get('preview_data'):
-                try:
-                    row['preview_data'] = json.loads(row['preview_data'])
-                except json.JSONDecodeError:
-                    row['preview_data'] = []
-            if row.get('data_insights'):
-                try:
-                    row['data_insights'] = json.loads(row['data_insights'])
-                except json.JSONDecodeError:
-                    row['data_insights'] = {}
-            
-            # 更新最后访问时间
-            cls.UpdateLastAccessed(file_id)
-            return cls(**row)
+            try:
+                # 解析JSON字段
+                if row.get('metadata'):
+                    try:
+                        row['metadata'] = json.loads(row['metadata'])
+                    except json.JSONDecodeError as e:
+                        print(f"解析metadata字段时出错: {str(e)}")
+                        row['metadata'] = {}
+                
+                if row.get('preview_data'):
+                    try:
+                        row['preview_data'] = json.loads(row['preview_data'])
+                    except json.JSONDecodeError as e:
+                        print(f"解析preview_data字段时出错: {str(e)}")
+                        row['preview_data'] = []
+                else:
+                    row['preview_data'] = []  # 确保始终有预览数据字段，即使为空
+                
+                if row.get('data_insights'):
+                    try:
+                        row['data_insights'] = json.loads(row['data_insights'])
+                    except json.JSONDecodeError as e:
+                        print(f"解析data_insights字段时出错: {str(e)}")
+                        row['data_insights'] = {}
+                else:
+                    row['data_insights'] = {}  # 确保始终有数据洞察字段，即使为空
+                
+                # 确保预览数据始终是列表形式
+                if not isinstance(row['preview_data'], list) and isinstance(row['preview_data'], dict):
+                    row['preview_data'] = [row['preview_data']]  # 将单个对象包装成列表
+                
+                # 更新最后访问时间
+                cls.UpdateLastAccessed(file_id)
+                return cls(**row)
+            except Exception as e:
+                print(f"处理文件数据时出错: {str(e)}")
+                # 尝试返回原始数据
+                return cls(**row)
         return None
     
     @classmethod
@@ -551,14 +569,37 @@ class FileExploration:
     
     def UpdateInsights(self, insights: Dict) -> bool:
         """更新数据洞察信息"""
-        self.data_insights = insights
-        
-        sql = """
-        UPDATE file_exploration 
-        SET data_insights = %s, updated_at = CURRENT_TIMESTAMP
-        WHERE id = %s
-        """
-        return db_connection.ExecuteUpdate(sql, (json.dumps(insights), self.id)) > 0
+        try:
+            # 检查insights是否为字典类型
+            if not isinstance(insights, dict):
+                print(f"更新数据洞察失败: insights不是字典类型，而是 {type(insights)}")
+                return False
+                
+            self.data_insights = insights
+            
+            # 尝试将insights转换为JSON，验证其可序列化性
+            insights_json = json.dumps(insights)
+            
+            sql = """
+            UPDATE file_exploration 
+            SET data_insights = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+            """
+            
+            result = db_connection.ExecuteUpdate(sql, (insights_json, self.id))
+            
+            if result <= 0:
+                print(f"更新数据洞察失败: 数据库未更新任何行，file_id={self.id}")
+                return False
+                
+            print(f"成功更新数据洞察: file_id={self.id}")
+            return True
+        except json.JSONDecodeError as je:
+            print(f"更新数据洞察失败: JSON序列化错误, file_id={self.id}, 错误={str(je)}")
+            return False
+        except Exception as e:
+            print(f"更新数据洞察失败: 未知错误, file_id={self.id}, 错误类型={type(e)}, 错误={str(e)}")
+            return False
     
     def UpdatePreviewData(self, preview_data: Union[List, Dict]) -> bool:
         """更新预览数据"""

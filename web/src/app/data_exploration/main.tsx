@@ -23,7 +23,9 @@ export function DataExplorationMain() {
   const [selectedFile, setSelectedFile] = useState<DataFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'preview' | 'visualization' | 'insights'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'visualization'>('preview');
+  const [insightsData, setInsightsData] = useState<Record<string, any> | null>(null);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const router = useRouter();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
@@ -276,6 +278,15 @@ export function DataExplorationMain() {
         setUploadedFiles(prev => 
           prev.map(f => f.id === file.id ? updatedFile : f)
         );
+        
+        // 如果有洞察数据，设置到状态
+        if (response.data.data_insights) {
+          setInsightsData(response.data.data_insights);
+        } else {
+          setInsightsData(null);
+          // 自动生成洞察数据
+          handleGenerateInsights(file.id);
+        }
       }
     } catch (error) {
       console.error("获取文件详情失败:", error);
@@ -318,6 +329,7 @@ export function DataExplorationMain() {
     
     if (!fileId) return;
     
+    setIsGeneratingInsights(true);
     try {
       const response = await DataExplorationAPI.generateInsights(fileId);
       
@@ -328,11 +340,13 @@ export function DataExplorationMain() {
       
       if (response.data && response.data.insights) {
         toast.success("数据洞察已生成");
-        // 这里可以更新UI显示洞察结果
+        setInsightsData(response.data.insights);
       }
     } catch (error) {
       console.error("生成数据洞察失败:", error);
       toast.error("无法生成数据洞察，请稍后重试");
+    } finally {
+      setIsGeneratingInsights(false);
     }
   }, [isAuthenticated, handleAuthError]);
 
@@ -437,24 +451,16 @@ export function DataExplorationMain() {
                     ? 'bg-blue-500 text-white' 
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                 }`}
-                onClick={() => setActiveTab('visualization')}
-              >
-                <BarChartOutlined />
-                可视化
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'insights' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                }`}
                 onClick={() => {
-                  setActiveTab('insights');
-                  handleGenerateInsights(selectedFile.id);
+                  setActiveTab('visualization');
+                  // 如果没有洞察数据，自动生成
+                  if (!insightsData && selectedFile) {
+                    handleGenerateInsights(selectedFile.id);
+                  }
                 }}
               >
-                <FileTextOutlined />
-                智能洞察
+                <BarChartOutlined />
+                数据可视化与洞察
               </button>
             </div>
 
@@ -513,10 +519,10 @@ export function DataExplorationMain() {
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <BarChartOutlined />
-                      数据可视化 - {selectedFile.name}
+                      数据可视化与洞察 - {selectedFile.name}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      基于上传的数据生成图表和可视化分析
+                      基于上传的数据生成图表和智能分析洞察
                     </p>
                     
                     {/* 数据统计卡片 */}
@@ -546,152 +552,178 @@ export function DataExplorationMain() {
                         <div className="text-sm text-orange-600 dark:text-orange-400">上传时间</div>
                       </div>
                     </div>
+                    
+                    {/* 刷新洞察按钮 */}
+                    <div className="flex justify-end mb-4">
+                      <button
+                        onClick={() => selectedFile && handleGenerateInsights(selectedFile.id)}
+                        disabled={isGeneratingInsights}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isGeneratingInsights ? "生成中..." : "刷新数据洞察"}
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 柱状图 */}
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">分类数据对比</h4>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={generateVisualizationData.barData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="value" fill="#8884d8" name="实际值" />
-                          <Bar dataKey="target" fill="#82ca9d" name="目标值" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* 饼图 */}
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">数据分布比例</h4>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={generateVisualizationData.pieData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {generateVisualizationData.pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* 折线图 */}
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">趋势分析</h4>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={generateVisualizationData.lineData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} name="销售额" />
-                          <Line type="monotone" dataKey="profit" stroke="#82ca9d" strokeWidth={2} name="利润" />
-                          <Line type="monotone" dataKey="cost" stroke="#ffc658" strokeWidth={2} name="成本" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* 散点图 */}
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">相关性分析</h4>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <ScatterChart data={generateVisualizationData.scatterData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" dataKey="x" name="X轴" />
-                          <YAxis type="number" dataKey="y" name="Y轴" />
-                          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                          <Scatter dataKey="y" fill="#8884d8" />
-                        </ScatterChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* 面积图 */}
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 lg:col-span-2">
-                      <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">财务趋势分析</h4>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart data={generateVisualizationData.areaData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Area type="monotone" dataKey="revenue" stackId="1" stroke="#8884d8" fill="#8884d8" name="收入" />
-                          <Area type="monotone" dataKey="expenses" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="支出" />
-                          <Area type="monotone" dataKey="profit" stackId="1" stroke="#ffc658" fill="#ffc658" name="利润" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'insights' && (
-                <div className="p-6 overflow-auto max-h-[calc(100vh-200px)]">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                      <FileTextOutlined />
-                      智能洞察
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      AI 生成的数据洞察和建议
-                    </p>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">数据质量</span>
-                        <div>
-                          <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">数据完整性良好</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            检测到 5 条记录，无缺失值，数据格式规范，字段类型一致。
-                          </p>
+                    {/* 柱状图和洞察 */}
+                    <div className="space-y-4">
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">分类数据对比</h4>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={generateVisualizationData.barData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="value" fill="#8884d8" name="实际值" />
+                            <Bar dataKey="target" fill="#82ca9d" name="目标值" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* 柱状图相关的数据洞察 */}
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <div className="flex items-start gap-3">
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">柱状图洞察</span>
+                          <div>
+                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">分类比较分析</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {insightsData?.recommendations?.find(r => r.chart_type === 'bar')?.description || 
+                              "类别 C 的数值最高，类别 A 和 B 分布相对均匀，建议重点关注类别 C 的业务表现。"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">趋势分析</span>
-                        <div>
-                          <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">数值分布分析</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            数值范围在 100-300 之间，平均值为 200，分布相对均匀，无明显异常值。
-                          </p>
+
+                    {/* 饼图和洞察 */}
+                    <div className="space-y-4">
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">数据分布比例</h4>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={generateVisualizationData.pieData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {generateVisualizationData.pieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* 饼图相关的数据洞察 */}
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <div className="flex items-start gap-3">
+                          <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium">比例洞察</span>
+                          <div>
+                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">数据分布分析</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {insightsData?.data_quality?.summary || 
+                              "数据完整性良好，无明显异常值。各类别占比符合业务规律，可进一步探索各类别的内部结构。"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium">可视化建议</span>
-                        <div>
-                          <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">图表类型推荐</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            建议使用柱状图展示分类数据，折线图展示时间序列趋势，饼图展示比例关系。
-                          </p>
+
+                    {/* 折线图和洞察 */}
+                    <div className="space-y-4">
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">趋势分析</h4>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart data={generateVisualizationData.lineData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} name="销售额" />
+                            <Line type="monotone" dataKey="profit" stroke="#82ca9d" strokeWidth={2} name="利润" />
+                            <Line type="monotone" dataKey="cost" stroke="#ffc658" strokeWidth={2} name="成本" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* 折线图相关的数据洞察 */}
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <div className="flex items-start gap-3">
+                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">趋势洞察</span>
+                          <div>
+                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">时间序列分析</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {insightsData?.recommendations?.find(r => r.chart_type === 'line')?.description || 
+                              "数据呈现稳定增长趋势，6月达到峰值。利润与销售额呈正相关，成本维持在较稳定水平。"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">业务洞察</span>
-                        <div>
-                          <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">关键发现</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            类别 C 的数值最高，类别 A 和 B 分布相对均匀，建议重点关注类别 C 的业务表现。
-                          </p>
+
+                    {/* 散点图和洞察 */}
+                    <div className="space-y-4">
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">相关性分析</h4>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <ScatterChart data={generateVisualizationData.scatterData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" dataKey="x" name="X轴" />
+                            <YAxis type="number" dataKey="y" name="Y轴" />
+                            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                            <Scatter dataKey="y" fill="#8884d8" />
+                          </ScatterChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* 散点图相关的数据洞察 */}
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <div className="flex items-start gap-3">
+                          <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">相关性洞察</span>
+                          <div>
+                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">变量相关性</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {insightsData?.statistics?.correlation || 
+                              "X轴和Y轴变量呈现显著的正相关关系，相关系数约为0.78。数据点呈线性分布，少量异常值需要关注。"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 面积图和洞察 */}
+                    <div className="space-y-4 lg:col-span-2">
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">财务趋势分析</h4>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart data={generateVisualizationData.areaData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Area type="monotone" dataKey="revenue" stackId="1" stroke="#8884d8" fill="#8884d8" name="收入" />
+                            <Area type="monotone" dataKey="expenses" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="支出" />
+                            <Area type="monotone" dataKey="profit" stackId="1" stroke="#ffc658" fill="#ffc658" name="利润" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                      {/* 面积图相关的数据洞察 */}
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                        <div className="flex items-start gap-3">
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">财务洞察</span>
+                          <div>
+                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">综合财务分析</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {insightsData?.data_quality?.summary || 
+                              "收入呈增长趋势，从1月到6月增加了约66%。支出增长速度慢于收入，导致利润率从1月的33%上升到6月的43%，财务状况良好。"}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -113,14 +113,37 @@ def StartBackend():
     print("\n🚀 启动后端服务...")
     
     try:
+        # 尝试检测 watchdog
+        try:
+            import watchdog
+            watchdog_available = True
+            print("✅ 检测到 watchdog，将使用高效的文件监视")
+        except ImportError:
+            watchdog_available = False
+            print("⚠️ 未检测到 watchdog，将使用标准的文件监视")
+            
         # 启动FastAPI服务
-        process = subprocess.Popen([
-            sys.executable, "-m", "uvicorn", 
-            "src.server.app:app", 
+        args = [
+            sys.executable, "server.py", 
             "--host", "0.0.0.0", 
             "--port", "8000",
-            "--reload"
-        ], cwd=PROJECT_ROOT)
+            "--log-level", "info"
+        ]
+        
+        # 在非Windows环境下默认启用热部署
+        if sys.platform != "win32":
+            print("✅ 自动启用热部署功能")
+        else:
+            print("⚠️ Windows环境下热部署可能不稳定")
+            # Windows环境下需要显式开启热部署
+            response = input("是否在Windows环境下启用热部署？(y/N): ")
+            if response.lower() == 'y':
+                print("✅ 手动启用热部署功能")
+            else:
+                args.append("--no-reload")
+                print("❌ 热部署功能已禁用")
+        
+        process = subprocess.Popen(args, cwd=PROJECT_ROOT)
         
         print("✅ 后端服务启动成功")
         print("📍 后端地址: http://localhost:8000")

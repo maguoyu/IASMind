@@ -70,21 +70,33 @@ class DatabaseConnection:
     
     def ExecuteQuery(self, sql: str, params: Optional[tuple] = None):
         """执行查询语句"""
-        with self.GetCursor() as cursor:
-            cursor.execute(sql, params)
-            return cursor.fetchall()
+        try:
+            with self.GetCursor() as cursor:
+                cursor.execute(sql, params)
+                return cursor.fetchall()
+        except Exception as e:
+            logger.error(f"执行查询失败: SQL={sql}, 参数={params}, 错误={e}")
+            return []
     
     def ExecuteUpdate(self, sql: str, params: Optional[tuple] = None):
         """执行更新语句"""
-        with self.GetCursor() as cursor:
-            result = cursor.execute(sql, params)
-            return result
+        try:
+            with self.GetCursor() as cursor:
+                result = cursor.execute(sql, params)
+                return result
+        except Exception as e:
+            logger.error(f"执行更新失败: SQL={sql}, 参数={params}, 错误={e}")
+            return 0
     
     def ExecuteInsert(self, sql: str, params: Optional[tuple] = None):
         """执行插入语句并返回插入的ID"""
-        with self.GetCursor() as cursor:
-            cursor.execute(sql, params)
-            return cursor.lastrowid
+        try:
+            with self.GetCursor() as cursor:
+                cursor.execute(sql, params)
+                return cursor.lastrowid
+        except Exception as e:
+            logger.error(f"执行插入失败: SQL={sql}, 参数={params}, 错误={e}")
+            return None
     
     def InitializeTables(self):
         """初始化数据库表"""

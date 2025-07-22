@@ -73,3 +73,10 @@ extend-exclude = '''
 # in the root of the project.
 ^/build/
 '''
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+isort = "^5.12.0"
+mypy = "^1.4.1"
+watchdog = "^3.0.0"  # 添加 watchdog 依赖用于高效热部署
+uvicorn = {extras = ["standard"], version = "^0.23.2"}  # 使用标准版本包含更多功能

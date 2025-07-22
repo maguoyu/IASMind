@@ -509,6 +509,42 @@ DeerFlow 包含一个人在环中机制，允许您在执行研究计划前审�
 - **--max_step_num**：研究计划中的最大步骤数（默认：3）
 - **--debug**：启用详细调试日志
 
+## 开发指南
+
+### 热部署功能
+
+本项目支持Python服务的热部署，在开发过程中可以实时更新代码并查看效果，无需手动重启服务。
+
+**快速开始开发**
+
+```bash
+# 启动开发服务器（带热部署）
+make dev
+
+# 或者直接运行开发脚本
+python scripts/dev_server.py
+```
+
+**高级选项**
+
+```bash
+# 开启调试日志
+make dev-debug
+
+# 不使用watchdog（使用标准文件监视器）
+python scripts/dev_server.py --no-watchdog
+
+# 指定主机和端口
+python scripts/dev_server.py --host 0.0.0.0 --port 9000
+```
+
+**热部署说明**
+
+- 修改 `src` 目录下的 Python 文件会自动重启服务
+- 默认会监控 `*.py` 和 `*.md` 文件的变更
+- Windows 环境下热部署可能不稳定，可以使用 `--no-reload` 参数禁用
+- 使用 watchdog 可以提高文件监视的效率和响应速度
+
 ## 常见问题
 
 请参阅[FAQ.md](docs/FAQ.md)获取更多详情。

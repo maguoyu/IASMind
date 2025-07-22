@@ -1,12 +1,13 @@
 "use client";
 
-import { UploadOutlined, EyeOutlined, BarChartOutlined, FileTextOutlined, DeleteOutlined } from "@ant-design/icons";
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, ScatterChart, Scatter, AreaChart, Area, Legend } from 'recharts';
-import { DataExplorationAPI } from "~/core/api/data-exploration";
-import { toast } from "sonner";
-import { useAuthStore } from '~/core/store/auth-store';
+import { BarChartOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined, UploadOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { toast } from "sonner";
+
+import { DataExplorationAPI } from "~/core/api/data-exploration";
+import { useAuthStore } from '~/core/store/auth-store';
 
 interface DataFile {
   id: string;
@@ -58,29 +59,28 @@ export function DataExplorationMain() {
         return;
       }
       
-      if (response.data && Array.isArray(response.data.files)) {
-        const files = response.data.files.map(file => ({
-          id: file.id,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          uploadTime: new Date(file.created_at),
-          preview: Array.isArray(file.preview_data) 
-            ? file.preview_data.map(item => {
-                // 确保所有值为null或undefined的情况都处理为空字符串
-                if (!item) return {};
-                return Object.fromEntries(
-                  Object.entries(item).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
-                );
-              }) 
-            : file.preview_data 
-              ? [Object.fromEntries(
-                  Object.entries(file.preview_data).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
-                )] 
-              : []
-        }));
-        setUploadedFiles(files);
-      }
+      // 获取文件列表
+      const files = response.data?.files?.map(file => ({
+        id: file.id,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadTime: new Date(file.created_at),
+        preview: Array.isArray(file.preview_data) 
+          ? file.preview_data.map(item => {
+              // 确保所有值为null或undefined的情况都处理为空字符串
+              if (!item) return {};
+              return Object.fromEntries(
+                Object.entries(item).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+              );
+            }) 
+          : file.preview_data && typeof file.preview_data === 'object'
+            ? [Object.fromEntries(
+                Object.entries(file.preview_data).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
+              )]
+            : []
+      })) ?? [];
+      setUploadedFiles(files);
     } catch (error) {
       console.error("获取文件列表失败:", error);
       toast.error("无法获取文件列表，请稍后重试");
@@ -132,7 +132,7 @@ export function DataExplorationMain() {
                     Object.entries(item).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
                   );
                 })
-              : response.data.preview_data 
+              : response.data.preview_data && typeof response.data.preview_data === 'object'
                 ? [Object.fromEntries(
                     Object.entries(response.data.preview_data).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
                   )]
@@ -154,6 +154,10 @@ export function DataExplorationMain() {
           setUploadedFiles(prev => [...prev, ...validFiles]);
           toast.success(`成功上传 ${validFiles.length} 个文件`);
         }
+      })
+      .catch(error => {
+        console.error("上传文件处理失败:", error);
+        toast.error("处理上传文件时发生错误");
       })
       .finally(() => {
         setIsUploading(false);
@@ -260,7 +264,7 @@ export function DataExplorationMain() {
                   Object.entries(item).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
                 );
               })
-            : response.data.preview_data 
+            : response.data.preview_data && typeof response.data.preview_data === 'object'
               ? [Object.fromEntries(
                   Object.entries(response.data.preview_data).map(([k, v]) => [k, v !== null && v !== undefined ? v : ""])
                 )]
@@ -277,8 +281,8 @@ export function DataExplorationMain() {
       console.error("获取文件详情失败:", error);
     }
     
-    // 自动切换到可视化标签页
-    setActiveTab('visualization');
+    // 自动切换到数据预览标签页
+    setActiveTab('preview');
   }, [isAuthenticated, handleAuthError]);
 
   const handleFileDelete = useCallback(async (fileId: string) => {
@@ -468,29 +472,33 @@ export function DataExplorationMain() {
                     </p>
                   </div>
                   {selectedFile.preview && selectedFile.preview.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse border border-gray-200 dark:border-gray-700">
-                        <thead>
-                          <tr className="bg-gray-50 dark:bg-gray-800">
-                            {Object.keys(selectedFile.preview[0] ?? {}).map((key) => (
-                              <th key={key} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedFile.preview.slice(0, 20).map((row, index) => (
-                            <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                              {Object.values(row).map((value, cellIndex) => (
-                                <td key={cellIndex} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
-                                  {value !== null && value !== undefined ? String(value) : ""}
-                                </td>
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div className="overflow-x-auto">
+                        <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)", height: "max-content" }}>
+                          <table className="w-full border-collapse">
+                            <thead className="bg-gray-50 dark:bg-gray-800">
+                              <tr>
+                                {Object.keys(selectedFile.preview[0] ?? {}).map((key) => (
+                                  <th key={key} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                    {key}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedFile.preview.slice(0, 20).map((row, index) => (
+                                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                  {Object.values(row).map((value, cellIndex) => (
+                                    <td key={cellIndex} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 max-w-[200px] truncate">
+                                      {value !== null && value !== undefined ? String(value) : ""}
+                                    </td>
+                                  ))}
+                                </tr>
                               ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -501,7 +509,7 @@ export function DataExplorationMain() {
               )}
 
               {activeTab === 'visualization' && (
-                <div className="p-6">
+                <div className="p-6 overflow-auto max-h-[calc(100vh-200px)]">
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <BarChartOutlined />
@@ -632,7 +640,7 @@ export function DataExplorationMain() {
               )}
 
               {activeTab === 'insights' && (
-                <div className="p-6">
+                <div className="p-6 overflow-auto max-h-[calc(100vh-200px)]">
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <FileTextOutlined />

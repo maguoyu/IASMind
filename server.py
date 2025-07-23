@@ -5,13 +5,19 @@
 Server script for running the DeerFlow API.
 """
 
+# 在导入任何其他模块前设置 Windows 事件循环策略
+import platform
+import asyncio
+if platform.system() == 'Windows':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import argparse
 import logging
 import signal
 import sys
 import uvicorn
 
-# Configure logging
+# 配置日志
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

@@ -6,7 +6,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, LineChart as RechartsLine, Line, Legend, AreaChart, Area } from 'recharts';
+import { VChart } from '@visactor/react-vchart';
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -203,70 +203,58 @@ export function ChartsMain() {
     switch (chart.type) {
       case 'bar':
         return (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart data={chart.data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey={chart.data[0]?.category ? 'category' : 'name'} />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey={chart.data[0]?.sales ? 'sales' : 'value'} fill="#8884d8" name="销售额" />
-              {chart.data[0]?.profit && <Bar dataKey="profit" fill="#82ca9d" name="利润" />}
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: chartHeight }}>
+            <VChart 
+              spec={{
+                type: 'bar',
+                data: [{ id: 'barData', values: chart.data }],
+                xField: chart.data[0]?.category ? 'category' : 'name',
+                yField: chart.data[0]?.sales ? 'sales' : 'value'
+              }} 
+            />
+          </div>
         );
       
       case 'pie':
         return (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <RechartsPie>
-              <Pie
-                data={chart.data}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {chart.data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color || `hsl(${index * 360 / chart.data.length}, 70%, 50%)`} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => `¥${Number(value).toLocaleString()}`} />
-            </RechartsPie>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: chartHeight }}>
+            <VChart 
+              spec={{
+                type: 'pie',
+                data: [{ id: 'pieData', values: chart.data }],
+                angleField: 'value',
+                colorField: 'name'
+              }}
+            />
+          </div>
         );
       
       case 'line':
         return (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <RechartsLine data={chart.data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => `¥${Number(value).toLocaleString()}`} />
-              <Legend />
-              <Line type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} name="实际销售" />
-              {chart.data[0]?.target && <Line type="monotone" dataKey="target" stroke="#82ca9d" strokeWidth={2} name="目标销售" />}
-            </RechartsLine>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: chartHeight }}>
+            <VChart 
+              spec={{
+                type: 'line',
+                data: [{ id: 'lineData', values: chart.data }],
+                xField: 'month',
+                yField: 'sales'
+              }}
+            />
+          </div>
         );
       
       case 'area':
         return (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <AreaChart data={chart.data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Area type="monotone" dataKey="investment" stackId="1" stroke="#ffc658" fill="#ffc658" name="投入" />
-              <Area type="monotone" dataKey="revenue" stackId="2" stroke="#8884d8" fill="#8884d8" name="收入" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: chartHeight }}>
+            <VChart 
+              spec={{
+                type: 'area',
+                data: [{ id: 'areaData', values: chart.data }],
+                xField: 'month',
+                yField: 'revenue'
+              }}
+            />
+          </div>
         );
       
       default:

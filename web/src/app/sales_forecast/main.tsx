@@ -4,6 +4,7 @@ import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, Pi
 import { ShoppingCartOutlined, DollarOutlined, UserOutlined, CalendarOutlined, FilterOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
+import { VChart } from '@visactor/react-vchart';
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -2476,44 +2477,28 @@ export function SalesForecastMain() {
                   <div className="mb-6 p-4 border rounded-lg">
                     <h4 className="text-sm font-medium mb-4">实际与预测趋势对比图</h4>
                     <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={getAnalysisTableData()}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="name" 
-                            angle={-45}
-                            textAnchor="end"
-                            height={100}
-                            fontSize={11}
-                            interval={0}
-                          />
-                          <YAxis fontSize={12} />
-                          <Tooltip 
-                            formatter={(value: any, name: string) => [
-                              value.toLocaleString(), 
-                              name === 'actual' ? '实际值' : '预测值'
-                            ]}
-                            labelFormatter={(label) => `单位: ${label}`}
-                          />
-                          <Legend />
-                          <Line 
-                            type="monotone" 
-                            dataKey="actual" 
-                            stroke="#3b82f6" 
-                            strokeWidth={2}
-                            name="实际值"
-                            dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="predicted" 
-                            stroke="#ef4444" 
-                            strokeWidth={2}
-                            name="预测值"
-                            dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      {(() => {
+                        // 获取数据并转换为VChart支持的格式
+                        const tableData = getAnalysisTableData();
+                        const chartSpec = {
+                          type: 'line',
+                          data: [{ 
+                            id: 'analysisData',
+                            values: tableData
+                          }],
+                          xField: 'name',
+                          yField: ['actual', 'predicted'],
+                          tooltip: {
+                            visible: true
+                          },
+                          legend: {
+                            visible: true,
+                            position: 'top'
+                          }
+                        };
+                        
+                        return <VChart spec={chartSpec} />;
+                      })()}
                     </div>
                   </div>
                   

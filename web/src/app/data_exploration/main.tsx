@@ -3,7 +3,7 @@
 import { BarChartOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined, UploadOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { VChart } from '@visactor/react-vchart';
 import { toast } from "sonner";
 
 import { DataExplorationAPI } from "~/core/api/data-exploration";
@@ -358,6 +358,11 @@ export function DataExplorationMain() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // 修复类型错误 - 在JSX外添加类型声明
+  const handleRecommendation = (r: {chart_type: string, description: string}) => { 
+    return r.description; 
+  };
+
   return (
     <div className="flex h-full w-full pt-12">
       {/* 左侧文件列表 */}
@@ -460,7 +465,7 @@ export function DataExplorationMain() {
                 }}
               >
                 <BarChartOutlined />
-                数据可视化与洞察
+                数据分析
               </button>
             </div>
 
@@ -519,7 +524,7 @@ export function DataExplorationMain() {
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <BarChartOutlined />
-                      数据可视化与洞察 - {selectedFile.name}
+                      数据分析 - {selectedFile.name}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                       基于上传的数据生成图表和智能分析洞察
@@ -569,17 +574,16 @@ export function DataExplorationMain() {
                     <div className="space-y-4">
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
                         <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">分类数据对比</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={generateVisualizationData.barData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="value" fill="#8884d8" name="实际值" />
-                            <Bar dataKey="target" fill="#82ca9d" name="目标值" />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        {(() => {
+                          const barValues = generateVisualizationData.barData ?? [];
+                          const barSpec = {
+                            type: 'bar',
+                            data: [{ id: 'bar', values: barValues }],
+                            xField: 'name',
+                            yField: ['value', 'target']
+                          };
+                          return <VChart spec={barSpec} />;
+                        })()}
                       </div>
                       {/* 柱状图相关的数据洞察 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
@@ -588,7 +592,7 @@ export function DataExplorationMain() {
                           <div>
                             <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">分类比较分析</h4>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {insightsData?.recommendations?.find(r => r.chart_type === 'bar')?.description || 
+                              {insightsData?.recommendations?.find((r: {chart_type: string, description: string}) => r.chart_type === 'bar')?.description ?? 
                               "类别 C 的数值最高，类别 A 和 B 分布相对均匀，建议重点关注类别 C 的业务表现。"}
                             </p>
                           </div>
@@ -598,27 +602,19 @@ export function DataExplorationMain() {
 
                     {/* 饼图和洞察 */}
                     <div className="space-y-4">
+                      {/* 修复饼图 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
                         <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">数据分布比例</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                            <Pie
-                              data={generateVisualizationData.pieData}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {generateVisualizationData.pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                          </PieChart>
-                        </ResponsiveContainer>
+                        {(() => {
+                          const pieValues = generateVisualizationData.pieData ?? [];
+                          const pieSpec = {
+                            type: 'pie',
+                            data: [{ id: 'pie', values: pieValues }],
+                            angleField: 'value',
+                            colorField: 'name'
+                          };
+                          return <VChart spec={pieSpec} />;
+                        })()}
                       </div>
                       {/* 饼图相关的数据洞察 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
@@ -637,20 +633,19 @@ export function DataExplorationMain() {
 
                     {/* 折线图和洞察 */}
                     <div className="space-y-4">
+                      {/* 修复折线图 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
                         <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">趋势分析</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <LineChart data={generateVisualizationData.lineData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} name="销售额" />
-                            <Line type="monotone" dataKey="profit" stroke="#82ca9d" strokeWidth={2} name="利润" />
-                            <Line type="monotone" dataKey="cost" stroke="#ffc658" strokeWidth={2} name="成本" />
-                          </LineChart>
-                        </ResponsiveContainer>
+                        {(() => {
+                          const lineValues = generateVisualizationData.lineData ?? [];
+                          const lineSpec = {
+                            type: 'line',
+                            data: [{ id: 'line', values: lineValues }],
+                            xField: 'month',
+                            yField: ['sales', 'profit', 'cost']
+                          };
+                          return <VChart spec={lineSpec} />;
+                        })()}
                       </div>
                       {/* 折线图相关的数据洞察 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
@@ -669,17 +664,19 @@ export function DataExplorationMain() {
 
                     {/* 散点图和洞察 */}
                     <div className="space-y-4">
+                      {/* 修复散点图 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
                         <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">相关性分析</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <ScatterChart data={generateVisualizationData.scatterData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" dataKey="x" name="X轴" />
-                            <YAxis type="number" dataKey="y" name="Y轴" />
-                            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                            <Scatter dataKey="y" fill="#8884d8" />
-                          </ScatterChart>
-                        </ResponsiveContainer>
+                        {(() => {
+                          const scatterValues = generateVisualizationData.scatterData ?? [];
+                          const scatterSpec = {
+                            type: 'scatter',
+                            data: [{ id: 'scatter', values: scatterValues }],
+                            xField: 'x',
+                            yField: 'y'
+                          };
+                          return <VChart spec={scatterSpec} />;
+                        })()}
                       </div>
                       {/* 散点图相关的数据洞察 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
@@ -698,20 +695,19 @@ export function DataExplorationMain() {
 
                     {/* 面积图和洞察 */}
                     <div className="space-y-4 lg:col-span-2">
+                      {/* 修复面积图 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
                         <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">财务趋势分析</h4>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <AreaChart data={generateVisualizationData.areaData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Area type="monotone" dataKey="revenue" stackId="1" stroke="#8884d8" fill="#8884d8" name="收入" />
-                            <Area type="monotone" dataKey="expenses" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="支出" />
-                            <Area type="monotone" dataKey="profit" stackId="1" stroke="#ffc658" fill="#ffc658" name="利润" />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                        {(() => {
+                          const areaValues = generateVisualizationData.areaData ?? [];
+                          const areaSpec = {
+                            type: 'area',
+                            data: [{ id: 'area', values: areaValues }],
+                            xField: 'month',
+                            yField: ['revenue', 'expenses', 'profit']
+                          };
+                          return <VChart spec={areaSpec} />;
+                        })()}
                       </div>
                       {/* 面积图相关的数据洞察 */}
                       <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">

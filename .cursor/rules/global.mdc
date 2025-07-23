@@ -24,7 +24,7 @@ IASMind是一个基于Python和TypeScript的全栈AI应用项目，使用Next.js
 - **Tailwind CSS**: 实用优先的CSS框架
 - **Radix UI**: 无样式、可访问的UI组件
 - **Framer Motion**: 用于动画
-- **Recharts**: 用于数据可视化
+- **vchars**: 用于数据可视化
 
 ## 代码风格指南
 

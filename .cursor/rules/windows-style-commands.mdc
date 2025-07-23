@@ -1,0 +1,58 @@
+
+description: Rules to enforce Windows CMD-style command generation in Cursor, avoiding &&, using CMD syntax and Windows file paths.globs: ["."]alwaysApply: true
+Windows CMD-Style Command Generation Rules
+Purpose
+This rule ensures that Cursor generates commands compatible with Windows Command Prompt (CMD), using CMD syntax, Windows-style file paths (e.g., src\utils\file.ts), and avoiding Unix-style command chaining like &&.
+Command Generation Guidelines
+
+Shell Preference: Use Windows Command Prompt (CMD) syntax exclusively.
+Path Style: Use backslashes (\) for file paths instead of forward slashes (/).
+Avoid &&: Do not use && for command chaining. Instead, write commands on separate lines or use & for sequential execution in CMD.
+Command Syntax:
+Use dir instead of ls for listing directory contents.
+Use copy instead of cp for copying files.
+Use del instead of rm for deleting files.
+Use move instead of mv for moving or renaming files.
+Use echo. instead of echo for printing blank lines.
+
+
+
+Example Commands
+
+To list files in the current directory:dir
+
+
+To create a new directory:mkdir my-folder
+
+
+To navigate to a directory:cd src\utils
+
+
+To run a Node.js script:node src\index.js
+
+
+To execute multiple commands sequentially (instead of command1 && command2):command1
+command2
+
+Or, using &:command1 & command2
+
+
+To install dependencies and start a project (instead of npm install && npm start):npm install
+npm start
+
+
+
+File Path Guidelines
+
+Always use backslashes (\) in file paths, e.g., src\utils\logger.ts.
+Avoid Unix-style paths like src/utils/logger.ts.
+Example file reference:type src\config\settings.json
+
+
+
+Verification
+
+Ensure Cursor-generated commands use Windows CMD syntax and avoid &&.
+If a Unix-style command (e.g., ls, cp, or &&) is generated, prompt Cursor to rewrite it, e.g.:Rewrite the command using Windows CMD syntax, avoiding &&.
+
+

@@ -3,13 +3,23 @@
 
 "use client";
 
-import { MessageOutlined, BarChartOutlined, BulbOutlined, BookOutlined, FileTextOutlined, DatabaseOutlined, LineChartOutlined, RobotOutlined } from "@ant-design/icons";
+import {
+  BarChartOutlined,
+  BookOutlined,
+  BulbOutlined,
+  DatabaseOutlined,
+  FileTextOutlined,
+  LineChartOutlined,
+  MessageOutlined,
+  PieChartOutlined,
+  RobotOutlined
+} from "@ant-design/icons";
 import { Settings } from "lucide-react";
-import { useMemo } from "react";
 import Link from "next/link";
+import { useMemo } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Layout } from "~/components/layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 
 interface WorkPanelItem {
   title: string;
@@ -41,6 +51,13 @@ export default function HomePage() {
       icon: <DatabaseOutlined className="text-2xl" />,
       href: "/data_exploration",
       color: "bg-gradient-to-br from-cyan-500 to-blue-600"
+    },
+    {
+      title: "VMind 测试",
+      description: "测试VMind图表生成API，输入数据并生成各种图表",
+      icon: <PieChartOutlined className="text-2xl" />,
+      href: "/vmind-test",
+      color: "bg-gradient-to-br from-yellow-500 to-amber-600"
     },
     {
       title: "分析报告",

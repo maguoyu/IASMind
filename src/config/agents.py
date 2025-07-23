@@ -18,5 +18,5 @@ AGENT_LLM_MAP: dict[str, LLMType] = {
     "prose_writer": "basic",
     "prompt_enhancer": "basic",
     "chatbot": "basic",
-    "data_visualization": "basic",
+    "vmind": "basic",
 }

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from src.llms.llm import _get_config_file_path, load_yaml_config, _get_env_llm_conf
 from src.config.agents import LLMType
+from src.utils.llm_utils import get_llm_config
 
 logger = logging.getLogger(__name__)
 
@@ -40,37 +41,6 @@ class LLMProxyRequest(BaseModel):
         "basic", 
         description="LLM type to use, matching the configuration keys"
     )
-
-
-async def get_llm_config(llm_type: str) -> Dict[str, Any]:
-    """Get LLM configuration from config file and environment variables."""
-    conf = load_yaml_config(_get_config_file_path())
-    
-    # Map LLM type to config key
-    llm_type_config_keys = {
-        "basic": "BASIC_MODEL",
-        "reasoning": "REASONING_MODEL",
-        "vision": "VISION_MODEL",
-    }
-    
-    config_key = llm_type_config_keys.get(llm_type)
-    if not config_key:
-        raise ValueError(f"Unknown LLM type: {llm_type}")
-    
-    llm_conf = conf.get(config_key, {})
-    if not isinstance(llm_conf, dict):
-        raise ValueError(f"Invalid LLM configuration for {llm_type}: {llm_conf}")
-    
-    # Get configuration from environment variables
-    env_conf = _get_env_llm_conf(llm_type)
-    
-    # Merge configurations, with environment variables taking precedence
-    merged_conf = {**llm_conf, **env_conf}
-    
-    if not merged_conf:
-        raise ValueError(f"No configuration found for LLM type: {llm_type}")
-        
-    return merged_conf
 
 
 @router.post("/chat/completions")

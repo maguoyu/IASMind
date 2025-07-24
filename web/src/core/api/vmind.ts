@@ -1,4 +1,4 @@
-import { ApiResponse } from './config';
+import type { ApiResponse } from './config';
 import { apiClient } from './config';
 
 // 图表生成请求模型
@@ -18,6 +18,7 @@ export interface GenerateChartResponse {
   insight_path?: string;
   insight_md?: string;
   error?: string;
+  spec?: Record<string, any>; // 添加spec字段用于存储图表规范
 }
 
 // VMind API 客户端

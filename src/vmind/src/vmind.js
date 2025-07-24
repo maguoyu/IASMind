@@ -3,31 +3,16 @@ const VMind = require("@visactor/vmind").default;
 const { isString } = require("@visactor/vutils");
 
 // 算法类型枚举
-const AlgorithmType = {
-    OverallTrending: "overallTrend",
-    AbnormalTrend: "abnormalTrend",
-    PearsonCorrelation: "pearsonCorrelation",
-    SpearmanCorrelation: "spearmanCorrelation",
-    ExtremeValue: "extremeValue",
-    MajorityValue: "majorityValue",
-    StatisticsAbnormal: "statisticsAbnormal",
-    StatisticsBase: "statisticsBase",
-    DbscanOutlier: "dbscanOutlier",
-    LOFOutlier: "lofOutlier",
-    TurningPoint: "turningPoint",
-    PageHinkley: "pageHinkley",
-    DifferenceOutlier: "differenceOutlier",
-    Volatility: "volatility",
-};
 
-// 图表类型枚举（从@visactor/vmind导入的）
-const ChartType = {
-    BarChart: "bar", 
-    LineChart: "line",
-    AreaChart: "area",
-    ScatterPlot: "scatter",
-    DualAxisChart: "dualAxis"
-};
+
+
+/**
+ * 确保图表规范与请求的图表类型匹配
+ * @param {Object} spec - 图表规范
+ * @param {string} userPrompt - 用户提示
+ * @returns {Object} - 修正后的图表规范
+ */
+
 
 /**
  * 生成图表
@@ -75,36 +60,16 @@ async function generateChart(vmind, options) {
         spec.title = {
             text: userPrompt,
         };
+    
+        
+        // 记录增强后的spec以便调试
 
         // 获取图表洞察
         const insights = [];
-        if (
-            chartType &&
-            [
-                ChartType.BarChart,
-                ChartType.LineChart,
-                ChartType.AreaChart,
-                ChartType.ScatterPlot,
-                ChartType.DualAxisChart,
-            ].includes(chartType)
-        ) {
+
             try {
                 const insightResult = await vmind.getInsights(spec, {
                     maxNum: 6,
-                    algorithms: [
-                        AlgorithmType.OverallTrending,
-                        AlgorithmType.AbnormalTrend,
-                        AlgorithmType.PearsonCorrelation,
-                        AlgorithmType.SpearmanCorrelation,
-                        AlgorithmType.StatisticsAbnormal,
-                        AlgorithmType.LOFOutlier,
-                        AlgorithmType.DbscanOutlier,
-                        AlgorithmType.MajorityValue,
-                        AlgorithmType.PageHinkley,
-                        AlgorithmType.TurningPoint,
-                        AlgorithmType.StatisticsBase,
-                        AlgorithmType.Volatility,
-                    ],
                     usePolish: false,
                     language: language === "en" ? "english" : "chinese",
                 });
@@ -116,25 +81,21 @@ async function generateChart(vmind, options) {
             } catch (insightError) {
                 console.error("获取洞察时出错:", insightError);
             }
-        }
-        
+                
         // 过滤和处理洞察文本
-        const insightsText = insights
-            .map(insight => insight && insight.textContent ? insight.textContent.plainText : null)
-            .filter(text => !!text);
+
         
         // 设置结果，包含spec字段供前端渲染
         res = {
-            insight_md: insightsText.length > 0 
-                ? insightsText.join('\n\n') 
-                : `未能生成关于"${userPrompt}"的洞察。`,
-            spec: spec  // 添加spec字段供前端vchart使用
+            chart_path: `generated_${fileName}.${outputType}`,
+            insights: insights,
+            spec: spec  // 使用增强后的spec
         };
     } catch (error) {
         console.error("生成图表时发生错误:", error);
         res.error = error.toString();
         res.chart_path = `error_${fileName}.${outputType}`;
-        res.insight_md = `生成图表时发生错误: ${error.toString()}`;
+        res.insights = [];
     }
     
     return res;

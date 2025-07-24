@@ -3,11 +3,11 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from "react";
 import { VChart } from '@visactor/react-vchart';
-import { BarChartOutlined, FileTextOutlined, LineChartOutlined, PieChartOutlined, SendOutlined } from "@ant-design/icons";
+import { BarChartOutlined, FileTextOutlined, LineChartOutlined, PieChartOutlined, SendOutlined, BulbOutlined } from "@ant-design/icons";
 import { toast } from "sonner";
 
 import { useAuthStore } from '~/core/store/auth-store';
-import type { GenerateChartRequest, GenerateChartResponse } from '~/core/api/vmind';
+import type { GenerateChartRequest, GenerateChartResponse, ChartInsight } from '~/core/api/vmind';
 import { VmindAPI } from '~/core/api/vmind';
 import type { ISpec } from '@visactor/vchart';
 
@@ -27,6 +27,7 @@ export function VmindTestMain() {
   const [description, setDescription] = useState<string>("生成一个柱状图，展示各类别的数值比较");
   const [chartType, setChartType] = useState<string>("bar");
   const [spec, setSpec] = useState<ISpec | null>(null);
+  const [insights, setInsights] = useState<ChartInsight[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [dataInput, setDataInput] = useState<string>(JSON.stringify(data, null, 2));
   const router = useRouter();
@@ -90,6 +91,14 @@ export function VmindTestMain() {
         if (result.error) {
           toast.error(`生成图表失败: ${result.error}`);
           return;
+        }
+        
+        // 处理数据洞察
+        if (result.insights) {
+          setInsights(result.insights);
+          console.log('数据洞察:', result.insights);
+        } else {
+          setInsights([]);
         }
         
         // 使用服务端返回的spec进行渲染
@@ -247,22 +256,49 @@ export function VmindTestMain() {
           </button>
         </div>
         
-        {/* 右侧图表预览区 */}
-        <div className="w-full md:w-1/2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">图表预览</h2>
-          
-          {spec ? (
-            <div className="h-[500px] w-full">
-              <VChart spec={spec} />
-            </div>
-          ) : (
-            <div className="h-[500px] w-full flex items-center justify-center text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-              <div className="text-center">
-                <FileTextOutlined style={{ fontSize: '48px' }} />
-                <p className="mt-2">点击生成按钮创建图表</p>
+        {/* 右侧图表预览区和数据洞察区 */}
+        <div className="w-full md:w-1/2 flex flex-col gap-4">
+          {/* 图表预览 */}
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">图表预览</h2>
+            
+            {spec ? (
+              <div className="h-[400px] w-full">
+                <VChart spec={spec} />
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="h-[400px] w-full flex items-center justify-center text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
+                <div className="text-center">
+                  <FileTextOutlined style={{ fontSize: '48px' }} />
+                  <p className="mt-2">点击生成按钮创建图表</p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* 数据洞察区 */}
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-200">
+              <BulbOutlined /> 数据洞察
+            </h2>
+            
+            {insights && insights.length > 0 ? (
+              <div className="space-y-3">
+                {insights.map((insight, index) => (
+                  <div 
+                    key={index}
+                    className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border-l-4 border-blue-400"
+                  >
+                    <p className="text-gray-700 dark:text-gray-200">{insight.textContent.plainText}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                <p>暂无数据洞察</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

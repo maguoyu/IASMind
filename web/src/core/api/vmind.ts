@@ -1,6 +1,22 @@
 import type { ApiResponse } from './config';
 import { apiClient } from './config';
 
+// 图表洞察接口
+export interface ChartInsight {
+  name: string;
+  type: string;
+  fieldId?: string;
+  value?: number;
+  significant?: number;
+  data?: any[];
+  info?: Record<string, any>;
+  textContent: {
+    content?: string;
+    variables?: Record<string, any>;
+    plainText: string;
+  };
+}
+
 // 图表生成请求模型
 export interface GenerateChartRequest {
   file_name: string;
@@ -18,7 +34,8 @@ export interface GenerateChartResponse {
   insight_path?: string;
   insight_md?: string;
   error?: string;
-  spec?: Record<string, any>; // 添加spec字段用于存储图表规范
+  spec?: Record<string, any>; // 图表规范
+  insights?: ChartInsight[]; // 数据洞察数组
 }
 
 // VMind API 客户端

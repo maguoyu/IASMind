@@ -23,32 +23,110 @@ const { isString } = require("@visactor/vutils");
 async function generateChart(vmind, options) {
     let res = {};
     const {
-        dataset,
+        dataset: initialDataset,
         userPrompt,
         directory,
-        width,
-        fieldInfo,
+        csvData,
+        fieldInfo: initialFieldInfo,
         outputType,
         fileName,
         language,
+        textData,
+        dataType
     } = options;
+    let result = {};
+    let dataset = initialDataset;
+    let fieldInfo = initialFieldInfo;
     
     try {
-        // 解析数据集
-        const jsonDataset = isString(dataset) ? JSON.parse(dataset) : dataset;
-        
-        // 生成图表
-        const result = await vmind.generateChart(
-            userPrompt,
-            fieldInfo,
-            jsonDataset,
-            {
-                enableDataQuery: false,
-                theme: "light",
+        if (dataType === "csv") {
+            // 使用正确的解构赋值语法
+            if (csvData) {
+                try {
+                    const parseResult = vmind.parseCSVData(csvData);
+                    // 检查parseResult是否有效
+                    if (parseResult && typeof parseResult === 'object') {
+                        fieldInfo = parseResult.fieldInfo || {};
+                        dataset = parseResult.dataset || [];
+                    } else {
+                        console.error("CSV解析结果无效:", parseResult);
+                        return {
+                            error: "CSV解析失败: 返回结果无效"
+                        };
+                    }
+                } catch (parseError) {
+                    console.error("CSV解析错误:", parseError);
+                    return {
+                        error: `CSV解析错误: ${parseError.message}`
+                    };
+                }
+            } else {
+                console.error("CSV数据为空");
+                return {
+                    error: "CSV数据为空"
+                };
             }
-        );
+            
+            // 检查数据集是否为数组且非空
+            if (!Array.isArray(dataset) || dataset.length === 0) {
+                console.error("数据集无效或为空:", dataset);
+                return {
+                    error: "数据集无效或为空"
+                };
+            }
+            
+            // 生成图表
+            result = await vmind.generateChart(
+                userPrompt,
+                fieldInfo,
+                dataset,
+                {
+                    enableDataQuery: false,
+                    theme: "light",
+                }
+            );
+        } else if (dataType === "dataset") {
+            // 解析数据集
+            if (dataset) {
+                dataset = isString(dataset) ? JSON.parse(dataset) : dataset;
+                
+                // 检查数据集是否为数组且非空
+                if (!Array.isArray(dataset) || dataset.length === 0) {
+                    console.error("数据集无效或为空:", dataset);
+                    return {
+                        error: "数据集无效或为空"
+                    };
+                }
+                
+                // 生成图表
+                result = await vmind.generateChart(
+                    userPrompt,
+                    fieldInfo || {},
+                    dataset,
+                    {
+                        enableDataQuery: false,
+                        theme: "light",
+                    }
+                );
+            } else {
+                console.error("数据集为空");
+                return {
+                    error: "数据集为空"
+                };
+            }
+        } else {
+            // 检查文本数据是否存在
+            if (!textData) {
+                console.error("文本数据为空");
+                return {
+                    error: "文本数据为空"
+                };
+            }
+            
+            result = await vmind.text2Chart(textData, userPrompt);
+        }
         
-        const { spec, error, chartType } = result;
+        const { spec, error, chartType } = result || {};
         
         if (error || !spec) {
             return {
@@ -67,20 +145,23 @@ async function generateChart(vmind, options) {
         // 获取图表洞察
         const insights = [];
 
-            try {
+        try {
+            // 确保spec存在且有效
+            if (spec && typeof spec === 'object') {
                 const insightResult = await vmind.getInsights(spec, {
                     maxNum: 6,
                     usePolish: false,
                     language: language === "en" ? "english" : "chinese",
                 });
                 
-                const vmindInsights = insightResult.insights;
+                const vmindInsights = insightResult?.insights;
                 if (vmindInsights && Array.isArray(vmindInsights)) {
                     insights.push(...vmindInsights);
                 }
-            } catch (insightError) {
-                console.error("获取洞察时出错:", insightError);
             }
+        } catch (insightError) {
+            console.error("获取洞察时出错:", insightError);
+        }
                 
         // 过滤和处理洞察文本
 
@@ -133,9 +214,9 @@ async function executeVMind() {
                 let res;
                 const {
                     llm_config,
-                    width,
+                    csvData,
                     dataset = [],
-                    height,
+                    fieldInfo,
                     directory,
                     user_prompt: userPrompt,
                     output_type: outputType = "png",
@@ -143,6 +224,8 @@ async function executeVMind() {
                     task_type: taskType = "visualization",
                     insights_id: insightsId = [],
                     language = "zh",
+                    dataType = "text",
+                    textData = "",
                 } = parsedData;
                 
                 try {
@@ -167,9 +250,11 @@ async function executeVMind() {
                         directory: directory || ".",
                         outputType: outputType || "png",
                         fileName: fileName || `chart_${Date.now()}`,
-                        width,
-                        height,
+                        csvData,
+                        fieldInfo,
                         language,
+                        dataType,
+                        textData,
                     });
                 } catch (error) {
                     console.error("执行过程中发生错误:", error);

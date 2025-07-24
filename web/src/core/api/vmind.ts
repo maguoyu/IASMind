@@ -20,10 +20,10 @@ export interface ChartInsight {
 // 图表生成请求模型
 export interface GenerateChartRequest {
   file_name: string;
-  output_type: 'png' | 'html';
+  output_type: string;  // 改为string类型以更灵活地支持输出类型
   task_type?: string;
   insights_id?: string[];
-  data?: Record<string, any>[];
+  data?: Record<string, unknown>[];
   user_prompt?: string;
   language?: string;
 }
@@ -44,6 +44,17 @@ export const VmindAPI = {
   generateChart: async (
     request: GenerateChartRequest
   ): Promise<ApiResponse<GenerateChartResponse>> => {
-    return apiClient.post('/api/vmind/generate-chart', request);
+    return apiClient.post('/api/vmind/generate-chart-with-dataset', request);
+  },
+
+  // 使用文件生成图表
+  generateChartWithFile: async (
+    formData: FormData
+  ): Promise<ApiResponse<GenerateChartResponse>> => {
+    return apiClient.post('/api/vmind/generate-chart-with-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
   }
 }; 

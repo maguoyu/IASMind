@@ -186,9 +186,13 @@ process.stdin.on('end', async () => {
             output_type: str,
             task_type: str,
             insights_id: Optional[List[str]] = None,
-            dict_data: Optional[List[Dict[Hashable, Any]]] = None,
+            dataset: Optional[List[Dict[Hashable, Any]]] = None,
             user_prompt: Optional[str] = None,
             language: str = "zh",
+            fieldInfo: Optional[Dict[str, Any]] = None,
+            csvData: Optional[str] = None,
+            textData: Optional[str] = None,
+            dataType: Optional[str] = "text",
         ):
         """
         调用 VMind 图表生成工具
@@ -198,8 +202,8 @@ process.stdin.on('end', async () => {
             output_type: 输出类型，如 'png' 或 'html'
             task_type: 任务类型，如 'visualization'
             insights_id: 洞察 ID 列表
-            dict_data: 数据字典列表
-            chart_description: 图表描述
+            dataset: 数据字典列表
+            user_prompt: 图表描述
             language: 语言代码，默认为中文 'zh'
             
         返回:
@@ -217,12 +221,16 @@ process.stdin.on('end', async () => {
             vmind_params = {
                 "llm_config": self.llm_config,
                 "user_prompt": user_prompt,
-                "dataset": dict_data,
+                "dataset": dataset,
                 "file_name": file_name,
                 "output_type": output_type,
                 "insights_id": insights_id,
                 "task_type": task_type,
                 "language": language,
+                "fieldInfo": fieldInfo,
+                "csvData": csvData,
+                "textData": textData,
+                "dataType": dataType
             }
             
             # 获取脚本路径
@@ -292,7 +300,7 @@ process.stdin.on('end', async () => {
                     return {
                         "error": f"Node.js 执行错误: {stderr_data or '未知错误'}",
                         "chart_path": f"error_{file_name}.{output_type}",
-                        "insight_md": f"执行图表生成工具失败。\n\n请求的图表描述: {chart_description}"
+                        "insight_md": f"执行图表生成工具失败。\n\n请求的图表描述: {user_prompt}"
                     }
                 else:
                     logger.info("命令执行成功")
@@ -307,7 +315,7 @@ process.stdin.on('end', async () => {
                         logger.error("命令执行成功但没有输出数据")
                         return {
                             "chart_path": f"generated_{file_name}.{output_type}",
-                            "insight_md": f"命令执行成功但未获取到结果。\n\n请求的图表描述: {chart_description}"
+                            "insight_md": f"命令执行成功但未获取到结果。\n\n请求的图表描述: {user_prompt}"
                         }
                 except json.JSONDecodeError as e:
                     logger.error(f"输出数据解析失败: {str(e)}")
@@ -316,7 +324,7 @@ process.stdin.on('end', async () => {
                     # 返回备用结果
                     return {
                         "chart_path": f"generated_{file_name}.{output_type}",
-                        "insight_md": f"解析结果失败，但图表生成过程可能已完成。\n\n请求的图表描述: {chart_description}"
+                        "insight_md": f"解析结果失败，但图表生成过程可能已完成。\n\n请求的图表描述: {user_prompt}"
                     }
             except subprocess.TimeoutExpired as e:
                 logger.error(f"命令执行超时: {str(e)}")

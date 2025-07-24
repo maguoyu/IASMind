@@ -1,12 +1,15 @@
 "use client";
 
-import { BarChartOutlined, FileTextOutlined, LineChartOutlined, PieChartOutlined, SendOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from "react";
 import { VChart } from '@visactor/react-vchart';
+import { BarChartOutlined, FileTextOutlined, LineChartOutlined, PieChartOutlined, SendOutlined } from "@ant-design/icons";
 import { toast } from "sonner";
+
 import { useAuthStore } from '~/core/store/auth-store';
-import { VmindAPI, GenerateChartRequest } from '~/core/api/vmind';
+import type { GenerateChartRequest, GenerateChartResponse } from '~/core/api/vmind';
+import { VmindAPI } from '~/core/api/vmind';
+import type { ISpec } from '@visactor/vchart';
 
 interface ChartData {
   name: string;
@@ -23,7 +26,7 @@ export function VmindTestMain() {
   ]);
   const [description, setDescription] = useState<string>("生成一个柱状图，展示各类别的数值比较");
   const [chartType, setChartType] = useState<string>("bar");
-  const [spec, setSpec] = useState<any>(null);
+  const [spec, setSpec] = useState<ISpec | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [dataInput, setDataInput] = useState<string>(JSON.stringify(data, null, 2));
   const router = useRouter();
@@ -89,32 +92,39 @@ export function VmindTestMain() {
           return;
         }
         
-        // 如果有图表规格
-        if (result.chart_path) {
+        // 使用服务端返回的spec进行渲染
+        if (result.spec) {
           toast.success('图表生成成功！');
+          console.log('服务端返回的spec:', result.spec);
           
-          // 示例：使用默认图表规格，实际中应该从API返回
+          // 直接使用服务端返回的spec
+          setSpec(result.spec as ISpec);
+        } else {
+          // 如果服务端没有返回spec，则使用本地生成的spec作为备份方案
+          toast.warning('服务端未返回图表规格，使用本地生成的图表');
+          
+          // 备份：使用本地图表规格
           if (chartType === 'bar') {
             setSpec({
               type: 'bar',
               data: [{ id: 'data', values: data }],
               xField: 'name',
               yField: 'value'
-            });
+            } as ISpec);
           } else if (chartType === 'pie') {
             setSpec({
               type: 'pie',
               data: [{ id: 'data', values: data }],
               angleField: 'value',
               colorField: 'name'
-            });
+            } as ISpec);
           } else if (chartType === 'line') {
             setSpec({
               type: 'line',
               data: [{ id: 'data', values: data }],
               xField: 'name',
               yField: 'value'
-            });
+            } as ISpec);
           }
         }
       } else {
@@ -131,6 +141,22 @@ export function VmindTestMain() {
   // 切换图表类型
   const handleChartTypeChange = (type: string) => {
     setChartType(type);
+    
+    // 根据选择的图表类型更新图表描述
+    switch(type) {
+      case 'bar':
+        setDescription("生成一个柱状图，展示各类别的数值比较");
+        break;
+      case 'line':
+        setDescription("生成一个折线图，展示各类别的数值比较");
+        break;
+      case 'pie':
+        setDescription("生成一个饼图，展示各类别的数值比较");
+        break;
+      default:
+        // 保持原有描述
+        break;
+    }
   };
 
   return (

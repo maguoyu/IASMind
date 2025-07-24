@@ -24,7 +24,7 @@ export function VmindTestMain() {
     { name: "类别D", value: 60 },
     { name: "类别E", value: 100 }
   ]);
-  const [description, setDescription] = useState<string>("生成一个柱状图，展示各类别的数值比较");
+  const [userPrompt, setUserPrompt] = useState<string>("生成一个柱状图，展示各类别的数值比较");
   const [chartType, setChartType] = useState<string>("bar");
   const [spec, setSpec] = useState<ISpec | null>(null);
   const [insights, setInsights] = useState<ChartInsight[]>([]);
@@ -61,9 +61,9 @@ export function VmindTestMain() {
     }
   };
 
-  // 处理描述输入变更
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDescription(e.target.value);
+  // 处理用户提示变更
+  const handleUserPromptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserPrompt(e.target.value);
   };
 
   // 调用VMind API生成图表
@@ -77,7 +77,7 @@ export function VmindTestMain() {
         output_type: "html",
         task_type: "visualization",
         data: data,
-        description: description,
+        user_prompt: userPrompt,
         language: "zh"
       };
       
@@ -151,16 +151,16 @@ export function VmindTestMain() {
   const handleChartTypeChange = (type: string) => {
     setChartType(type);
     
-    // 根据选择的图表类型更新图表描述
+    // 根据选择的图表类型更新用户提示
     switch(type) {
       case 'bar':
-        setDescription("生成一个柱状图，展示各类别的数值比较");
+        setUserPrompt("生成一个柱状图，展示各类别的数值比较");
         break;
       case 'line':
-        setDescription("生成一个折线图，展示各类别的数值比较");
+        setUserPrompt("生成一个折线图，展示各类别的数值比较");
         break;
       case 'pie':
-        setDescription("生成一个饼图，展示各类别的数值比较");
+        setUserPrompt("生成一个饼图，展示各类别的数值比较");
         break;
       default:
         // 保持原有描述
@@ -188,16 +188,16 @@ export function VmindTestMain() {
             />
           </div>
           
-          {/* 描述输入 */}
+          {/* 用户提示输入 */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              图表描述
+              用户提示
             </label>
             <input
               type="text"
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              value={description}
-              onChange={handleDescriptionChange}
+              value={userPrompt}
+              onChange={handleUserPromptChange}
               placeholder="描述你想要生成的图表类型和需求"
             />
           </div>

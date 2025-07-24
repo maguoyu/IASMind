@@ -24,7 +24,7 @@ export interface GenerateChartRequest {
   task_type?: string;
   insights_id?: string[];
   data?: Record<string, any>[];
-  description?: string;
+  user_prompt?: string;
   language?: string;
 }
 

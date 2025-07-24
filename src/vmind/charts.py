@@ -187,7 +187,7 @@ process.stdin.on('end', async () => {
             task_type: str,
             insights_id: Optional[List[str]] = None,
             dict_data: Optional[List[Dict[Hashable, Any]]] = None,
-            chart_description: Optional[str] = None,
+            user_prompt: Optional[str] = None,
             language: str = "zh",
         ):
         """
@@ -216,7 +216,7 @@ process.stdin.on('end', async () => {
             # 准备参数
             vmind_params = {
                 "llm_config": self.llm_config,
-                "user_prompt": chart_description,
+                "user_prompt": user_prompt,
                 "dataset": dict_data,
                 "file_name": file_name,
                 "output_type": output_type,

@@ -27,7 +27,7 @@ async function generateChart(vmind, options) {
         userPrompt,
         directory,
         width,
-        height,
+        fieldInfo,
         outputType,
         fileName,
         language,
@@ -40,7 +40,7 @@ async function generateChart(vmind, options) {
         // 生成图表
         const result = await vmind.generateChart(
             userPrompt,
-            undefined,
+            fieldInfo,
             jsonDataset,
             {
                 enableDataQuery: false,
@@ -57,9 +57,9 @@ async function generateChart(vmind, options) {
         }
 
         // 设置标题
-        spec.title = {
-            text: userPrompt,
-        };
+        // spec.title = {
+        //     text: userPrompt,
+        // };
     
         
         // 记录增强后的spec以便调试

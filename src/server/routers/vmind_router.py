@@ -35,7 +35,7 @@ class GenerateChartRequest(BaseModel):
     task_type: str = Field("visualization", description="任务类型")
     insights_id: Optional[List[str]] = Field(None, description="洞察ID列表")
     data: Optional[List[Dict[str, Any]]] = Field(None, description="要可视化的数据")
-    description: Optional[str] = Field(None, description="图表描述")
+    user_prompt: Optional[str] = Field(None, description="用户提示")
     language: str = Field("zh", description="语言代码，默认为中文")
 
 
@@ -67,7 +67,7 @@ async def generate_chart(
             task_type=request.task_type,
             insights_id=request.insights_id,
             dict_data=request.data,
-            chart_description=request.description,
+            user_prompt=request.user_prompt,
             language=request.language
         )
         

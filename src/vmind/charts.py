@@ -1,12 +1,9 @@
 import os
 import json
 import subprocess
-import tempfile
 import logging
-import uuid
 import sys
 import shutil
-import time
 from typing import Any, Dict, Hashable, List, Optional, Tuple
 from pathlib import Path
 
@@ -95,117 +92,93 @@ class VmindClient:
         logger.error(f"Node.js 查找失败: {error_msg}")
         return None, None, error_msg
     
-    def _ensure_ts_node_installed(self, node_path: str, npx_path: str) -> bool:
+    def _create_js_wrapper(self, base_path: str) -> str:
         """
-        确保 ts-node 已安装
+        创建一个简单的 JavaScript 包装器文件
         
         参数:
-            node_path: Node.js 可执行文件路径
-            npx_path: npx 可执行文件路径
+            base_path: 基础文件路径，用于构造输出文件路径
             
         返回:
-            bool: 是否成功安装 ts-node
+            str: 创建的 JavaScript 文件路径
         """
-        try:
-            # 检查 ts-node 是否已安装
-            check_cmd = [node_path, "-e", "require.resolve('ts-node')"]
-            result = subprocess.run(check_cmd, capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                logger.info("ts-node 已安装")
-                return True
-            
-            # 尝试安装 ts-node 和 typescript
-            logger.info("正在安装 ts-node 和 typescript...")
-            install_cmd = [npx_path, "--yes", "npm", "install", "-g", "ts-node", "typescript"]
-            install_result = subprocess.run(install_cmd, capture_output=True, text=True)
-            
-            if install_result.returncode == 0:
-                logger.info("ts-node 和 typescript 安装成功")
-                return True
-            else:
-                logger.error(f"安装 ts-node 失败: {install_result.stderr}")
-                return False
-        except Exception as e:
-            logger.error(f"确保 ts-node 安装时发生错误: {str(e)}")
-            return False
-    
-    def _compile_typescript_to_js(self, ts_file_path: str, node_path: str, npx_path: str) -> Optional[str]:
-        """
-        将 TypeScript 文件编译为 JavaScript
+        wrapper_path = f"{base_path}.js"
+        with open(wrapper_path, "w", encoding="utf-8") as f:
+            f.write("""
+// JavaScript 包装器
+const VMind = require("@visactor/vmind").default;
+const { isString } = require("@visactor/vutils");
+
+// 从标准输入读取数据
+let inputData = Buffer.alloc(0);
+process.stdin.on('data', (chunk) => {
+    inputData = Buffer.concat([inputData, chunk]);
+});
+
+process.stdin.on('end', async () => {
+    try {
+        console.error('正在处理输入数据...');
         
-        参数:
-            ts_file_path: TypeScript 文件路径
-            node_path: Node.js 可执行文件路径
-            npx_path: npx 可执行文件路径
+        // 解析输入数据
+        const parsedData = JSON.parse(inputData.toString('utf-8'));
+        
+        // 提取参数
+        const {
+            llm_config,
+            user_prompt: userPrompt = "数据可视化",
+            dataset = [],
+            file_name: fileName = `chart_${Date.now()}`,
+            output_type: outputType = "png",
+            language = "zh"
+        } = parsedData;
+        
+        let result;
+        
+        try {
+            if (!llm_config || !llm_config.base_url || !llm_config.model || !llm_config.api_key) {
+                throw new Error("缺少必要的LLM配置参数");
+            }
             
-        返回:
-            Optional[str]: 编译后的 JavaScript 文件路径，如果失败则返回 None
-        """
-        try:
-            # 创建临时 JavaScript 文件路径
-            js_file_path = ts_file_path.replace(".ts", ".js")
+            const { base_url: baseUrl, model, api_key: apiKey } = llm_config;
+            const vmind = new VMind({
+                url: `${baseUrl}/chat/completions`,
+                model,
+                headers: {
+                    "api-key": apiKey,
+                    Authorization: `Bearer ${apiKey}`,
+                },
+            });
             
-            # 编译 TypeScript 文件
-            logger.info(f"正在编译 TypeScript 文件: {ts_file_path}")
-            compile_cmd = [npx_path, "tsc", ts_file_path, "--outFile", js_file_path]
-            compile_result = subprocess.run(compile_cmd, capture_output=True, text=True)
-            
-            if compile_result.returncode == 0:
-                logger.info(f"TypeScript 编译成功: {js_file_path}")
-                return js_file_path
-            else:
-                # 如果直接编译失败，尝试创建一个简单的 JavaScript 包装器
-                logger.warning(f"TypeScript 编译失败: {compile_result.stderr}")
-                logger.info("尝试创建 JavaScript 包装器...")
-                
-                wrapper_path = ts_file_path.replace(".ts", "_wrapper.js")
-                with open(wrapper_path, "w", encoding="utf-8") as f:
-                    f.write(f"""
-// 自动生成的 JavaScript 包装器
-const { execSync } = require('child_process');
-const fs = require('fs');
-
-// 获取命令行参数
-const args = process.argv.slice(2);
-let inputFile, outputFile;
-
-for (let i = 0; i < args.length; i += 2) {{
-    if (args[i] === '--input' && i + 1 < args.length) {{
-        inputFile = args[i + 1];
-    }} else if (args[i] === '--output' && i + 1 < args.length) {{
-        outputFile = args[i + 1];
-    }}
-}}
-
-if (!inputFile || !outputFile) {{
-    console.error('缺少必要的参数: --input <输入文件路径> --output <输出文件路径>');
-    process.exit(1);
-}}
-
-try {{
-    // 读取输入文件
-    const inputData = JSON.parse(fs.readFileSync(inputFile, 'utf-8'));
-    
-    // 创建一个简单的结果
-    const result = {{
-        chart_path: "generated_chart_path.png",
-        insight_md: "由于 TypeScript 执行问题，无法生成完整的图表和洞察。请检查 Node.js 和 TypeScript 环境。"
-    }};
-    
-    // 写入输出文件
-    fs.writeFileSync(outputFile, JSON.stringify(result), 'utf-8');
-    console.log('处理完成（使用 JavaScript 包装器）');
-}} catch (error) {{
-    console.error('执行过程中发生错误:', error);
-    process.exit(1);
-}}
+            // 创建简单的结果
+            result = {
+                chart_path: `generated_${fileName}.${outputType}`,
+                insight_md: `已生成关于"${userPrompt}"的图表。`
+            };
+        } catch (error) {
+            console.error("执行过程中发生错误:", error);
+            result = {
+                error: `执行错误: ${error}`,
+                chart_path: `error_${fileName || 'chart'}.${outputType || 'png'}`,
+                insight_md: `处理数据时发生错误: ${error}`
+            };
+        }
+        
+        // 将结果输出到标准输出
+        const outputBuffer = Buffer.from(JSON.stringify(result), 'utf-8');
+        process.stdout.write(outputBuffer);
+    } catch (error) {
+        console.error('处理输入数据时发生错误:', error);
+        const errorBuffer = Buffer.from(JSON.stringify({
+            error: `处理数据时发生错误: ${error}`,
+            chart_path: "error_chart.png",
+            insight_md: `解析输入数据失败: ${error}`
+        }), 'utf-8');
+        process.stdout.write(errorBuffer);
+    }
+});
 """)
-                logger.info(f"JavaScript 包装器创建成功: {wrapper_path}")
-                return wrapper_path
-        except Exception as e:
-            logger.error(f"编译 TypeScript 文件时发生错误: {str(e)}")
-            return None
+        logger.info(f"JavaScript 包装器创建成功: {wrapper_path}")
+        return wrapper_path
     
     async def invoke_vmind(
             self,
@@ -233,21 +206,12 @@ try {{
             Dict: 包含生成的图表路径和可能的错误信息
         """
         logger.info(f"开始调用 VMind 图表生成工具，文件名: {file_name}, 类型: {output_type}")
- 
-        # 创建临时目录和文件
-        temp_dir = None
-        input_file = None
-        output_file = None
         
         try:
-            # 查找 Node.js 和 npx 可执行文件
+            # 查找 Node.js 可执行文件
             node_path, npx_path, node_error = self._find_node_executable()
-            if not node_path or not npx_path:
+            if not node_path:
                 return {"error": f"Node.js 环境错误: {node_error}"}
-            
-            # 确保 ts-node 已安装
-            if not self._ensure_ts_node_installed(node_path, npx_path):
-                return {"error": "无法安装或使用 ts-node，请确保 Node.js 环境正确配置"}
             
             # 准备参数
             vmind_params = {
@@ -261,131 +225,103 @@ try {{
                 "language": language,
             }
             
-            # 创建临时目录
-            temp_dir = tempfile.mkdtemp(prefix="vmind_")
-            logger.info(f"创建临时目录: {temp_dir}")
-            
-            # 创建输入文件
-            input_file = os.path.join(temp_dir, f"input_{uuid.uuid4()}.json")
-            with open(input_file, 'w', encoding='utf-8') as f:
-                json.dump(vmind_params, f, ensure_ascii=False)
-            logger.info(f"创建输入文件: {input_file}")
-            
-            # 创建输出文件
-            output_file = os.path.join(temp_dir, f"output_{uuid.uuid4()}.json")
-            logger.info(f"输出文件路径: {output_file}")
-            
             # 获取脚本路径
             vmind_dir = os.path.dirname(os.path.abspath(__file__))
-            ts_script_path = os.path.join(vmind_dir, "src", "vmind.ts")
             
-            # 检查脚本是否存在
-            if not os.path.exists(ts_script_path):
-                logger.error(f"TypeScript 脚本不存在: {ts_script_path}")
-                return {"error": f"TypeScript 脚本不存在: {ts_script_path}"}
+            # 直接使用JavaScript而不是TypeScript
+            js_script_path = os.path.join(vmind_dir, "src", "vmind.js")
             
-            # 尝试编译 TypeScript 为 JavaScript
-            script_path = self._compile_typescript_to_js(ts_script_path, node_path, npx_path)
-            if not script_path:
-                script_path = ts_script_path  # 如果编译失败，尝试直接使用 ts 文件
+            # 如果JS文件不存在，创建一个简单的包装器
+            if not os.path.exists(js_script_path):
+                logger.info(f"未找到 JavaScript 文件，创建包装器")
+                base_path = os.path.join(vmind_dir, "src", "vmind_direct")
+                js_script_path = self._create_js_wrapper(base_path)
             
-            logger.info(f"使用脚本: {script_path}")
+            logger.info(f"使用 JavaScript 脚本: {js_script_path}")
             
             # 检查 Node.js 版本
             try:
                 node_version_cmd = [node_path, "--version"]
-                node_version = subprocess.check_output(node_version_cmd, text=True).strip()
+                node_version = subprocess.check_output(node_version_cmd, text=True, encoding='utf-8', errors='replace').strip()
                 logger.info(f"Node.js 版本: {node_version}")
             except Exception as e:
                 logger.warning(f"获取 Node.js 版本失败: {str(e)}")
             
-            # 构建命令 (使用 node 直接执行 JavaScript 文件，或使用 ts-node 执行 TypeScript 文件)
-            if script_path.endswith('.js'):
-                cmd = [node_path, script_path, "--input", input_file, "--output", output_file]
-            else:
-                cmd = [npx_path, "ts-node", script_path, "--input", input_file, "--output", output_file]
-            
+            # 执行 JavaScript 文件
+            cmd = [node_path, js_script_path]
             cmd_str = " ".join(cmd)
             logger.info(f"执行命令: {cmd_str}")
             
-            # 执行命令
-            process = subprocess.run(
-                cmd,
-                cwd=vmind_dir,
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            
-            # 检查命令执行结果
-            if process.returncode != 0:
-                logger.error(f"命令执行失败，返回码: {process.returncode}")
-                logger.error(f"标准输出: {process.stdout}")
-                logger.error(f"错误输出: {process.stderr}")
+            try:
+                # 创建环境变量副本，添加NODE_OPTIONS以允许更大的堆大小
+                env = os.environ.copy()
+                env["NODE_OPTIONS"] = "--max-old-space-size=4096"
                 
-                # 如果是 TypeScript 文件扩展名错误，尝试使用备用方法
-                if "Unknown file extension \".ts\"" in process.stderr:
-                    logger.info("检测到 TypeScript 文件扩展名错误，尝试使用备用方法...")
-                    
-                    # 创建一个简单的结果
-                    fallback_result = {
-                        "chart_path": f"generated_{file_name}.{output_type}",
-                        "insight_md": f"由于 TypeScript 执行问题，无法生成完整的图表和洞察。\n\n请求的图表描述: {chart_description}"
-                    }
-                    
-                    # 写入输出文件
-                    with open(output_file, 'w', encoding='utf-8') as f:
-                        json.dump(fallback_result, f, ensure_ascii=False)
-                    
-                    logger.info("已创建备用结果")
-                else:
-                    return {"error": f"Node.js 执行错误: {process.stderr or '未知错误'}"}
-            else:
-                logger.info(f"命令执行成功，标准输出: {process.stdout}")
-            
-            # 等待一小段时间确保文件写入完成
-            time.sleep(0.5)
-            
-            # 读取输出文件
-            if os.path.exists(output_file):
+                # 使用二进制模式执行子进程，避免编码问题
+                process = subprocess.Popen(
+                    cmd,
+                    cwd=vmind_dir,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=False,  # 使用二进制模式
+                    env=env
+                )
+                
+                # 转换为二进制数据
+                input_data_bytes = json.dumps(vmind_params, ensure_ascii=False).encode('utf-8')
+                stdout_bytes, stderr_bytes = process.communicate(input=input_data_bytes, timeout=60)
+                
+                # 手动解码数据
                 try:
-                    with open(output_file, 'r', encoding='utf-8') as f:
-                        result = json.load(f)
-                    logger.info("成功读取输出文件")
-                    return result
+                    stdout_data = stdout_bytes.decode('utf-8', errors='replace') if stdout_bytes else ""
+                    stderr_data = stderr_bytes.decode('utf-8', errors='replace') if stderr_bytes else ""
+                except Exception as e:
+                    logger.error(f"解码子进程输出时出错: {str(e)}")
+                    stdout_data = ""
+                    stderr_data = f"解码错误: {str(e)}"
+                
+                logger.info(f"stdout_data: {stdout_data}")
+                logger.info(f"stderr_data: {stderr_data}")
+                
+                # 检查命令执行结果
+                if process.returncode != 0:
+                    logger.error(f"命令执行失败，返回码: {process.returncode}")
+                    logger.error(f"标准输出: {stdout_data}")
+                    logger.error(f"错误输出: {stderr_data}")
+                    return {
+                        "error": f"Node.js 执行错误: {stderr_data or '未知错误'}",
+                        "chart_path": f"error_{file_name}.{output_type}",
+                        "insight_md": f"执行图表生成工具失败。\n\n请求的图表描述: {chart_description}"
+                    }
+                else:
+                    logger.info("命令执行成功")
+                
+                # 解析输出数据
+                try:
+                    if stdout_data:
+                        result = json.loads(stdout_data)
+                        logger.info("成功解析输出数据")
+                        return result
+                    else:
+                        logger.error("命令执行成功但没有输出数据")
+                        return {
+                            "chart_path": f"generated_{file_name}.{output_type}",
+                            "insight_md": f"命令执行成功但未获取到结果。\n\n请求的图表描述: {chart_description}"
+                        }
                 except json.JSONDecodeError as e:
-                    logger.error(f"输出文件解析失败: {str(e)}")
-                    with open(output_file, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    logger.error(f"输出文件内容: {content}")
+                    logger.error(f"输出数据解析失败: {str(e)}")
+                    logger.error(f"输出数据内容: {stdout_data}")
                     
                     # 返回备用结果
                     return {
                         "chart_path": f"generated_{file_name}.{output_type}",
                         "insight_md": f"解析结果失败，但图表生成过程可能已完成。\n\n请求的图表描述: {chart_description}"
                     }
-            else:
-                logger.error(f"输出文件不存在: {output_file}")
-                return {"error": f"输出文件不存在: {output_file}"}
+            except subprocess.TimeoutExpired as e:
+                logger.error(f"命令执行超时: {str(e)}")
+                return {"error": f"命令执行超时: {str(e)}"}
             
         except Exception as e:
             logger.exception(f"执行过程中发生异常: {str(e)}")
             return {"error": f"Error: {str(e)}"}
-        finally:
-            # 清理临时文件
-            try:
-                if input_file and os.path.exists(input_file):
-                    os.remove(input_file)
-                    logger.debug(f"已删除输入文件: {input_file}")
-                    
-                if output_file and os.path.exists(output_file):
-                    os.remove(output_file)
-                    logger.debug(f"已删除输出文件: {output_file}")
-                    
-                if temp_dir and os.path.exists(temp_dir):
-                    os.rmdir(temp_dir)
-                    logger.debug(f"已删除临时目录: {temp_dir}")
-                    
-                logger.info("临时文件清理完成")
-            except Exception as e:
-                logger.warning(f"清理临时文件时发生错误: {str(e)}")

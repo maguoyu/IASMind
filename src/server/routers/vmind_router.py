@@ -41,21 +41,18 @@ class GenerateChartRequest(BaseModel):
 
 class GenerateChartResponse(BaseModel):
     """生成图表的响应模型"""
-    chart_path: Optional[str] = Field(None, description="生成的图表路径")
-    insight_path: Optional[str] = Field(None, description="生成的洞察路径")
+    spec: Optional[str] = Field(None, description="spec")
     insight_md: Optional[str] = Field(None, description="洞察内容（Markdown格式）")
     error: Optional[str] = Field(None, description="错误信息")
 
 
-@router.post("/generate-chart", response_model=GenerateChartResponse)
+@router.post("/generate-chart", response_model=Any)
 async def generate_chart(
     request: GenerateChartRequest,
     user=Depends(GetCurrentUser)
 ):
     """生成数据可视化图表"""
-    if not user or not user.sub:
-        raise HTTPException(status_code=401, detail="需要用户身份认证")
-    
+
     try:
         # 获取LLM客户端
         llm_config = await get_llm_config("basic")
@@ -79,7 +76,7 @@ async def generate_chart(
             logger.error(f"VMind 处理错误: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
         
-        return GenerateChartResponse(**result)
+        return result
     
     except Exception as e:
         logger.exception(f"生成图表时发生错误: {str(e)}")

@@ -12,7 +12,7 @@ import tempfile
 import csv
 import json
 import pandas as pd
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 
@@ -40,7 +40,7 @@ class GenerateChartRequest(BaseModel):
     output_type: str = Field(..., description="输出类型，如 'png' 或 'html'")
     task_type: str = Field("visualization", description="任务类型")
     insights_id: Optional[List[str]] = Field(None, description="洞察ID列表")
-    data: Optional[List[Dict[str, Any]]] = Field(None, description="要可视化的数据")
+    data: Optional[Any] = Field(None, description="要可视化的数据，可以是JSON数组、CSV字符串或其他文本格式")
     user_prompt: Optional[str] = Field(None, description="用户提示")
     language: str = Field("zh", description="语言代码，默认为中文")
 
@@ -52,12 +52,117 @@ class GenerateChartResponse(BaseModel):
     error: Optional[str] = Field(None, description="错误信息")
 
 
-@router.post("/generate-chart-with-dataset", response_model=Any)
+def is_valid_csv(text: str) -> bool:
+    """
+    检查文本是否符合CSV格式标准
+    
+    参数:
+        text: 要检查的文本
+        
+    返回:
+        bool: 是否符合CSV格式标准
+    """
+    # 检查字符串是否为空
+    if not text.strip():
+        return False
+        
+    # 按行分割
+    lines = text.strip().split('\n')
+    if len(lines) < 2:  # 至少需要有标题行和一行数据
+        return False
+        
+    # 检查分隔符一致性
+    first_line_commas = lines[0].count(',')
+    if first_line_commas == 0:  # 必须有逗号分隔
+        return False
+        
+    # 检查每行字段数是否一致
+    for line in lines[1:]:
+        if line.strip() and line.count(',') != first_line_commas:
+            return False
+            
+    return True
+
+
+def process_data(input_data: Any) -> Tuple[str, List, Optional[str], Optional[str], Optional[Dict]]:
+    """
+    处理各种格式的输入数据，判断数据类型并进行相应处理
+    
+    参数:
+        input_data: 输入数据，可以是字符串、列表或其他类型
+        
+    返回:
+        Tuple[str, List, Optional[str], Optional[str], Optional[Dict]]: 
+        (数据类型, 数据集, CSV数据, 文本数据, 字段信息)
+    """
+    dataType = "dataset"
+    dataset = []
+    csvData = None
+    textData = None
+    fieldInfo = None
+    
+    if input_data is None:
+        return dataType, dataset, csvData, textData, fieldInfo
+    
+    # 处理列表类型数据
+    if isinstance(input_data, list):
+        dataset = input_data
+        dataType = "dataset"
+    # 处理字符串类型数据
+    elif isinstance(input_data, str):
+        data_str = input_data.strip()
+        
+        # 尝试解析为JSON
+        try:
+            parsed_data = json.loads(data_str)
+            if isinstance(parsed_data, list):
+                dataset = parsed_data
+                dataType = "dataset"
+            else:
+                # 不是列表格式的JSON，作为文本处理
+                textData = data_str
+                dataType = "text"
+        except json.JSONDecodeError:
+            # 尝试解析为CSV
+            try:
+                # 只有符合CSV格式标准才进行解析
+                if is_valid_csv(data_str):
+                    df = pd.read_csv(io.StringIO(data_str), sep=',')  # 明确指定逗号分隔符
+                    csvData = df.to_csv(index=False)
+                    dataType = "csv"
+                    logger.info("成功解析为CSV格式")
+                else:
+                    # 不是标准CSV格式，按文本处理
+                    textData = data_str
+                    dataType = "text"
+                    logger.info("不符合CSV格式标准，按文本处理")
+            except Exception as e:
+                # 如果都解析失败，则按纯文本处理
+                textData = data_str
+                dataType = "text"
+                logger.info(f"CSV解析失败: {str(e)}，按文本处理")
+    # 处理其他类型数据
+    else:
+        # 尝试转换为JSON字符串再处理
+        try:
+            json_str = json.dumps(input_data)
+            textData = json_str
+            dataType = "text"
+        except Exception:
+            # 如果转换失败，报错
+            logger.error("不支持的数据格式")
+            raise HTTPException(status_code=400, detail="不支持的数据格式")
+    
+    logger.info(f"数据处理结果：类型={dataType}")
+    return dataType, dataset, csvData, textData, fieldInfo
+
+
+@router.post("/generate-chart", response_model=Any)
 async def generate_chart(
     request: GenerateChartRequest,
     user=Depends(GetCurrentUser)
 ):
-    """生成数据可视化图表"""
+    """生成数据可视化图表，支持多种数据格式"""
 
     try:
         # 获取LLM客户端
@@ -66,14 +171,20 @@ async def generate_chart(
         # 创建VMind客户端
         vmind_client = VmindClient(llm_config)
         
+        # 处理数据
+        dataType, dataset, csvData, textData, fieldInfo = process_data(request.data)
+        
         # 调用VMind服务
         result = await vmind_client.invoke_vmind(
             file_name=request.file_name,
             output_type=request.output_type,
             task_type=request.task_type,
             insights_id=request.insights_id,
-            dataset=request.data,
-            dataType="dataset",
+            dataset=dataset,
+            csvData=csvData,
+            textData=textData,
+            fieldInfo=fieldInfo,
+            dataType=dataType,
             user_prompt=request.user_prompt,
             language=request.language
         )
@@ -112,12 +223,12 @@ async def generate_chart_with_file(
             temp_path = temp_file.name
         
         # 根据文件类型读取数据
-
         dataType = "dataset"
         dataset = []
         csvData = None
         textData = None
         fieldInfo = None
+        
         try:
             if suffix.lower() == '.csv':
                 # 读取CSV文件
@@ -132,41 +243,15 @@ async def generate_chart_with_file(
             elif suffix.lower() == '.json':
                 # 读取JSON文件
                 with open(temp_path, 'r', encoding='utf-8') as f:
-                    dataset = json.load(f)
-                    dataType = "dataset"
-                    if not isinstance(dataset, list):
-                        dataType = "text"
-                        textData = json.dumps(dataset)
+                    file_content = json.load(f)
+                    # 使用通用处理函数处理JSON内容
+                    dataType, dataset, csvData, textData, fieldInfo = process_data(file_content)
             elif suffix.lower() in ['.txt', '.text']:
                 # 读取文本文件
-                try:
-                    # 首先尝试作为JSON解析
-                    with open(temp_path, 'r', encoding='utf-8') as f:
-                        content = f.read().strip()
-                        try:
-                            dataset = json.loads(content)
-                            if isinstance(dataset, list):
-                                dataType = "dataset"
-                            else:
-                                dataType = "text"
-                                textData = content
-                        except json.JSONDecodeError:
-                            # 如果不是JSON格式，尝试作为CSV格式解析
-                            try:
-                                # 使用pandas读取为CSV
-                                df = pd.read_csv(io.StringIO(content), sep=None, engine='python')
-                                csvData = df.to_csv(index=False)
-                                dataType = "csv"
-                            except Exception:
-                                # 如果仍无法解析，则按行拆分并创建简单数据结构
-                                dataType = "text"
-                                textData = content
-                except Exception as e:
-                    logger.error(f"解析文本文件失败: {str(e)}")
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"无法解析文本文件: {str(e)}. 请确保文件格式正确。"
-                    )
+                with open(temp_path, 'r', encoding='utf-8') as f:
+                    file_content = f.read().strip()
+                    # 使用通用处理函数处理文本内容
+                    dataType, dataset, csvData, textData, fieldInfo = process_data(file_content)
             else:
                 # 不支持的文件类型
                 raise HTTPException(

@@ -8,7 +8,6 @@ import type { ISpec } from '@visactor/vchart';
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 
-import { useAuthStore } from '~/core/store/auth-store';
 import type { GenerateChartRequest, GenerateChartResponse, ChartInsight } from '~/core/api/vmind';
 import { VmindAPI } from '~/core/api/vmind';
 
@@ -37,34 +36,61 @@ export function VmindTestMain() {
   const [fileData, setFileData] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
-
-  // 处理认证错误
-  const handleAuthError = useCallback(() => {
-    toast.error("需要登录才能使用此功能");
-    setTimeout(() => {
-      router.push('/auth/login');
-    }, 1500);
-  }, [router]);
-
-  // 检查认证状态
-  useEffect(() => {
-    if (!isAuthenticated) {
-      handleAuthError();
-    }
-  }, [isAuthenticated, handleAuthError]);
 
   // 处理数据输入变更
   const handleDataChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDataInput(e.target.value);
+    const newValue = e.target.value;
+    setDataInput(newValue);
+    
+    // 尝试检测输入是否为CSV格式
+    const isCSV = checkIfCSV(newValue);
+    
     try {
-      const parsedData = JSON.parse(e.target.value);
+      // 尝试解析为JSON
+      const parsedData = JSON.parse(newValue);
       if (Array.isArray(parsedData)) {
         setData(parsedData);
+        // 如果看起来像CSV但成功解析为JSON，不做特殊处理
       }
     } catch (err) {
-      // 解析错误时不更新数据
+      // 解析JSON失败，检查是否为CSV格式
+      if (isCSV) {
+        toast.info("检测到CSV格式数据，系统将作为CSV处理", {
+          id: "csv-format-detected",
+          duration: 3000
+        });
+      }
     }
+  };
+  
+  // 检查文本是否符合CSV格式
+  const checkIfCSV = (text: string): boolean => {
+    // 检查字符串是否为空
+    if (!text || !text.trim()) {
+      return false;
+    }
+    
+    // 按行分割
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {  // 至少需要有标题行和一行数据
+      return false;
+    }
+    
+    // 检查分隔符一致性
+    const firstLineCommas = (lines[0].match(/,/g) || []).length;
+    if (firstLineCommas === 0) {  // 必须有逗号分隔
+      return false;
+    }
+    
+    // 检查每行字段数是否一致
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (line && line.trim() && (line.match(/,/g) || []).length !== firstLineCommas) {
+        return false;
+      }
+    }
+    
+    return true;
   };
 
   // 处理数据源类型选择
@@ -122,11 +148,23 @@ export function VmindTestMain() {
       let response;
       
       if (inputType === "text") {
-        // 使用JSON数据方式
+        // 使用文本输入方式
         const requestData: GenerateChartRequest = {
-          ...baseRequestData,
-          data: data
+          ...baseRequestData
         };
+        
+        // 优先尝试解析为JSON数据
+        try {
+          const parsedData = JSON.parse(dataInput.trim());
+          requestData.data = parsedData;
+          console.log("使用JSON解析后的数据:", parsedData);
+        } catch (e) {
+          // 如果解析失败，直接使用原始文本
+          requestData.data = dataInput;
+          console.log("使用原始文本数据");
+        }
+        
+        console.log("发送请求数据:", requestData);
         response = await VmindAPI.generateChart(requestData);
       } else {
         // 使用文件方式
@@ -227,7 +265,7 @@ export function VmindTestMain() {
           {inputType === 'text' && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                数据 (JSON 格式)
+                数据 
               </label>
               <textarea
                 className="w-full h-48 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"

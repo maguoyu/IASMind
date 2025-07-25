@@ -67,7 +67,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Determine reload setting
-    reload = False
+    reload = True
     if args.reload:
         reload = True
 

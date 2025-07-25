@@ -23,7 +23,7 @@ export interface GenerateChartRequest {
   output_type: string;  // 改为string类型以更灵活地支持输出类型
   task_type?: string;
   insights_id?: string[];
-  data?: Record<string, unknown>[];
+  data?: any; // 支持多种数据格式：数组、字符串或其他格式
   user_prompt?: string;
   language?: string;
 }
@@ -44,7 +44,7 @@ export const VmindAPI = {
   generateChart: async (
     request: GenerateChartRequest
   ): Promise<ApiResponse<GenerateChartResponse>> => {
-    return apiClient.post('/api/vmind/generate-chart-with-dataset', request);
+    return apiClient.post('/api/vmind/generate-chart', request);
   },
 
   // 使用文件生成图表

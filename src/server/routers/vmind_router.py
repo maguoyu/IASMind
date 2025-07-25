@@ -145,21 +145,22 @@ async def generate_chart_with_file(
                         content = f.read().strip()
                         try:
                             dataset = json.loads(content)
+                            if isinstance(dataset, list):
+                                dataType = "dataset"
+                            else:
+                                dataType = "text"
+                                textData = content
                         except json.JSONDecodeError:
                             # 如果不是JSON格式，尝试作为CSV格式解析
                             try:
                                 # 使用pandas读取为CSV
                                 df = pd.read_csv(io.StringIO(content), sep=None, engine='python')
-                                dataset = json.loads(df.to_json(orient='records'))
-                                dataType = "dataset"
-                                # 验证数据是否为列表格式
-                                if not isinstance(dataset, list):
-                                    dataType = "text"
-                                    textData = content
+                                csvData = df.to_csv(index=False)
+                                dataType = "csv"
                             except Exception:
                                 # 如果仍无法解析，则按行拆分并创建简单数据结构
-                                lines = [line.strip() for line in content.split('\n') if line.strip()]
-                                dataset = [{"name": f"行{i+1}", "value": len(line)} for i, line in enumerate(lines)]
+                                dataType = "text"
+                                textData = content
                 except Exception as e:
                     logger.error(f"解析文本文件失败: {str(e)}")
                     raise HTTPException(

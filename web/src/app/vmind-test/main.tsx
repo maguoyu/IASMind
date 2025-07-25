@@ -28,8 +28,7 @@ export function VmindTestMain() {
     { name: "类别D", value: 60 },
     { name: "类别E", value: 100 }
   ]);
-  const [userPrompt, setUserPrompt] = useState<string>("生成一个柱状图，展示各类别的数值比较");
-  const [chartType, setChartType] = useState<string>("bar");
+  const [userPrompt, setUserPrompt] = useState<string>("生成一个数据可视化图表");
   const [spec, setSpec] = useState<ISpec | null>(null);
   const [insights, setInsights] = useState<ChartInsight[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -66,11 +65,6 @@ export function VmindTestMain() {
     } catch (err) {
       // 解析错误时不更新数据
     }
-  };
-
-  // 处理用户提示变更
-  const handleUserPromptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUserPrompt(e.target.value);
   };
 
   // 处理数据源类型选择
@@ -180,32 +174,7 @@ export function VmindTestMain() {
           // 直接使用服务端返回的spec
           setSpec(result.spec as ISpec);
         } else {
-          // 如果服务端没有返回spec，则使用本地生成的spec作为备份方案
-          toast.warning('服务端未返回图表规格，使用本地生成的图表');
-          
-          // 备份：使用本地图表规格
-          if (chartType === 'bar') {
-            setSpec({
-              type: 'bar',
-              data: [{ id: 'data', values: data }],
-              xField: 'name',
-              yField: 'value'
-            } as ISpec);
-          } else if (chartType === 'pie') {
-            setSpec({
-              type: 'pie',
-              data: [{ id: 'data', values: data }],
-              angleField: 'value',
-              colorField: 'name'
-            } as ISpec);
-          } else if (chartType === 'line') {
-            setSpec({
-              type: 'line',
-              data: [{ id: 'data', values: data }],
-              xField: 'name',
-              yField: 'value'
-            } as ISpec);
-          }
+          toast.warning('服务端未返回图表规格');
         }
       } else {
         toast.error('返回数据格式错误');
@@ -215,27 +184,6 @@ export function VmindTestMain() {
       toast.error('调用API时出错');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // 切换图表类型
-  const handleChartTypeChange = (type: string) => {
-    setChartType(type);
-    
-    // 根据选择的图表类型更新用户提示
-    switch(type) {
-      case 'bar':
-        setUserPrompt("生成一个柱状图，展示各类别的数值比较");
-        break;
-      case 'line':
-        setUserPrompt("生成一个折线图，展示各类别的数值比较");
-        break;
-      case 'pie':
-        setUserPrompt("生成一个饼图，展示各类别的数值比较");
-        break;
-      default:
-        // 保持原有描述
-        break;
     }
   };
 
@@ -338,52 +286,16 @@ export function VmindTestMain() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               用户提示
             </label>
-            <input
-              type="text"
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            <textarea
+              className="w-full p-3 min-h-[100px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base resize-y"
               value={userPrompt}
-              onChange={handleUserPromptChange}
-              placeholder="描述你想要生成的图表类型和需求"
+              onChange={(e) => setUserPrompt(e.target.value)}
+              placeholder="请描述你想要生成的图表类型和数据分析需求..."
+              rows={4}
             />
-          </div>
-          
-          {/* 图表类型选择 */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              图表类型
-            </label>
-            <div className="flex gap-2">
-              <button
-                className={`flex items-center gap-1 px-3 py-2 rounded-md ${
-                  chartType === 'bar' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                onClick={() => handleChartTypeChange('bar')}
-              >
-                <BarChartOutlined /> 柱状图
-              </button>
-              <button
-                className={`flex items-center gap-1 px-3 py-2 rounded-md ${
-                  chartType === 'pie' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                onClick={() => handleChartTypeChange('pie')}
-              >
-                <PieChartOutlined /> 饼图
-              </button>
-              <button
-                className={`flex items-center gap-1 px-3 py-2 rounded-md ${
-                  chartType === 'line' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-                onClick={() => handleChartTypeChange('line')}
-              >
-                <LineChartOutlined /> 折线图
-              </button>
-            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              例如：根据数据生成一个展示各类别销售趋势的折线图，并分析增长最快的类别
+            </p>
           </div>
           
           {/* 生成按钮 */}

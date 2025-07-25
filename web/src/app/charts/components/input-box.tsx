@@ -3,7 +3,7 @@
 
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Lightbulb, X } from "lucide-react";
+import { ArrowUp, Lightbulb, X, Paperclip, FileText, File } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 
@@ -23,6 +23,15 @@ import {
 } from "~/core/store";
 import { cn } from "~/lib/utils";
 
+// 文件类型
+export interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  content?: string;
+}
+
 export function InputBox({
   className,
   responding,
@@ -40,6 +49,7 @@ export function InputBox({
     options?: {
       interruptFeedback?: string;
       resources?: Array<Resource>;
+      files?: Array<UploadedFile>;
     },
   ) => void;
   onCancel?: () => void;
@@ -53,32 +63,40 @@ export function InputBox({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<MessageInputRef>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Enhancement state
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isEnhanceAnimating, setIsEnhanceAnimating] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState("");
+  
+  // 文件上传状态
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
 
   const handleSendMessage = useCallback(
     (message: string, resources: Array<Resource>) => {
       if (responding) {
         onCancel?.();
       } else {
-        if (message.trim() === "") {
+        if (message.trim() === "" && uploadedFiles.length === 0) {
           return;
         }
         if (onSend) {
           onSend(message, {
             interruptFeedback: feedback?.option.value,
             resources,
+            files: uploadedFiles,
           });
+          // 发送后清空文件列表
+          setUploadedFiles([]);
           onRemoveFeedback?.();
           // Clear enhancement animation after sending
           setIsEnhanceAnimating(false);
         }
       }
     },
-    [responding, onCancel, onSend, feedback, onRemoveFeedback],
+    [responding, onCancel, onSend, feedback, onRemoveFeedback, uploadedFiles],
   );
 
   const handleEnhancePrompt = useCallback(async () => {
@@ -116,6 +134,76 @@ export function InputBox({
       setIsEnhancing(false);
     }
   }, [currentPrompt, isEnhancing, reportStyle]);
+  
+  // 处理文件上传
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    setIsProcessingFile(true);
+    const newFiles: UploadedFile[] = [];
+    
+    // 处理每个上传的文件
+    for (let i = 0; i < e.target.files.length; i++) {
+      const file = e.target.files[i];
+      
+      try {
+        // 读取文件内容
+        const content = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          
+          // 根据文件类型选择不同的读取方式
+          if (file.type.startsWith('text/') || 
+              file.name.endsWith('.json') || 
+              file.name.endsWith('.csv') || 
+              file.name.endsWith('.txt')) {
+            reader.readAsText(file);
+          } else {
+            reader.readAsDataURL(file); // 二进制文件采用 base64 编码
+          }
+        });
+        
+        // 创建文件对象
+        newFiles.push({
+          id: `file-${Date.now()}-${i}`,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          content: content
+        });
+      } catch (error) {
+        console.error(`读取文件 ${file.name} 失败:`, error);
+      }
+    }
+    
+    // 添加到已上传文件列表
+    setUploadedFiles(prev => [...prev, ...newFiles]);
+    setIsProcessingFile(false);
+    
+    // 清空文件输入，以便能够重新上传相同的文件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+  
+  // 删除已上传文件
+  const removeFile = useCallback((fileId: string) => {
+    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
+  }, []);
+  
+  // 触发文件选择对话框
+  const openFileSelector = useCallback(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, []);
+  
+  // 格式化文件大小
+  const formatFileSize = useCallback((bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }, []);
 
   return (
     <div
@@ -192,11 +280,38 @@ export function InputBox({
             </motion.div>
           )}
         </AnimatePresence>
+        
+        {/* 显示已上传文件 */}
+        {uploadedFiles.length > 0 && (
+          <div className="px-4 pt-3 flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+            {uploadedFiles.map(file => (
+              <div 
+                key={file.id} 
+                className="bg-muted flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+              >
+                {file.type.startsWith('image/') ? (
+                  <FileText size={14} className="text-blue-500" />
+                ) : (
+                  <File size={14} className="text-blue-500" />
+                )}
+                <span className="max-w-40 truncate">{file.name}</span>
+                <span className="text-muted-foreground">({formatFileSize(file.size)})</span>
+                <X 
+                  size={14}
+                  className="cursor-pointer hover:text-destructive transition-colors ml-1" 
+                  onClick={() => removeFile(file.id)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        
         <MessageInput
           className={cn(
             "h-24 px-4 pt-5",
             feedback && "pt-9",
             isEnhanceAnimating && "transition-all duration-500",
+            uploadedFiles.length > 0 && "pt-2"
           )}
           ref={inputRef}
           onEnter={handleSendMessage}
@@ -237,7 +352,27 @@ export function InputBox({
             </Tooltip>
           )}
 
-
+          {/* 文件上传按钮 */}
+          <Tooltip title="上传临时文件进行分析">
+            <Button
+              variant="outline"
+              className="rounded-2xl"
+              onClick={openFileSelector}
+              disabled={isProcessingFile}
+            >
+              <Paperclip size={16} className="mr-1" />
+              {isProcessingFile ? '处理中...' : '上传文件'}
+            </Button>
+          </Tooltip>
+          <input 
+            ref={fileInputRef}
+            type="file" 
+            className="hidden"
+            onChange={handleFileUpload}
+            multiple
+            // 支持常见的数据文件格式
+            accept=".csv,.json,.xlsx,.xls,.txt,.text"
+          />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Tooltip title="Enhance prompt with AI">

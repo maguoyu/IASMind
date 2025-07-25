@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity } from "lucide-react";
+import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File } from "lucide-react";
 import { VChart } from '@visactor/react-vchart';
 
 import { Button } from "~/components/ui/button";
@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
-import { InputBox } from "./components/input-box";
+import { InputBox, UploadedFile } from "./components/input-box";
 
 // 消息类型定义
 interface ChatMessage {
@@ -23,6 +23,7 @@ interface ChatMessage {
   timestamp: Date;
   charts?: ChartData[];
   insights?: string[];
+  files?: UploadedFile[];
 }
 
 interface ChartData {
@@ -157,14 +158,22 @@ export function ChartsMain() {
     [selectedDataSource]
   );
 
-  const handleSendMessage = useCallback(async (question: string) => {
-    if (!question.trim()) return;
+  const handleSendMessage = useCallback(async (
+    question: string, 
+    options?: { 
+      interruptFeedback?: string; 
+      resources?: Array<any>;
+      files?: Array<UploadedFile>;
+    }
+  ) => {
+    if (!question.trim() && (!options?.files || options.files.length === 0)) return;
     
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       type: 'user',
       content: question,
-      timestamp: new Date()
+      timestamp: new Date(),
+      files: options?.files
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -172,17 +181,48 @@ export function ChartsMain() {
 
     // 模拟 API 延迟
     setTimeout(() => {
+      // 如果上传了文件，生成相应的分析内容
+      let responseContent = `基于 ${currentDataSource?.name} 的分析结果：`;
+      const hasFiles = options?.files && options.files.length > 0;
+      
+      if (hasFiles) {
+        responseContent += `\n已分析您上传的 ${options.files!.length} 个文件`;
+        
+        // 检查文件类型并调整响应
+        const fileTypes = options.files!.map(f => f.type);
+        if (fileTypes.some(t => t.includes('csv') || t.endsWith('csv'))) {
+          responseContent += "，检测到CSV数据";
+        }
+        if (fileTypes.some(t => t.includes('json'))) {
+          responseContent += "，检测到JSON数据";
+        }
+        if (fileTypes.some(t => t.includes('excel') || t.includes('xls'))) {
+          responseContent += "，检测到Excel表格";
+        }
+      }
+
+      // 基于问题和文件生成图表和洞察
       const charts = generateMockChart(question);
-      const insights = [
+      let insights = [
         "数据显示整体呈上升趋势",
         "建议关注转化率的持续优化",
         "可考虑加大投入规模较小但增长迅速的渠道"
       ];
+      
+      // 如果有文件，增加特定的文件分析洞察
+      if (hasFiles) {
+        insights = [
+          "上传文件的数据质量良好，有效记录率达98%",
+          "数据集中观察到明显的季节性模式",
+          "关键指标与行业基准相比高出15%",
+          ...insights
+        ];
+      }
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         type: 'assistant',
-        content: `基于 ${currentDataSource?.name} 的分析结果：`,
+        content: responseContent,
         timestamp: new Date(),
         charts,
         insights
@@ -197,6 +237,13 @@ export function ChartsMain() {
     handleSendMessage(question);
   }, [handleSendMessage]);
 
+  // 格式化文件大小
+  const formatFileSize = useCallback((bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }, []);
+  
   const renderChart = (chart: ChartData) => {
     const chartHeight = 300;
     
@@ -326,11 +373,43 @@ export function ChartsMain() {
                       ? 'bg-primary text-primary-foreground ml-auto' 
                       : 'bg-card border'
                   }`}>
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm whitespace-pre-line">{message.content}</p>
                     <p className={`text-xs mt-1 opacity-70`}>
                       {message.timestamp.toLocaleTimeString()}
                     </p>
                   </div>
+                  
+                  {/* 显示用户上传的文件 */}
+                  {message.type === 'user' && message.files && message.files.length > 0 && (
+                    <div className="mt-3 bg-muted/50 rounded-lg p-3 border">
+                      <div className="text-sm font-medium mb-2 flex items-center gap-1">
+                        <FileText size={14} />
+                        上传的文件
+                      </div>
+                      <ul className="space-y-2">
+                        {message.files.map((file) => (
+                          <li 
+                            key={file.id} 
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            {file.type.includes('json') ? (
+                              <File size={14} className="text-orange-500" />
+                            ) : file.type.includes('csv') || file.name.endsWith('.csv') ? (
+                              <File size={14} className="text-green-500" />
+                            ) : file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ? (
+                              <File size={14} className="text-blue-500" />
+                            ) : (
+                              <File size={14} className="text-gray-500" />
+                            )}
+                            <span className="truncate">{file.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              ({formatFileSize(file.size)})
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {/* 图表展示 */}
                   {message.charts && message.charts.length > 0 && (

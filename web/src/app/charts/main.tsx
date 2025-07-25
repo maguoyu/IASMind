@@ -627,7 +627,7 @@ export function ChartsMain() {
 
         {/* 消息列表区域 */}
         <div className="flex flex-grow flex-col">
-          <div className="flex-grow overflow-y-auto space-y-4">
+          <div className="flex-grow overflow-y-auto space-y-4 mb-6">
             {messages.map((message) => (
               <motion.div 
                 key={message.id} 
@@ -758,7 +758,7 @@ export function ChartsMain() {
           </div>
 
           {/* 快速问题 / 输入区域 */}
-          <div className="relative flex shrink-0 pb-4 flex-col">
+          <div className="relative flex shrink-0 pb-4 pt-2 flex-col">
             {!isLoading && messages.length === 0 && (
               <motion.div
                 className="w-full mb-6"

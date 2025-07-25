@@ -10,6 +10,7 @@ import os
 import json
 import tempfile
 import uuid
+import io
 from typing import List, Optional, Dict, Any, Union
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, HTTPException
 from fastapi.responses import JSONResponse
@@ -22,6 +23,8 @@ from ..auth_middleware import GetCurrentUser
 from ...database.models import FileExploration
 from ...utils.crypto import GenerateSecureToken
 from ...config.configuration import get_config
+from ...vmind.charts import VmindClient
+from ...utils.llm_utils import get_llm_config
 
 router = APIRouter(prefix="/api/data-exploration", tags=["数据探索"])
 
@@ -437,3 +440,230 @@ async def generate_insights(
         error_msg = f"生成数据洞察时出错: {str(e)}"
         print(error_msg)
         raise HTTPException(status_code=500, detail=error_msg) 
+
+
+class AnalyzeDataRequest(BaseModel):
+    """数据分析请求模型"""
+    file_id: str
+    output_type: str = "html"
+    task_type: str = "visualization"
+    user_prompt: Optional[str] = None
+    language: str = "zh"
+
+
+@router.post("/analyze", response_model=Dict[str, Any])
+async def analyze_data(
+    request: AnalyzeDataRequest,
+    user=Depends(GetCurrentUser)
+):
+    """
+    根据文件ID获取文件内容并进行数据分析和可视化
+    参考generate-chart-with-file接口的处理逻辑
+    """
+    if not user or not user.sub:
+        raise HTTPException(status_code=401, detail="需要用户身份认证")
+    
+    try:
+        # 获取文件
+        file = FileExploration.GetById(request.file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="文件不存在")
+        
+        # 检查是否是文件的所有者
+        if file.user_id != user.sub:
+            raise HTTPException(status_code=403, detail="无权访问该文件")
+        
+        # 检查文件路径是否存在
+        if not file.file_path or not os.path.exists(file.file_path):
+            raise HTTPException(status_code=404, detail="文件不存在或已被删除")
+        
+        print(f"开始分析文件: file_id={request.file_id}, 文件路径={file.file_path}")
+        
+        # 初始化数据变量
+        dataType = "dataset"
+        dataset = []
+        csvData = None
+        textData = None
+        fieldInfo = None
+        suffix = os.path.splitext(file.file_path)[1].lower()
+        
+        # 读取文件内容并进行处理，与vmind_router.py中的逻辑类似
+        try:
+            if suffix == '.csv':
+                # 读取CSV文件
+                df = pd.read_csv(file.file_path)
+                csvData = df.to_csv(index=False)
+                dataType = "csv"
+            elif suffix in ['.xls', '.xlsx']:
+                # 读取Excel文件
+                df = pd.read_excel(file.file_path)
+                csvData = df.to_csv(index=False)
+                dataType = "csv"
+            elif suffix == '.json':
+                # 读取JSON文件
+                with open(file.file_path, 'r', encoding='utf-8') as f:
+                    file_content = json.load(f)
+                    # 使用process_data函数处理JSON内容
+                    dataType, dataset, csvData, textData, fieldInfo = process_data(file_content)
+            elif suffix in ['.txt', '.text']:
+                # 读取文本文件
+                with open(file.file_path, 'r', encoding='utf-8') as f:
+                    file_content = f.read().strip()
+                    # 使用process_data函数处理文本内容
+                    dataType, dataset, csvData, textData, fieldInfo = process_data(file_content)
+            else:
+                # 不支持的文件类型
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"不支持的文件类型: {suffix}. 支持的类型: .csv, .xls, .xlsx, .json, .txt, .text"
+                )
+        except Exception as e:
+            error_msg = f"处理文件内容时出错: {str(e)}"
+            print(error_msg)
+            raise HTTPException(status_code=500, detail=error_msg)
+        
+        # 获取LLM客户端
+        llm_config = await get_llm_config("basic")
+
+        # 创建VMind客户端
+        vmind_client = VmindClient(llm_config)
+        
+        # 生成随机文件名
+        file_name = f"chart_{uuid.uuid4().hex[:8]}"
+        
+        # 调用VMind服务
+        result = await vmind_client.invoke_vmind(
+            file_name=file_name,
+            output_type=request.output_type,
+            task_type=request.task_type,
+            dataset=dataset,
+            csvData=csvData,
+            textData=textData,
+            fieldInfo=fieldInfo,
+            dataType=dataType,
+            user_prompt=request.user_prompt,
+            language=request.language
+        )
+        
+        # 如果有错误，抛出异常
+        if "error" in result:
+            print(f"VMind 处理错误: {result['error']}")
+            raise HTTPException(status_code=500, detail=result["error"])
+        
+        # 返回结果
+        print(f"数据分析完成: file_id={request.file_id}")
+        return result
+    
+    except HTTPException as he:
+        # 传递HTTP异常
+        raise he
+    except Exception as e:
+        error_msg = f"分析数据时出错: {str(e)}"
+        print(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+# 从vmind_router.py中导入process_data函数
+def process_data(input_data: Any) -> tuple[str, list, Optional[str], Optional[str], Optional[Dict]]:
+    """
+    处理各种格式的输入数据，判断数据类型并进行相应处理
+    
+    参数:
+        input_data: 输入数据，可以是字符串、列表或其他类型
+        
+    返回:
+        Tuple[str, List, Optional[str], Optional[str], Optional[Dict]]: 
+        (数据类型, 数据集, CSV数据, 文本数据, 字段信息)
+    """
+    dataType = "dataset"
+    dataset = []
+    csvData = None
+    textData = None
+    fieldInfo = None
+    
+    if input_data is None:
+        return dataType, dataset, csvData, textData, fieldInfo
+    
+    # 处理列表类型数据
+    if isinstance(input_data, list):
+        dataset = input_data
+        dataType = "dataset"
+    # 处理字符串类型数据
+    elif isinstance(input_data, str):
+        data_str = input_data.strip()
+        
+        # 尝试解析为JSON
+        try:
+            parsed_data = json.loads(data_str)
+            if isinstance(parsed_data, list):
+                dataset = parsed_data
+                dataType = "dataset"
+            else:
+                # 不是列表格式的JSON，作为文本处理
+                textData = data_str
+                dataType = "text"
+        except json.JSONDecodeError:
+            # 尝试解析为CSV
+            try:
+                # 只有符合CSV格式标准才进行解析
+                if is_valid_csv(data_str):
+                    df = pd.read_csv(io.StringIO(data_str), sep=',')  # 明确指定逗号分隔符
+                    csvData = df.to_csv(index=False)
+                    dataType = "csv"
+                    print("成功解析为CSV格式")
+                else:
+                    # 不是标准CSV格式，按文本处理
+                    textData = data_str
+                    dataType = "text"
+                    print("不符合CSV格式标准，按文本处理")
+            except Exception as e:
+                # 如果都解析失败，则按纯文本处理
+                textData = data_str
+                dataType = "text"
+                print(f"CSV解析失败: {str(e)}，按文本处理")
+    # 处理其他类型数据
+    else:
+        # 尝试转换为JSON字符串再处理
+        try:
+            json_str = json.dumps(input_data)
+            textData = json_str
+            dataType = "text"
+        except Exception:
+            # 如果转换失败，报错
+            print("不支持的数据格式")
+            raise HTTPException(status_code=400, detail="不支持的数据格式")
+    
+    print(f"数据处理结果：类型={dataType}")
+    return dataType, dataset, csvData, textData, fieldInfo
+
+
+def is_valid_csv(text: str) -> bool:
+    """
+    检查文本是否符合CSV格式标准
+    
+    参数:
+        text: 要检查的文本
+        
+    返回:
+        bool: 是否符合CSV格式标准
+    """
+    # 检查字符串是否为空
+    if not text.strip():
+        return False
+        
+    # 按行分割
+    lines = text.strip().split('\n')
+    if len(lines) < 2:  # 至少需要有标题行和一行数据
+        return False
+        
+    # 检查分隔符一致性
+    first_line_commas = lines[0].count(',')
+    if first_line_commas == 0:  # 必须有逗号分隔
+        return False
+        
+    # 检查每行字段数是否一致
+    for line in lines[1:]:
+        if line.strip() and line.count(',') != first_line_commas:
+            return False
+            
+    return True 

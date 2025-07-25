@@ -32,6 +32,26 @@ export interface DataInsightsResponse {
   insights: Record<string, any>;
 }
 
+export interface AnalyzeDataRequest {
+  file_id: string;
+  output_type?: string;
+  task_type?: string;
+  user_prompt?: string;
+  language?: string;
+}
+
+export interface AnalyzeDataResponse {
+  spec?: Record<string, any>;
+  insights?: Array<{
+    name: string;
+    type: string;
+    textContent: {
+      plainText: string;
+    };
+  }>;
+  error?: string;
+}
+
 // API Client
 export const DataExplorationAPI = {
   // 上传文件
@@ -73,6 +93,11 @@ export const DataExplorationAPI = {
   // 生成数据洞察
   generateInsights: async (fileId: string): Promise<ApiResponse<DataInsightsResponse>> => {
     return apiClient.post(`/api/data-exploration/files/${fileId}/insights`);
+  },
+  
+  // 分析数据
+  analyzeData: async (request: AnalyzeDataRequest): Promise<ApiResponse<AnalyzeDataResponse>> => {
+    return apiClient.post('/api/data-exploration/analyze', request);
   }
 };
 

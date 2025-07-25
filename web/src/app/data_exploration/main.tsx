@@ -2,7 +2,7 @@
 
 import { BarChartOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined, UploadOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { VChart } from '@visactor/react-vchart';
 import { toast } from "sonner";
 
@@ -26,6 +26,9 @@ export function DataExplorationMain() {
   const [activeTab, setActiveTab] = useState<'preview' | 'visualization'>('preview');
   const [insightsData, setInsightsData] = useState<Record<string, any> | null>(null);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [visualizationSpec, setVisualizationSpec] = useState<Record<string, any> | null>(null);
+  const [userPrompt, setUserPrompt] = useState<string>("");
   const router = useRouter();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
@@ -350,6 +353,105 @@ export function DataExplorationMain() {
     }
   }, [isAuthenticated, handleAuthError]);
 
+  // 数据分析功能
+  const handleAnalyzeData = useCallback(async (fileId: string, prompt: string) => {
+    if (!fileId) return;
+    
+    // 重置旧的数据和状态
+    setIsAnalyzing(true);
+    setVisualizationSpec(null);
+    setInsightsData(null); // 清除旧的洞察数据
+    
+    try {
+      const request = {
+        file_id: fileId,
+        output_type: "html",
+        task_type: "visualization",
+        user_prompt: prompt || "分析数据并生成最合适的可视化图表",
+        language: "zh"
+      };
+      
+      console.log("发送数据分析请求:", request);
+      const response = await DataExplorationAPI.analyzeData(request);
+      console.log("收到API响应:", response);
+      
+      if (!response || !response.data) {
+        toast.error("未收到服务器响应");
+        return;
+      }
+      
+      if (response.data.error) {
+        toast.error(`数据分析失败: ${response.data.error}`);
+        return;
+      }
+      
+      // 处理数据洞察 - 处理多种可能的格式
+      const extractInsights = () => {
+        // 检查insights数组
+        if (Array.isArray(response.data.insights) && response.data.insights.length > 0) {
+          console.log("从insights数组提取洞察:", response.data.insights);
+          return {
+            recommendations: response.data.insights.map((insight: any) => ({
+              type: "visualization",
+              chart_type: insight.type || "unknown",
+              description: insight.textContent?.plainText || insight.description || "无描述"
+            }))
+          };
+        }
+        
+        // 检查insight_md字段
+        if (response.data.insight_md) {
+          console.log("从insight_md提取洞察:", response.data.insight_md);
+          return {
+            recommendations: [{
+              type: "visualization",
+              chart_type: "general",
+              description: response.data.insight_md
+            }]
+          };
+        }
+        
+        // 检查是否有直接的recommendations
+        if (response.data.recommendations && Array.isArray(response.data.recommendations)) {
+          console.log("从recommendations提取洞察:", response.data.recommendations);
+          return {
+            recommendations: response.data.recommendations
+          };
+        }
+        
+        return null;
+      };
+      
+      const insightsData = extractInsights();
+      if (insightsData) {
+        console.log("处理后的数据洞察:", insightsData);
+        setInsightsData(insightsData);
+      } else {
+        console.log("未找到任何数据洞察");
+      }
+      
+      // 处理可视化规格
+      if (response.data.spec) {
+        console.log("收到新的可视化规格:", response.data.spec);
+        setVisualizationSpec(response.data.spec);
+        toast.success("数据分析完成，已生成可视化结果");
+        // 自动切换到可视化标签
+        setActiveTab('visualization');
+      } else {
+        toast.warning("未能生成可视化结果");
+        setVisualizationSpec(null);
+      }
+    } catch (error) {
+      console.error("数据分析失败:", error);
+      toast.error("数据分析请求失败，请稍后重试");
+      // 确保错误情况下也清除数据
+      setInsightsData(null);
+      setVisualizationSpec(null);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, []);
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -433,302 +535,10 @@ export function DataExplorationMain() {
         </div>
       </div>
 
-      {/* 右侧内容区域 */}
-      <div className="flex-1 p-6 bg-gray-50 dark:bg-gray-800">
-        {selectedFile ? (
-          <div className="h-full">
-            {/* 标签页导航 */}
-            <div className="flex space-x-1 mb-4">
-              <button
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'preview' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                }`}
-                onClick={() => setActiveTab('preview')}
-              >
-                <EyeOutlined />
-                数据预览
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                  activeTab === 'visualization' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                }`}
-                onClick={() => {
-                  setActiveTab('visualization');
-                  // 如果没有洞察数据，自动生成
-                  if (!insightsData && selectedFile) {
-                    handleGenerateInsights(selectedFile.id);
-                  }
-                }}
-              >
-                <BarChartOutlined />
-                数据分析
-              </button>
-            </div>
-
-            {/* 内容区域 */}
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
-              {activeTab === 'preview' && (
-                <div className="p-6">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                      <EyeOutlined />
-                      数据预览 - {selectedFile.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      查看数据文件的前 20 行内容
-                    </p>
-                  </div>
-                  {selectedFile.preview && selectedFile.preview.length > 0 ? (
-                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <div className="overflow-x-auto">
-                        <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)", height: "max-content" }}>
-                          <table className="w-full border-collapse">
-                            <thead className="bg-gray-50 dark:bg-gray-800">
-                              <tr>
-                                {Object.keys(selectedFile.preview[0] ?? {}).map((key) => (
-                                  <th key={key} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                                    {key}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {selectedFile.preview.slice(0, 20).map((row, index) => (
-                                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                  {Object.values(row).map((value, cellIndex) => (
-                                    <td key={cellIndex} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 max-w-[200px] truncate">
-                                      {value !== null && value !== undefined ? String(value) : ""}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      暂无预览数据
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'visualization' && (
-                <div className="p-6 overflow-auto max-h-[calc(100vh-200px)]">
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                      <BarChartOutlined />
-                      数据分析 - {selectedFile.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      基于上传的数据生成图表和智能分析洞察
-                    </p>
-                    
-                    {/* 数据统计卡片 */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                          {selectedFile.preview?.length || 0}
-                        </div>
-                        <div className="text-sm text-blue-600 dark:text-blue-400">数据记录</div>
-                      </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {selectedFile.preview && selectedFile.preview.length > 0 ? Object.keys(selectedFile.preview[0] ?? {}).length : 0}
-                        </div>
-                        <div className="text-sm text-green-600 dark:text-green-400">数据字段</div>
-                      </div>
-                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
-                        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                          {formatFileSize(selectedFile.size)}
-                        </div>
-                        <div className="text-sm text-purple-600 dark:text-purple-400">文件大小</div>
-                      </div>
-                      <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
-                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                          {selectedFile.uploadTime.toLocaleDateString()}
-                        </div>
-                        <div className="text-sm text-orange-600 dark:text-orange-400">上传时间</div>
-                      </div>
-                    </div>
-                    
-                    {/* 刷新洞察按钮 */}
-                    <div className="flex justify-end mb-4">
-                      <button
-                        onClick={() => selectedFile && handleGenerateInsights(selectedFile.id)}
-                        disabled={isGeneratingInsights}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2 hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isGeneratingInsights ? "生成中..." : "刷新数据洞察"}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 柱状图和洞察 */}
-                    <div className="space-y-4">
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">分类数据对比</h4>
-                        {(() => {
-                          const barValues = generateVisualizationData.barData ?? [];
-                          const barSpec = {
-                            type: 'bar',
-                            data: [{ id: 'bar', values: barValues }],
-                            xField: 'name',
-                            yField: ['value', 'target']
-                          };
-                          return <VChart spec={barSpec} />;
-                        })()}
-                      </div>
-                      {/* 柱状图相关的数据洞察 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <div className="flex items-start gap-3">
-                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">柱状图洞察</span>
-                          <div>
-                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">分类比较分析</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {insightsData?.recommendations?.find((r: {chart_type: string, description: string}) => r.chart_type === 'bar')?.description ?? 
-                              "类别 C 的数值最高，类别 A 和 B 分布相对均匀，建议重点关注类别 C 的业务表现。"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 饼图和洞察 */}
-                    <div className="space-y-4">
-                      {/* 修复饼图 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">数据分布比例</h4>
-                        {(() => {
-                          const pieValues = generateVisualizationData.pieData ?? [];
-                          const pieSpec = {
-                            type: 'pie',
-                            data: [{ id: 'pie', values: pieValues }],
-                            angleField: 'value',
-                            colorField: 'name'
-                          };
-                          return <VChart spec={pieSpec} />;
-                        })()}
-                      </div>
-                      {/* 饼图相关的数据洞察 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <div className="flex items-start gap-3">
-                          <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium">比例洞察</span>
-                          <div>
-                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">数据分布分析</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {insightsData?.data_quality?.summary || 
-                              "数据完整性良好，无明显异常值。各类别占比符合业务规律，可进一步探索各类别的内部结构。"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 折线图和洞察 */}
-                    <div className="space-y-4">
-                      {/* 修复折线图 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">趋势分析</h4>
-                        {(() => {
-                          const lineValues = generateVisualizationData.lineData ?? [];
-                          const lineSpec = {
-                            type: 'line',
-                            data: [{ id: 'line', values: lineValues }],
-                            xField: 'month',
-                            yField: ['sales', 'profit', 'cost']
-                          };
-                          return <VChart spec={lineSpec} />;
-                        })()}
-                      </div>
-                      {/* 折线图相关的数据洞察 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <div className="flex items-start gap-3">
-                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs font-medium">趋势洞察</span>
-                          <div>
-                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">时间序列分析</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {insightsData?.recommendations?.find(r => r.chart_type === 'line')?.description || 
-                              "数据呈现稳定增长趋势，6月达到峰值。利润与销售额呈正相关，成本维持在较稳定水平。"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 散点图和洞察 */}
-                    <div className="space-y-4">
-                      {/* 修复散点图 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">相关性分析</h4>
-                        {(() => {
-                          const scatterValues = generateVisualizationData.scatterData ?? [];
-                          const scatterSpec = {
-                            type: 'scatter',
-                            data: [{ id: 'scatter', values: scatterValues }],
-                            xField: 'x',
-                            yField: 'y'
-                          };
-                          return <VChart spec={scatterSpec} />;
-                        })()}
-                      </div>
-                      {/* 散点图相关的数据洞察 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <div className="flex items-start gap-3">
-                          <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded text-xs font-medium">相关性洞察</span>
-                          <div>
-                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">变量相关性</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {insightsData?.statistics?.correlation || 
-                              "X轴和Y轴变量呈现显著的正相关关系，相关系数约为0.78。数据点呈线性分布，少量异常值需要关注。"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 面积图和洞察 */}
-                    <div className="space-y-4 lg:col-span-2">
-                      {/* 修复面积图 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <h4 className="font-medium mb-4 text-gray-900 dark:text-gray-100">财务趋势分析</h4>
-                        {(() => {
-                          const areaValues = generateVisualizationData.areaData ?? [];
-                          const areaSpec = {
-                            type: 'area',
-                            data: [{ id: 'area', values: areaValues }],
-                            xField: 'month',
-                            yField: ['revenue', 'expenses', 'profit']
-                          };
-                          return <VChart spec={areaSpec} />;
-                        })()}
-                      </div>
-                      {/* 面积图相关的数据洞察 */}
-                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-                        <div className="flex items-start gap-3">
-                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs font-medium">财务洞察</span>
-                          <div>
-                            <h4 className="font-medium mb-1 text-gray-900 dark:text-gray-100">综合财务分析</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {insightsData?.data_quality?.summary || 
-                              "收入呈增长趋势，从1月到6月增加了约66%。支出增长速度慢于收入，导致利润率从1月的33%上升到6月的43%，财务状况良好。"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
+      {/* 右侧内容区 */}
+      <div className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        {/* 如果没有选中文件，显示欢迎信息 */}
+        {!selectedFile ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <UploadOutlined className="text-6xl text-gray-400 mb-4" />
@@ -743,6 +553,196 @@ export function DataExplorationMain() {
               </div>
             </div>
           </div>
+        ) : (
+          <>
+            {/* 文件详情头部 */}
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                数据文件 - {selectedFile.name}
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={() => handleFileDelete(selectedFile.id)}
+                  disabled={isGeneratingInsights || isAnalyzing}
+                >
+                  <DeleteOutlined className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
+                <button
+                  className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={() => handleGenerateInsights(selectedFile.id)}
+                  disabled={isGeneratingInsights}
+                >
+                  <EyeOutlined className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
+            </div>
+            
+            {/* 标签切换 */}
+            <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
+              <nav className="flex space-x-4">
+                <button
+                  className={`py-2 px-4 ${activeTab === 'preview' ? 'border-b-2 border-blue-500 font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  onClick={() => setActiveTab('preview')}
+                >
+                  <EyeOutlined className="h-5 w-5 inline-block mr-1" />
+                  数据预览
+                </button>
+                <button
+                  className={`py-2 px-4 ${activeTab === 'visualization' ? 'border-b-2 border-blue-500 font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                  onClick={() => setActiveTab('visualization')}
+                >
+                  <BarChartOutlined className="h-5 w-5 inline-block mr-1" />
+                  数据可视化
+                </button>
+              </nav>
+            </div>
+
+            {/* 内容区域 */}
+            {activeTab === 'preview' ? (
+              <div className="p-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <EyeOutlined />
+                    数据预览 - {selectedFile.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    查看数据文件的前 20 行内容
+                  </p>
+                </div>
+                {selectedFile.preview && selectedFile.preview.length > 0 ? (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="overflow-x-auto">
+                      <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)", height: "max-content" }}>
+                        <table className="w-full border-collapse">
+                          <thead className="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                              {Object.keys(selectedFile.preview[0] ?? {}).map((key) => (
+                                <th key={key} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                  {key}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedFile.preview.slice(0, 20).map((row, index) => (
+                              <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                {Object.values(row).map((value, cellIndex) => (
+                                  <td key={cellIndex} className="border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 max-w-[200px] truncate">
+                                    {value !== null && value !== undefined ? String(value) : ""}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    暂无预览数据
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* 数据可视化标签 */
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">数据可视化</h3>
+                  
+                  {/* 用户提示输入 */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      用户提示
+                    </label>
+                    <div className="flex flex-col gap-2">
+                      <textarea
+                        className="w-full p-3 min-h-[100px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base resize-y"
+                        value={userPrompt}
+                        onChange={(e) => setUserPrompt(e.target.value)}
+                        placeholder="描述你想要生成的图表类型和需求，例如：按类别展示销售额的饼图，并分析增长最快的类别"
+                        rows={4}
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        提示：尝试指定图表类型、数据关系、分析需求等，描述越具体生成的结果越精确
+                      </p>
+                      <div className="flex justify-end">
+                        <button
+                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 flex items-center"
+                          onClick={() => handleAnalyzeData(selectedFile.id, userPrompt)}
+                          disabled={isAnalyzing}
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <EyeOutlined className="h-5 w-5 inline-block mr-1 animate-spin" />
+                              分析中...
+                            </>
+                          ) : (
+                            <>
+                              <BarChartOutlined className="h-5 w-5 inline-block mr-1" />
+                              生成图表
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 图表显示区域 */}
+                  {visualizationSpec ? (
+                    <div className="h-[500px] w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700">
+                      <VChart spec={visualizationSpec} />
+                    </div>
+                  ) : (
+                    <div className="h-[500px] w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
+                      <div className="text-center text-gray-500 dark:text-gray-400">
+                        <BarChartOutlined className="h-16 w-16 mx-auto mb-2" />
+                        <p className="text-lg">请点击"生成图表"按钮开始分析</p>
+                        <p className="text-sm">支持根据数据自动生成最适合的可视化图表</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 数据洞察部分 */}
+                  {insightsData && insightsData.recommendations && insightsData.recommendations.length > 0 ? (
+                    <div className="mt-4">
+                      <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">数据洞察</h4>
+                      <div className="space-y-2">
+                        {insightsData.recommendations.map((recommendation, index) => (
+                          <div 
+                            key={index}
+                            className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border-l-4 border-blue-400"
+                          >
+                            <p className="text-gray-700 dark:text-gray-200">
+                              {handleRecommendation(recommendation)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : isAnalyzing ? (
+                    <div className="mt-4">
+                      <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">数据洞察</h4>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                          <span className="text-gray-500 dark:text-gray-400">生成数据洞察中...</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : visualizationSpec ? (
+                    <div className="mt-4">
+                      <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">数据洞察</h4>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700">
+                        <p className="text-gray-500 dark:text-gray-400">此图表未生成洞察信息</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File } from "lucide-react";
+import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock } from "lucide-react";
 import { VChart } from '@visactor/react-vchart';
 
 import { Button } from "~/components/ui/button";
@@ -43,114 +43,106 @@ interface DataSource {
   status: 'connected' | 'disconnected' | 'syncing';
 }
 
-// 模拟数据
+// 航空数据源
 const mockDataSources: DataSource[] = [
   {
-    id: 'sales_db',
-    name: '销售数据库',
-    description: '包含销售订单、客户信息和产品数据',
-    tables: 12,
+    id: 'flight_db',
+    name: '航班数据库',
+    description: '包含航班信息、起降时间和乘客数据',
+    tables: 16,
     lastUpdated: new Date('2024-01-15'),
     status: 'connected'
   },
   {
-    id: 'marketing_db',
-    name: '营销数据库',
-    description: '广告投放、转化率和用户行为数据',
-    tables: 8,
-    lastUpdated: new Date('2024-01-14'),
+    id: 'fuel_db',
+    name: '航油数据库',
+    description: '航油消耗、价格波动和库存数据',
+    tables: 10,
+    lastUpdated: new Date('2024-01-17'),
     status: 'connected'
   },
   {
-    id: 'finance_db',
-    name: '财务数据库',
-    description: '财务报表、成本分析和预算数据',
-    tables: 6,
-    lastUpdated: new Date('2024-01-13'),
+    id: 'maintenance_db',
+    name: '维护数据库',
+    description: '飞机维护记录、零部件更换和检修数据',
+    tables: 8,
+    lastUpdated: new Date('2024-01-14'),
     status: 'syncing'
   }
 ];
 
+// 航空相关快速问题
 const quickQuestions = [
-  "最近30天的销售趋势如何？",
-  "哪个产品类别销量最好？",
-  "今年营销ROI是多少？",
-  "各地区销售额对比"
+  "过去30天的航油消耗趋势如何？",
+  "哪些航线的航油效率最高？",
+  "不同机型的航油成本对比",
+  "各机场起降架次分布"
 ];
 
-// 模拟图表数据生成器
+// 模拟图表数据生成器 - 航空数据
 const generateMockChart = (question: string): ChartData[] => {
-  if (question.includes('趋势') || question.includes('变化')) {
+  if (question.includes('趋势') || question.includes('消耗')) {
     return [{
       type: 'line',
-      title: '销售趋势分析',
+      title: '航油消耗趋势分析',
       data: [
-        { month: '10月', sales: 120000, target: 100000 },
-        { month: '11月', sales: 140000, target: 120000 },
-        { month: '12月', sales: 160000, target: 140000 },
-        { month: '1月', sales: 180000, target: 160000 }
+        { month: '10月', consumption: 98500, flights: 3200 },
+        { month: '11月', consumption: 105000, flights: 3350 },
+        { month: '12月', consumption: 115000, flights: 3700 },
+        { month: '1月', consumption: 108000, flights: 3500 }
       ]
     }];
   }
   
-  if (question.includes('类别') || question.includes('产品')) {
+  if (question.includes('航线') || question.includes('效率')) {
     return [{
       type: 'bar',
-      title: '产品类别销量对比',
+      title: '主要航线航油效率对比',
       data: [
-        { category: '电子产品', sales: 350000, profit: 70000 },
-        { category: '服装配饰', sales: 280000, profit: 85000 },
-        { category: '家居用品', sales: 220000, profit: 55000 },
-        { category: '运动健身', sales: 180000, profit: 45000 },
-        { category: '美妆护理', sales: 240000, profit: 72000 }
+        { route: '北京-上海', efficiency: 0.92, flights: 420 },
+        { route: '北京-广州', efficiency: 0.87, flights: 350 },
+        { route: '上海-深圳', efficiency: 0.90, flights: 380 },
+        { route: '广州-成都', efficiency: 0.85, flights: 290 },
+        { route: '成都-西安', efficiency: 0.93, flights: 240 }
       ]
     }];
   }
   
-  if (question.includes('地区') || question.includes('区域')) {
+  if (question.includes('机场') || question.includes('架次')) {
     return [{
       type: 'pie',
-      title: '各地区销售额分布',
+      title: '各机场起降架次分布',
       data: [
-        { name: '华东地区', value: 450000, color: '#8884d8' },
-        { name: '华南地区', value: 380000, color: '#82ca9d' },
-        { name: '华北地区', value: 320000, color: '#ffc658' },
-        { name: '西南地区', value: 280000, color: '#ff7300' },
-        { name: '东北地区', value: 210000, color: '#8dd1e1' }
+        { name: '首都国际机场', value: 8500, color: '#8884d8' },
+        { name: '浦东国际机场', value: 7800, color: '#82ca9d' },
+        { name: '白云国际机场', value: 6900, color: '#ffc658' },
+        { name: '双流国际机场', value: 4200, color: '#ff7300' },
+        { name: '咸阳国际机场', value: 3600, color: '#8dd1e1' }
       ]
     }];
   }
   
-  if (question.includes('ROI') || question.includes('成本')) {
+  if (question.includes('成本') || question.includes('机型')) {
     return [{
       type: 'area',
-      title: '营销ROI趋势',
+      title: '不同机型航油成本趋势',
       data: [
-        { month: '9月', investment: 50000, revenue: 180000, roi: 3.6 },
-        { month: '10月', investment: 60000, revenue: 220000, roi: 3.7 },
-        { month: '11月', investment: 55000, revenue: 210000, roi: 3.8 },
-        { month: '12月', investment: 70000, revenue: 280000, roi: 4.0 },
-        { month: '1月', investment: 65000, revenue: 270000, roi: 4.2 }
+        { month: '9月', A320: 28500, B737: 29600, B777: 68000 },
+        { month: '10月', A320: 29400, B737: 30200, B777: 69500 },
+        { month: '11月', A320: 30100, B737: 31000, B777: 71200 },
+        { month: '12月', A320: 31000, B737: 32400, B777: 73500 },
+        { month: '1月', A320: 29800, B737: 31500, B777: 70800 }
       ]
     }];
   }
   
-  // 默认返回综合数据
-  return [{
-    type: 'bar',
-    title: '数据总览',
-    data: [
-      { name: '指标A', value: 120 },
-      { name: '指标B', value: 180 },
-      { name: '指标C', value: 150 },
-      { name: '指标D', value: 200 }
-    ]
-  }];
+  // 默认不返回任何图表
+  return [];
 };
 
 export function ChartsMain() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [selectedDataSource, setSelectedDataSource] = useState('sales_db');
+  const [selectedDataSource, setSelectedDataSource] = useState('fuel_db');
   const [isLoading, setIsLoading] = useState(false);
 
   const currentDataSource = useMemo(() => 
@@ -191,31 +183,70 @@ export function ChartsMain() {
         // 检查文件类型并调整响应
         const fileTypes = options.files!.map(f => f.type);
         if (fileTypes.some(t => t.includes('csv') || t.endsWith('csv'))) {
-          responseContent += "，检测到CSV数据";
+          responseContent += "，检测到CSV格式航班数据";
         }
         if (fileTypes.some(t => t.includes('json'))) {
-          responseContent += "，检测到JSON数据";
+          responseContent += "，检测到JSON格式航油记录";
         }
         if (fileTypes.some(t => t.includes('excel') || t.includes('xls'))) {
-          responseContent += "，检测到Excel表格";
+          responseContent += "，检测到Excel表格航空数据";
         }
       }
 
       // 基于问题和文件生成图表和洞察
       const charts = generateMockChart(question);
       let insights = [
-        "数据显示整体呈上升趋势",
-        "建议关注转化率的持续优化",
-        "可考虑加大投入规模较小但增长迅速的渠道"
+        "航油消耗与航班架次呈正相关，但单架次消耗有下降趋势",
+        "天气因素对航油消耗的影响约占总波动的15%",
+        "建议优化航路规划，可进一步降低3-5%的燃油消耗"
       ];
       
       // 如果有文件，增加特定的文件分析洞察
       if (hasFiles) {
+        // 替换为航油销售量的图表
+        charts.unshift({
+          type: 'line',
+          title: '最近30天航油销售量分析',
+          data: [
+            { date: '12-20', volume: 15600, revenue: 156000 },
+            { date: '12-21', volume: 14800, revenue: 148000 },
+            { date: '12-22', volume: 16200, revenue: 162000 },
+            { date: '12-23', volume: 15900, revenue: 159000 },
+            { date: '12-24', volume: 14500, revenue: 145000 },
+            { date: '12-25', volume: 13200, revenue: 132000 },
+            { date: '12-26', volume: 14100, revenue: 141000 },
+            { date: '12-27', volume: 15300, revenue: 153000 },
+            { date: '12-28', volume: 16500, revenue: 165000 },
+            { date: '12-29', volume: 17200, revenue: 172000 },
+            { date: '12-30', volume: 17500, revenue: 175000 },
+            { date: '12-31', volume: 18100, revenue: 181000 },
+            { date: '01-01', volume: 15800, revenue: 158000 },
+            { date: '01-02', volume: 16300, revenue: 163000 },
+            { date: '01-03', volume: 16700, revenue: 167000 },
+            { date: '01-04', volume: 17100, revenue: 171000 },
+            { date: '01-05', volume: 17400, revenue: 174000 },
+            { date: '01-06', volume: 16900, revenue: 169000 },
+            { date: '01-07', volume: 16500, revenue: 165000 },
+            { date: '01-08', volume: 17300, revenue: 173000 },
+            { date: '01-09', volume: 17800, revenue: 178000 },
+            { date: '01-10', volume: 18200, revenue: 182000 },
+            { date: '01-11', volume: 18500, revenue: 185000 },
+            { date: '01-12', volume: 18900, revenue: 189000 },
+            { date: '01-13', volume: 19200, revenue: 192000 },
+            { date: '01-14', volume: 19500, revenue: 195000 },
+            { date: '01-15', volume: 19800, revenue: 198000 },
+            { date: '01-16', volume: 20100, revenue: 201000 },
+            { date: '01-17', volume: 20400, revenue: 204000 },
+            { date: '01-18', volume: 20700, revenue: 207000 },
+          ]
+        });
+        
         insights = [
-          "上传文件的数据质量良好，有效记录率达98%",
-          "数据集中观察到明显的季节性模式",
-          "关键指标与行业基准相比高出15%",
-          ...insights
+          "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
+          "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
+          "元旦假期后航油需求快速回升，日均增长率为2.1%",
+          "预计下月销量将突破21000吨，需提前做好供应链准备",
+          "数据显示最佳加油量应控制在85-90%油箱容量"
         ];
       }
 
@@ -255,8 +286,8 @@ export function ChartsMain() {
               spec={{
                 type: 'bar',
                 data: [{ id: 'barData', values: chart.data }],
-                xField: chart.data[0]?.category ? 'category' : 'name',
-                yField: chart.data[0]?.sales ? 'sales' : 'value'
+                xField: chart.data[0]?.route ? 'route' : (chart.data[0]?.category ? 'category' : 'name'),
+                yField: chart.data[0]?.efficiency ? 'efficiency' : (chart.data[0]?.sales ? 'sales' : 'value')
               }} 
             />
           </div>
@@ -283,8 +314,8 @@ export function ChartsMain() {
               spec={{
                 type: 'line',
                 data: [{ id: 'lineData', values: chart.data }],
-                xField: 'month',
-                yField: 'sales'
+                xField: chart.data[0]?.month ? 'month' : (chart.data[0]?.date ? 'date' : 'x'),
+                yField: chart.data[0]?.consumption ? 'consumption' : (chart.data[0]?.volume ? 'volume' : 'sales')
               }}
             />
           </div>
@@ -298,7 +329,7 @@ export function ChartsMain() {
                 type: 'area',
                 data: [{ id: 'areaData', values: chart.data }],
                 xField: 'month',
-                yField: 'revenue'
+                yField: chart.data[0]?.A320 ? ['A320', 'B737', 'B777'] : 'revenue'
               }}
             />
           </div>
@@ -499,10 +530,10 @@ export function ChartsMain() {
                   transition={{ duration: 0.3 }}
                 >
                   <h3 className="mb-2 text-center text-3xl font-medium">
-                    📊 欢迎使用 Chat BI
+                    ✈️ 欢迎使用航空数据分析
                   </h3>
                   <div className="text-muted-foreground px-4 text-center text-lg">
-                    使用自然语言查询您的数据，获得即时的可视化分析结果
+                    使用自然语言查询航班和航油数据，获得即时的可视化分析结果
                   </div>
                 </motion.div>
 
@@ -528,8 +559,8 @@ export function ChartsMain() {
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-6 h-6 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
-                            {index === 0 && <TrendingUp className="w-3 h-3 text-primary" />}
-                            {index === 1 && <BarChart3 className="w-3 h-3 text-primary" />}
+                            {index === 0 && <Fuel className="w-3 h-3 text-primary" />}
+                            {index === 1 && <Plane className="w-3 h-3 text-primary" />}
                             {index === 2 && <DollarSign className="w-3 h-3 text-primary" />}
                             {index === 3 && <PieChart className="w-3 h-3 text-primary" />}
                           </div>

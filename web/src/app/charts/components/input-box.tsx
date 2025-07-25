@@ -317,7 +317,7 @@ export function InputBox({
           onEnter={handleSendMessage}
           onChange={setCurrentPrompt}
           disableMention={true}
-          placeholder="请输入您的分析问题，例如：最近30天的销售趋势如何？"
+          placeholder="请输入您的航空数据分析问题，例如：上个月B737机型的航油消耗量如何？"
         />
       </div>
       <div className="flex items-center px-4 py-2">

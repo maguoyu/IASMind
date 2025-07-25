@@ -28,6 +28,16 @@ export interface GenerateChartRequest {
   language?: string;
 }
 
+// 使用文件ID进行分析的请求模型
+export interface AnalyzeWithFileIdRequest {
+  file_id: string;
+  file_name: string;
+  output_type: string;
+  task_type?: string;
+  user_prompt?: string;
+  language?: string;
+}
+
 // 图表生成响应模型
 export interface GenerateChartResponse {
   chart_path?: string;
@@ -36,6 +46,7 @@ export interface GenerateChartResponse {
   error?: string;
   spec?: Record<string, any>; // 图表规范
   insights?: ChartInsight[]; // 数据洞察数组
+  file_id?: string; // 文件ID，用于后续对话
 }
 
 // VMind API 客户端
@@ -56,5 +67,12 @@ export const VmindAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
+  },
+  
+  // 使用文件ID继续分析
+  analyzeWithFileId: async (
+    request: AnalyzeWithFileIdRequest
+  ): Promise<ApiResponse<GenerateChartResponse>> => {
+    return apiClient.post('/api/vmind/analyze-with-file-id', request);
   }
 }; 

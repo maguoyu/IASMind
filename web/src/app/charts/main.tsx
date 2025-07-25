@@ -5,15 +5,18 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock } from "lucide-react";
+import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X } from "lucide-react";
 import { VChart } from '@visactor/react-vchart';
+import { toast } from "sonner"; // 修正toast导入
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
-import { InputBox, UploadedFile } from "./components/input-box";
+import { InputBox } from "./components/input-box";
+import type { UploadedFile } from "./components/input-box";
+import { VmindAPI } from "~/core/api/vmind"; // 导入VmindAPI
 
 // 消息类型定义
 interface ChatMessage {
@@ -27,7 +30,7 @@ interface ChatMessage {
 }
 
 interface ChartData {
-  type: 'bar' | 'pie' | 'line' | 'area';
+  type: 'bar' | 'pie' | 'line' | 'area' | 'custom';
   title: string;
   data: any[];
   config?: any;
@@ -144,11 +147,43 @@ export function ChartsMain() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedDataSource, setSelectedDataSource] = useState('fuel_db');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataSourceDisabled, setIsDataSourceDisabled] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [showUploadButton, setShowUploadButton] = useState(false); 
 
   const currentDataSource = useMemo(() => 
     mockDataSources.find(ds => ds.id === selectedDataSource) || mockDataSources[0],
     [selectedDataSource]
   );
+
+  // 处理数据源变更
+  const handleDataSourceChange = useCallback((value: string) => {
+    setSelectedDataSource(value);
+    
+    // 如果选择了上传临时文件，显示上传按钮
+    if (value === 'uploaded_file') {
+      setShowUploadButton(true);
+      
+      // 如果选择了上传临时文件，但没有上传文件，显示提示
+      if (!uploadedFiles || uploadedFiles.length === 0) {
+        toast.info('请选择文件进行分析');
+      }
+    } else {
+      // 如果选择了其他数据源，清理已上传的文件，隐藏上传按钮
+      setUploadedFiles([]);
+      setShowUploadButton(false);
+    }
+  }, [uploadedFiles]);
+  
+  // 处理文件上传
+  const handleFileUpload = useCallback((files: UploadedFile[]) => {
+    setUploadedFiles(files);
+    if (files.length > 0 && files[0]?.name) {
+      toast.success(`已选择文件: ${files[0].name}`);
+      // 有文件时锁定为临时文件数据源
+      setSelectedDataSource('uploaded_file');
+    }
+  }, []);
 
   const handleSendMessage = useCallback(async (
     question: string, 
@@ -158,111 +193,281 @@ export function ChartsMain() {
       files?: Array<UploadedFile>;
     }
   ) => {
-    if (!question.trim() && (!options?.files || options.files.length === 0)) return;
+    if (!question.trim() && (!uploadedFiles || uploadedFiles.length === 0)) return;
     
+    // 检查是否选择了临时文件数据源但没上传文件
+    if (selectedDataSource === 'uploaded_file' && (!uploadedFiles || uploadedFiles.length === 0)) {
+      toast.error('请先选择文件再进行分析');
+      return;
+    }
+    
+    // 使用本地状态中的文件
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       type: 'user',
       content: question,
       timestamp: new Date(),
-      files: options?.files
+      files: uploadedFiles
     };
 
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
-    // 模拟 API 延迟
-    setTimeout(() => {
-      // 如果上传了文件，生成相应的分析内容
-      let responseContent = `基于 ${currentDataSource?.name} 的分析结果：`;
-      const hasFiles = options?.files && options.files.length > 0;
-      
-      if (hasFiles) {
-        responseContent += `\n已分析您上传的 ${options.files!.length} 个文件`;
+    try {
+      // 如果有上传的文件，调用API
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        // 首次上传文件分析
+        const file = uploadedFiles[0];
         
-        // 检查文件类型并调整响应
-        const fileTypes = options.files!.map(f => f.type);
-        if (fileTypes.some(t => t.includes('csv') || t.endsWith('csv'))) {
-          responseContent += "，检测到CSV格式航班数据";
+        // 文件检查
+        if (!file) {
+          throw new Error("无效的文件对象");
         }
-        if (fileTypes.some(t => t.includes('json'))) {
-          responseContent += "，检测到JSON格式航油记录";
+        
+        // 创建FormData
+        const formData = new FormData();
+        // 从base64或内容创建文件对象
+        let fileObj: Blob | null = null;
+        
+        try {
+          console.log("处理文件:", file.name, "类型:", file.type);
+          
+          if (file.content) {
+            // 检查内容是否为base64
+            if (typeof file.content === 'string' && file.content.startsWith('data:')) {
+              // 处理base64格式
+              console.log("处理为base64格式文件");
+              try {
+                // 尝试提取base64部分
+                const base64Match = file.content.match(/;base64,(.+)$/);
+                if (base64Match && base64Match[1]) {
+                  const byteString = atob(base64Match[1]);
+                  const ab = new ArrayBuffer(byteString.length);
+                  const ia = new Uint8Array(ab);
+                  
+                  for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                  }
+                  
+                  fileObj = new Blob([ab], { type: file.type || 'application/octet-stream' });
+                } else {
+                  // 如果没有base64部分，当作文本处理
+                  fileObj = new Blob([file.content], { type: file.type || 'text/plain' });
+                }
+              } catch (error) {
+                console.error("base64解析错误:", error);
+                fileObj = new Blob([file.content], { type: file.type || 'text/plain' });
+              }
+            } else {
+              // 文本内容
+              console.log("处理为文本文件");
+              fileObj = new Blob([file.content], { type: file.type || 'text/plain' });
+            }
+          } else {
+            throw new Error("文件内容为空");
+          }
+          
+          // 检查文件对象是否创建成功
+          if (!fileObj || !(fileObj instanceof Blob)) {
+            throw new Error("文件对象创建失败");
+          }
+          
+          // 添加文件和其他参数到FormData
+          formData.append('file', fileObj, file.name);
+          formData.append('file_name', 'chart_' + Date.now());
+          formData.append('output_type', 'html');
+          formData.append('task_type', 'visualization');
+          // 只有当用户输入了内容时，才添加user_prompt参数
+          if (question && question.trim()) {
+            formData.append('user_prompt', question);
+          }
+          formData.append('language', 'zh');
+          
+          // 调用API
+          console.log("调用API开始");
+          const response = await VmindAPI.generateChartWithFile(formData);
+          console.log("API响应:", response);
+          
+          if (response && response.data) {
+            // 创建助手消息
+            let responseContent = `基于选择的 ${file.name} 文件分析：\n`;
+            
+            // 如果是Excel文件，添加特定提示
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+              responseContent += `\n检测到航班Excel数据，正在分析航班计划和航油消耗情况。`;
+            } else if (file.name.endsWith('.csv')) {
+              responseContent += `\n检测到CSV格式数据，正在提取航空数据指标。`;
+            }
+            
+            // 添加响应内容
+            if (response.data.insight_md) {
+              responseContent += `\n${response.data.insight_md}`;
+            }
+            
+            // 提取图表和洞察
+            let chartData: ChartData[] = [];
+            
+            // 如果有spec，创建图表
+            if (response.data.spec && typeof response.data.spec === 'object') {
+              try {
+                // 尝试将spec转换为图表数据
+                chartData = [{
+                  type: 'custom',
+                  title: '数据分析结果',
+                  data: [],
+                  config: response.data.spec
+                }];
+              } catch (e) {
+                console.error('解析spec失败', e);
+              }
+            }
+            
+            // 提取洞察
+            let insights: string[] = [];
+            if (response.data.insights && Array.isArray(response.data.insights)) {
+              insights = response.data.insights.map(insight => 
+                insight.textContent?.plainText || insight.name
+              );
+            } else if (response.data.insight_md) {
+              insights = response.data.insight_md
+                .split('\n')
+                .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+                .map(line => line.replace(/^[-*]\s+/, '').trim());
+            }
+            
+            const assistantMessage: ChatMessage = {
+              id: `assistant-${Date.now()}`,
+              type: 'assistant',
+              content: responseContent,
+              timestamp: new Date(),
+              charts: chartData,
+              insights: insights.length > 0 ? insights : undefined
+            };
+            
+            setMessages(prev => [...prev, assistantMessage]);
+          } else {
+            throw new Error("API返回结果为空");
+          }
+        } catch (error) {
+          console.error("处理文件错误:", error);
+          throw error;
         }
-        if (fileTypes.some(t => t.includes('excel') || t.includes('xls'))) {
-          responseContent += "，检测到Excel表格航空数据";
+      } else {
+        // 没有文件，使用模拟API响应
+        // 模拟 API 延迟
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        let responseContent = `基于 ${currentDataSource?.name} 的分析结果：`;
+        const hasFiles = uploadedFiles && uploadedFiles.length > 0;
+        
+        if (hasFiles) {
+          responseContent += `\n已分析您选择的 ${uploadedFiles!.length} 个文件`;
+          
+          // 检查文件类型并调整响应
+          const fileTypes = uploadedFiles!.map(f => f.type);
+          if (fileTypes.some(t => t.includes('csv') || t.endsWith('csv'))) {
+            responseContent += "，检测到CSV格式航班数据";
+          }
+          if (fileTypes.some(t => t.includes('json'))) {
+            responseContent += "，检测到JSON格式航油记录";
+          }
+          if (fileTypes.some(t => t.includes('excel') || t.includes('xls'))) {
+            responseContent += "，检测到Excel表格航空数据";
+          }
         }
-      }
 
-      // 基于问题和文件生成图表和洞察
-      const charts = generateMockChart(question);
-      let insights = [
-        "航油消耗与航班架次呈正相关，但单架次消耗有下降趋势",
-        "天气因素对航油消耗的影响约占总波动的15%",
-        "建议优化航路规划，可进一步降低3-5%的燃油消耗"
-      ];
-      
-      // 如果有文件，增加特定的文件分析洞察
-      if (hasFiles) {
-        // 替换为航油销售量的图表
-        charts.unshift({
-          type: 'line',
-          title: '最近30天航油销售量分析',
-          data: [
-            { date: '12-20', volume: 15600, revenue: 156000 },
-            { date: '12-21', volume: 14800, revenue: 148000 },
-            { date: '12-22', volume: 16200, revenue: 162000 },
-            { date: '12-23', volume: 15900, revenue: 159000 },
-            { date: '12-24', volume: 14500, revenue: 145000 },
-            { date: '12-25', volume: 13200, revenue: 132000 },
-            { date: '12-26', volume: 14100, revenue: 141000 },
-            { date: '12-27', volume: 15300, revenue: 153000 },
-            { date: '12-28', volume: 16500, revenue: 165000 },
-            { date: '12-29', volume: 17200, revenue: 172000 },
-            { date: '12-30', volume: 17500, revenue: 175000 },
-            { date: '12-31', volume: 18100, revenue: 181000 },
-            { date: '01-01', volume: 15800, revenue: 158000 },
-            { date: '01-02', volume: 16300, revenue: 163000 },
-            { date: '01-03', volume: 16700, revenue: 167000 },
-            { date: '01-04', volume: 17100, revenue: 171000 },
-            { date: '01-05', volume: 17400, revenue: 174000 },
-            { date: '01-06', volume: 16900, revenue: 169000 },
-            { date: '01-07', volume: 16500, revenue: 165000 },
-            { date: '01-08', volume: 17300, revenue: 173000 },
-            { date: '01-09', volume: 17800, revenue: 178000 },
-            { date: '01-10', volume: 18200, revenue: 182000 },
-            { date: '01-11', volume: 18500, revenue: 185000 },
-            { date: '01-12', volume: 18900, revenue: 189000 },
-            { date: '01-13', volume: 19200, revenue: 192000 },
-            { date: '01-14', volume: 19500, revenue: 195000 },
-            { date: '01-15', volume: 19800, revenue: 198000 },
-            { date: '01-16', volume: 20100, revenue: 201000 },
-            { date: '01-17', volume: 20400, revenue: 204000 },
-            { date: '01-18', volume: 20700, revenue: 207000 },
-          ]
-        });
-        
-        insights = [
-          "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
-          "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
-          "元旦假期后航油需求快速回升，日均增长率为2.1%",
-          "预计下月销量将突破21000吨，需提前做好供应链准备",
-          "数据显示最佳加油量应控制在85-90%油箱容量"
+        // 基于问题和文件生成图表和洞察
+        const charts = generateMockChart(question);
+        let insights = [
+          "航油消耗与航班架次呈正相关，但单架次消耗有下降趋势",
+          "天气因素对航油消耗的影响约占总波动的15%",
+          "建议优化航路规划，可进一步降低3-5%的燃油消耗"
         ];
+        
+        // 如果有文件，替换为航油销售量的图表
+        if (hasFiles) {
+          // 替换为航油销售量的图表
+          charts.unshift({
+            type: 'line',
+            title: '最近30天航油销售量分析',
+            data: [
+              { date: '12-20', volume: 15600, revenue: 156000 },
+              { date: '12-21', volume: 14800, revenue: 148000 },
+              { date: '12-22', volume: 16200, revenue: 162000 },
+              { date: '12-23', volume: 15900, revenue: 159000 },
+              { date: '12-24', volume: 14500, revenue: 145000 },
+              { date: '12-25', volume: 13200, revenue: 132000 },
+              { date: '12-26', volume: 14100, revenue: 141000 },
+              { date: '12-27', volume: 15300, revenue: 153000 },
+              { date: '12-28', volume: 16500, revenue: 165000 },
+              { date: '12-29', volume: 17200, revenue: 172000 },
+              { date: '12-30', volume: 17500, revenue: 175000 },
+              { date: '12-31', volume: 18100, revenue: 181000 },
+              { date: '01-01', volume: 15800, revenue: 158000 },
+              { date: '01-02', volume: 16300, revenue: 163000 },
+              { date: '01-03', volume: 16700, revenue: 167000 },
+              { date: '01-04', volume: 17100, revenue: 171000 },
+              { date: '01-05', volume: 17400, revenue: 174000 },
+              { date: '01-06', volume: 16900, revenue: 169000 },
+              { date: '01-07', volume: 16500, revenue: 165000 },
+              { date: '01-08', volume: 17300, revenue: 173000 },
+              { date: '01-09', volume: 17800, revenue: 178000 },
+              { date: '01-10', volume: 18200, revenue: 182000 },
+              { date: '01-11', volume: 18500, revenue: 185000 },
+              { date: '01-12', volume: 18900, revenue: 189000 },
+              { date: '01-13', volume: 19200, revenue: 192000 },
+              { date: '01-14', volume: 19500, revenue: 195000 },
+              { date: '01-15', volume: 19800, revenue: 198000 },
+              { date: '01-16', volume: 20100, revenue: 201000 },
+              { date: '01-17', volume: 20400, revenue: 204000 },
+              { date: '01-18', volume: 20700, revenue: 207000 },
+            ]
+          });
+          
+          insights = [
+            "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
+            "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
+            "元旦假期后航油需求快速回升，日均增长率为2.1%",
+            "预计下月销量将突破21000吨，需提前做好供应链准备",
+            "数据显示最佳加油量应控制在85-90%油箱容量"
+          ];
+        }
+
+        const assistantMessage: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          type: 'assistant',
+          content: responseContent,
+          timestamp: new Date(),
+          charts,
+          insights
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
       }
-
-      const assistantMessage: ChatMessage = {
-        id: `assistant-${Date.now()}`,
+    } catch (error) {
+      console.error('处理消息错误:', error);
+      toast.error(`处理消息时出错: ${error instanceof Error ? error.message : String(error)}`);
+      
+      // 添加错误消息
+      const errorMessage: ChatMessage = {
+        id: `assistant-error-${Date.now()}`,
         type: 'assistant',
-        content: responseContent,
+        content: `抱歉，处理您的请求时出现问题。${error instanceof Error ? error.message : '请稍后重试。'}`,
         timestamp: new Date(),
-        charts,
-        insights
       };
-
-      setMessages(prev => [...prev, assistantMessage]);
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
-  }, [currentDataSource]);
+    }
+  }, [selectedDataSource, uploadedFiles]);
+
+  // 添加重置文件上传状态的函数
+  const resetFileUpload = useCallback(() => {
+    setIsDataSourceDisabled(false);
+    setSelectedDataSource('fuel_db'); // 或其他默认数据源
+    setUploadedFiles([]);
+  }, []);
 
   const handleQuickQuestion = useCallback((question: string) => {
     handleSendMessage(question);
@@ -335,6 +540,13 @@ export function ChartsMain() {
           </div>
         );
       
+      case 'custom':
+        return (
+          <div style={{ width: '100%', height: chartHeight }}>
+            <VChart spec={chart.config} />
+          </div>
+        );
+      
       default:
         return <div>暂不支持此图表类型</div>;
     }
@@ -355,8 +567,12 @@ export function ChartsMain() {
               <Database className="w-4 h-4" />
               <span className="text-sm font-medium">数据源:</span>
             </div>
-            <Select value={selectedDataSource} onValueChange={setSelectedDataSource}>
-              <SelectTrigger className="w-48">
+            <Select 
+              value={selectedDataSource} 
+              onValueChange={handleDataSourceChange}
+              disabled={isDataSourceDisabled}
+            >
+              <SelectTrigger className={`w-48 ${isDataSourceDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -371,11 +587,39 @@ export function ChartsMain() {
                     </div>
                   </SelectItem>
                 ))}
+                {/* 添加临时文件选项 */}
+                <SelectItem value="uploaded_file">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    选择临时文件
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
-            {currentDataSource && (
+            {currentDataSource && selectedDataSource !== 'uploaded_file' && (
               <div className="text-sm text-muted-foreground">
                 {currentDataSource.tables} 个表 • {currentDataSource.lastUpdated.toLocaleDateString()}
+              </div>
+            )}
+            {selectedDataSource === 'uploaded_file' && (
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-blue-500">
+                  {uploadedFiles.length > 0 && uploadedFiles[0]?.name
+                    ? `已选择选择: ${uploadedFiles[0].name}` 
+                    : '请选择临时文件'
+                  }
+                </div>
+                {uploadedFiles.length > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetFileUpload}
+                    className="h-7 text-xs"
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    清除
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -415,7 +659,7 @@ export function ChartsMain() {
                     <div className="mt-3 bg-muted/50 rounded-lg p-3 border">
                       <div className="text-sm font-medium mb-2 flex items-center gap-1">
                         <FileText size={14} />
-                        上传的文件
+                        选择的文件
                       </div>
                       <ul className="space-y-2">
                         {message.files.map((file) => (
@@ -578,6 +822,9 @@ export function ChartsMain() {
               className="h-full w-full"
               responding={isLoading}
               onSend={handleSendMessage}
+              onFileUpload={handleFileUpload}
+              showUploadButton={selectedDataSource === 'uploaded_file'} // 只有在选择上传临时文件时显示上传按钮
+              existingFiles={uploadedFiles} // 传递已上传文件列表
             />
           </div>
         </div>

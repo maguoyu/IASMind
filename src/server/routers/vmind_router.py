@@ -15,6 +15,7 @@ import pandas as pd
 from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+import uuid  # 导入uuid模块
 
 from src.vmind.charts import VmindClient
 from src.llms.llm import get_llm_by_type
@@ -32,6 +33,16 @@ router = APIRouter(
     tags=["数据可视化"],
     responses={404: {"message": "您所访问的资源不存在！"}},
 )
+
+# 移除文件缓存，保留类型定义以确保API兼容性
+class AnalyzeWithFileIdRequest(BaseModel):
+    """使用文件ID进行分析的请求模型"""
+    file_id: str = Field(..., description="文件ID")
+    file_name: str = Field(..., description="输出文件名")
+    output_type: str = Field(..., description="输出类型，如 'png' 或 'html'")
+    task_type: str = Field("visualization", description="任务类型")
+    user_prompt: Optional[str] = Field(None, description="用户提示")
+    language: str = Field("zh", description="语言代码，默认为中文")
 
 
 class GenerateChartRequest(BaseModel):
@@ -261,7 +272,6 @@ async def generate_chart_with_file(
         finally:
             # 删除临时文件
             os.unlink(temp_path)
-
         
         # 获取LLM客户端
         llm_config = await get_llm_config("basic")
@@ -288,6 +298,8 @@ async def generate_chart_with_file(
             logger.error(f"VMind 处理错误: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
         
+
+        
         return result
     
     except HTTPException as e:
@@ -295,4 +307,18 @@ async def generate_chart_with_file(
         raise
     except Exception as e:
         logger.exception(f"通过文件生成图表时发生错误: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"{INTERNAL_SERVER_ERROR_DETAIL}: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"{INTERNAL_SERVER_ERROR_DETAIL}: {str(e)}")
+
+@router.post("/analyze-with-file-id", response_model=Any)
+async def analyze_with_file_id(
+    request: AnalyzeWithFileIdRequest,
+    user=Depends(GetCurrentUser)
+):
+    """处理基于文件ID的请求（为兼容API保留，但返回说明性错误）"""
+    
+    # 返回提示用户重新上传文件的响应
+    return {
+        "error": "临时文件已过期，请重新上传文件",
+        "message": "该接口不再保存文件数据，每次分析需重新上传文件",
+        "insight_md": "## 请重新上传文件\n\n本系统不保存临时文件，请重新上传您的数据文件进行分析。"
+    } 

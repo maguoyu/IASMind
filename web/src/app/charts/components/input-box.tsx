@@ -4,7 +4,7 @@
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Lightbulb, X, Paperclip, FileText, File } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 
 
 import MessageInput, {
@@ -39,6 +39,9 @@ export function InputBox({
   onSend,
   onCancel,
   onRemoveFeedback,
+  onFileUpload,
+  showUploadButton = true, // 控制上传按钮是否显示
+  existingFiles = [], // 外部传入的已上传文件
 }: {
   className?: string;
   size?: "large" | "normal";
@@ -54,6 +57,9 @@ export function InputBox({
   ) => void;
   onCancel?: () => void;
   onRemoveFeedback?: () => void;
+  onFileUpload?: (files: Array<UploadedFile>) => void;
+  showUploadButton?: boolean; // 是否显示上传按钮
+  existingFiles?: Array<UploadedFile>; // 已上传文件列表
 }) {
   const enableDeepThinking = useSettingsStore(
     (state) => state.general.enableDeepThinking,
@@ -70,9 +76,14 @@ export function InputBox({
   const [isEnhanceAnimating, setIsEnhanceAnimating] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState("");
   
-  // 文件上传状态
+  // 文件上传状态 - 使用existingFiles
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  
+  // 当外部文件变更时，更新内部状态
+  useEffect(() => {
+    setUploadedFiles(existingFiles);
+  }, [existingFiles]);
 
   const handleSendMessage = useCallback(
     (message: string, resources: Array<Resource>) => {
@@ -88,8 +99,7 @@ export function InputBox({
             resources,
             files: uploadedFiles,
           });
-          // 发送后清空文件列表
-          setUploadedFiles([]);
+          // 发送后不清空文件列表，由父组件控制
           onRemoveFeedback?.();
           // Clear enhancement animation after sending
           setIsEnhanceAnimating(false);
@@ -140,56 +150,66 @@ export function InputBox({
     if (!e.target.files || e.target.files.length === 0) return;
     
     setIsProcessingFile(true);
-    const newFiles: UploadedFile[] = [];
     
-    // 处理每个上传的文件
-    for (let i = 0; i < e.target.files.length; i++) {
-      const file = e.target.files[i];
+    try {
+      // 只处理第一个文件，忽略其他文件
+      const file = e.target.files[0];
       
-      try {
-        // 读取文件内容
-        const content = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target?.result as string);
-          
-          // 根据文件类型选择不同的读取方式
-          if (file.type.startsWith('text/') || 
-              file.name.endsWith('.json') || 
-              file.name.endsWith('.csv') || 
-              file.name.endsWith('.txt')) {
-            reader.readAsText(file);
-          } else {
-            reader.readAsDataURL(file); // 二进制文件采用 base64 编码
-          }
-        });
+      // 读取文件内容
+      const content = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
         
-        // 创建文件对象
-        newFiles.push({
-          id: `file-${Date.now()}-${i}`,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          content: content
-        });
-      } catch (error) {
-        console.error(`读取文件 ${file.name} 失败:`, error);
+        // 根据文件类型选择不同的读取方式
+        if (file.type.startsWith('text/') || 
+            file.name.endsWith('.json') || 
+            file.name.endsWith('.csv') || 
+            file.name.endsWith('.txt')) {
+          reader.readAsText(file);
+        } else {
+          reader.readAsDataURL(file); // 二进制文件采用 base64 编码
+        }
+      });
+      
+      // 创建新的文件列表，只包含这一个文件
+      const newFile = {
+        id: `file-${Date.now()}`,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        content: content
+      };
+      
+      // 替换原有文件列表
+      setUploadedFiles([newFile]);
+      
+      // 通知父组件文件上传成功
+      if (onFileUpload) {
+        onFileUpload([newFile]);
+      }
+    } catch (error) {
+      console.error(`读取文件失败:`, error);
+    } finally {
+      setIsProcessingFile(false);
+      
+      // 清空文件输入，以便能够重新上传相同的文件
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     }
-    
-    // 添加到已上传文件列表
-    setUploadedFiles(prev => [...prev, ...newFiles]);
-    setIsProcessingFile(false);
-    
-    // 清空文件输入，以便能够重新上传相同的文件
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, []);
+  }, [onFileUpload]);
   
   // 删除已上传文件
   const removeFile = useCallback((fileId: string) => {
-    setUploadedFiles(prev => prev.filter(file => file.id !== fileId));
-  }, []);
+    setUploadedFiles(prev => {
+      const newFiles = prev.filter(file => file.id !== fileId);
+      // 通知父组件文件已删除
+      if (onFileUpload) {
+        onFileUpload(newFiles);
+      }
+      return newFiles;
+    });
+  }, [onFileUpload]);
   
   // 触发文件选择对话框
   const openFileSelector = useCallback(() => {
@@ -291,6 +311,10 @@ export function InputBox({
               >
                 {file.type.startsWith('image/') ? (
                   <FileText size={14} className="text-blue-500" />
+                ) : file.name.endsWith('.csv') ? (
+                  <File size={14} className="text-green-500" />
+                ) : file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ? (
+                  <File size={14} className="text-blue-500" />
                 ) : (
                   <File size={14} className="text-blue-500" />
                 )}
@@ -352,24 +376,26 @@ export function InputBox({
             </Tooltip>
           )}
 
-          {/* 文件上传按钮 */}
-          <Tooltip title="上传临时文件进行分析">
-            <Button
-              variant="outline"
-              className="rounded-2xl"
-              onClick={openFileSelector}
-              disabled={isProcessingFile}
-            >
-              <Paperclip size={16} className="mr-1" />
-              {isProcessingFile ? '处理中...' : '上传文件'}
-            </Button>
-          </Tooltip>
+          {/* 文件上传按钮 - 只有在showUploadButton为true时显示 */}
+          {showUploadButton && (
+            <Tooltip title="选择文件进行分析">
+              <Button
+                variant="outline"
+                className="rounded-2xl"
+                onClick={openFileSelector}
+                disabled={isProcessingFile}
+              >
+                <Paperclip size={16} className="mr-1" />
+                {isProcessingFile ? '处理中...' : '选择文件'}
+              </Button>
+            </Tooltip>
+          )}
           <input 
             ref={fileInputRef}
             type="file" 
             className="hidden"
             onChange={handleFileUpload}
-            multiple
+            multiple={false}
             // 支持常见的数据文件格式
             accept=".csv,.json,.xlsx,.xls,.txt,.text"
           />

@@ -151,7 +151,7 @@ export function ChartsMain() {
   const [isDataSourceDisabled, setIsDataSourceDisabled] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [showUploadButton, setShowUploadButton] = useState(false); 
-  const [enableInsights, setEnableInsights] = useState(true);
+  const [enableInsights, setEnableInsights] = useState(false);
 
   const currentDataSource = useMemo(() => 
     mockDataSources.find(ds => ds.id === selectedDataSource) || mockDataSources[0],

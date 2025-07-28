@@ -195,6 +195,7 @@ process.stdin.on('end', async () => {
             textData: Optional[str] = None,
             dataType: Optional[str] = "text",
             enable_insights: bool = True,
+            enableDataQuery: bool = True
         ):
         """
         调用 VMind 图表生成工具
@@ -238,7 +239,8 @@ process.stdin.on('end', async () => {
                 "csvData": csvData,
                 "textData": textData,
                 "dataType": dataType,
-                "enable_insights": enable_insights
+                "enable_insights": enable_insights,
+                "enableDataQuery": enableDataQuery
             }
             
             # 获取脚本路径

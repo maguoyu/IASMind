@@ -33,12 +33,15 @@ async function generateChart(vmind, options) {
         language,
         textData,
         dataType,
-        enable_insights
+        enable_insights,
+        enableDataQuery
     } = options;
     let result = {};
     let dataset = initialDataset;
     let fieldInfo = initialFieldInfo;
-    
+    console.error("是否数据洞察:", enable_insights);
+    console.error("是否数据聚合:", enableDataQuery);
+
     try {
         if (dataType === "csv") {
             // 使用正确的解构赋值语法
@@ -82,8 +85,7 @@ async function generateChart(vmind, options) {
                 fieldInfo,
                 dataset,
                 {
-                    enableDataQuery: false,
-                    theme: "light",
+                    enableDataQuery
                 }
             );
         } else if (dataType === "dataset") {
@@ -105,8 +107,7 @@ async function generateChart(vmind, options) {
                     fieldInfo || {},
                     dataset,
                     {
-                        enableDataQuery: false,
-                        theme: "light",
+                        enableDataQuery
                     }
                 );
             } else {
@@ -124,7 +125,9 @@ async function generateChart(vmind, options) {
                 };
             }
             
-            result = await vmind.text2Chart(textData, userPrompt);
+            result = await vmind.text2Chart(textData, userPrompt, {
+                enableDataQuery
+            }   );
         }
         
         const { spec, error, chartType } = result || {};
@@ -148,7 +151,6 @@ async function generateChart(vmind, options) {
 
         try {
             if (enable_insights) {
-                console.error("是否数据洞察:", enable_insights);
 
             // 确保spec存在且有效
             if (spec && typeof spec === 'object') {
@@ -232,6 +234,7 @@ async function executeVMind() {
                     dataType = "text",
                     textData = "",
                     enable_insights = true,
+                    enableDataQuery
                 } = parsedData;
                 
                 try {
@@ -262,6 +265,7 @@ async function executeVMind() {
                         dataType,
                         textData,
                         enable_insights,
+                        enableDataQuery
                     });
                 } catch (error) {
                     console.error("执行过程中发生错误:", error);

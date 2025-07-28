@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X } from "lucide-react";
 import { VChart } from '@visactor/react-vchart';
@@ -18,6 +18,7 @@ import { InputBox } from "./components/input-box";
 import { Checkbox } from "~/components/ui/checkbox";
 import type { UploadedFile } from "./components/input-box";
 import { VmindAPI } from "~/core/api/vmind"; // 导入VmindAPI
+import { dataSourceApi, DataSource as SystemDataSource } from "~/core/api/datasource"; // 导入数据源API
 
 // 消息类型定义
 interface ChatMessage {
@@ -37,43 +38,27 @@ interface ChartData {
   config?: any;
 }
 
-// 数据源定义
-interface DataSource {
+// 本地数据源定义（用于UI显示）
+interface LocalDataSource {
   id: string;
   name: string;
   description: string;
   tables: number;
   lastUpdated: Date;
   status: 'connected' | 'disconnected' | 'syncing';
+  type: 'system' | 'temporary'; // 区分系统数据源和临时文件
 }
 
-// 航空数据源
-const mockDataSources: DataSource[] = [
-  {
-    id: 'flight_db',
-    name: '航班数据库',
-    description: '包含航班信息、起降时间和乘客数据',
-    tables: 16,
-    lastUpdated: new Date('2024-01-15'),
-    status: 'connected'
-  },
-  {
-    id: 'fuel_db',
-    name: '航油数据库',
-    description: '航油消耗、价格波动和库存数据',
-    tables: 10,
-    lastUpdated: new Date('2024-01-17'),
-    status: 'connected'
-  },
-  {
-    id: 'maintenance_db',
-    name: '维护数据库',
-    description: '飞机维护记录、零部件更换和检修数据',
-    tables: 8,
-    lastUpdated: new Date('2024-01-14'),
-    status: 'syncing'
-  }
-];
+// 临时文件数据源（保留原有功能）
+const temporaryFileDataSource: LocalDataSource = {
+  id: 'uploaded_file',
+  name: '临时文件',
+  description: '上传的CSV、Excel等文件进行临时分析',
+  tables: 0,
+  lastUpdated: new Date(),
+  status: 'connected',
+  type: 'temporary'
+};
 
 // 航空相关快速问题
 const quickQuestions = [
@@ -146,17 +131,58 @@ const generateMockChart = (question: string): ChartData[] => {
 
 export function ChartsMain() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [selectedDataSource, setSelectedDataSource] = useState('fuel_db');
+  const [selectedDataSource, setSelectedDataSource] = useState('uploaded_file'); // 默认选择临时文件
   const [isLoading, setIsLoading] = useState(false);
   const [isDataSourceDisabled, setIsDataSourceDisabled] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [showUploadButton, setShowUploadButton] = useState(false); 
+  const [showUploadButton, setShowUploadButton] = useState(true); // 默认显示上传按钮 
   const [enableInsights, setEnableInsights] = useState(false);
+  
+  // 系统数据源状态
+  const [systemDataSources, setSystemDataSources] = useState<LocalDataSource[]>([]);
+  const [dataSourcesLoading, setDataSourcesLoading] = useState(false);
+
+  // 合并所有数据源（系统数据源 + 临时文件）
+  const allDataSources = useMemo(() => {
+    return [...systemDataSources, temporaryFileDataSource];
+  }, [systemDataSources]);
 
   const currentDataSource = useMemo(() => 
-    mockDataSources.find(ds => ds.id === selectedDataSource) || mockDataSources[0],
-    [selectedDataSource]
+    allDataSources.find(ds => ds.id === selectedDataSource) || temporaryFileDataSource,
+    [selectedDataSource, allDataSources]
   );
+
+  // 获取系统数据源
+  const fetchSystemDataSources = useCallback(async () => {
+    try {
+      setDataSourcesLoading(true);
+      const sources = await dataSourceApi.getAll();
+      
+             // 转换为本地数据源格式
+       const localSources: LocalDataSource[] = sources.map(source => ({
+         id: source.id,
+         name: source.name,
+         description: source.description || `${source.type.toUpperCase()} 数据库连接`,
+         tables: 0, // 可以后续通过API获取表数量
+         lastUpdated: new Date(source.updated_at),
+         status: source.status === 'active' ? 'connected' : 
+                 source.status === 'error' ? 'disconnected' : 'syncing',
+         type: 'system'
+       }));
+      
+      setSystemDataSources(localSources);
+    } catch (error) {
+      console.error('获取数据源失败:', error);
+      toast.error('获取数据源失败，请检查网络连接');
+         } finally {
+       setDataSourcesLoading(false);
+     }
+   }, []);
+
+  // 初始化时获取系统数据源
+  useEffect(() => {
+    fetchSystemDataSources();
+  }, [fetchSystemDataSources]);
 
   // 处理数据源变更
   const handleDataSourceChange = useCallback((value: string) => {
@@ -185,6 +211,12 @@ export function ChartsMain() {
       // 有文件时锁定为临时文件数据源
       setSelectedDataSource('uploaded_file');
     }
+  }, []);
+
+  // 重置文件上传
+  const resetFileUpload = useCallback(() => {
+    setUploadedFiles([]);
+    toast.info('已清除选择的文件');
   }, []);
 
   const handleSendMessage = useCallback(async (
@@ -370,36 +402,53 @@ export function ChartsMain() {
         const hasFiles = uploadedFiles && uploadedFiles.length > 0;
         
         if (hasFiles) {
-          responseContent += `\n已分析您选择的 ${uploadedFiles!.length} 个文件`;
+          responseContent += `\n已分析您上传的 ${uploadedFiles!.length} 个文件`;
           
           // 检查文件类型并调整响应
           const fileTypes = uploadedFiles!.map(f => f.type);
           if (fileTypes.some(t => t.includes('csv') || t.endsWith('csv'))) {
-            responseContent += "，检测到CSV格式航班数据";
+            responseContent += "，检测到CSV格式数据";
           }
           if (fileTypes.some(t => t.includes('json'))) {
-            responseContent += "，检测到JSON格式航油记录";
+            responseContent += "，检测到JSON格式数据";
           }
           if (fileTypes.some(t => t.includes('excel') || t.includes('xls'))) {
-            responseContent += "，检测到Excel表格航空数据";
+            responseContent += "，检测到Excel表格数据";
           }
         }
 
-        // 基于问题和文件生成图表和洞察
-        const charts = generateMockChart(question);
-        
-        // 只有在启用洞察时才生成洞察
+        // 基于数据源类型生成不同的响应
+        let charts: ChartData[] = [];
         let insights: string[] = [];
-        if (enableInsights) {
-          insights = [
-            "航油消耗与航班架次呈正相关，但单架次消耗有下降趋势",
-            "天气因素对航油消耗的影响约占总波动的15%",
-            "建议优化航路规划，可进一步降低3-5%的燃油消耗"
-          ];
+        
+        if (currentDataSource.type === 'system') {
+          // 系统数据源的响应
+          responseContent += `\n正在从 ${currentDataSource.name} 查询相关数据...`;
+          charts = generateMockChart(question);
           
-          // 如果有文件，替换为航油销售量的洞察
-          if (hasFiles) {
+          if (enableInsights) {
             insights = [
+              `基于 ${currentDataSource.name} 的数据分析结果`,
+              "数据连接状态良好，查询性能正常",
+              "建议定期更新数据源以获得最新分析结果"
+            ];
+          }
+        } else {
+          // 临时文件的响应
+          charts = generateMockChart(question);
+          
+          if (enableInsights) {
+            insights = [
+              "文件数据已成功解析和分析",
+              "数据质量良好，适合进一步分析",
+              "建议保存分析结果或将数据添加到系统数据源"
+            ];
+          }
+        }
+        
+                 // 如果有文件时的特殊洞察处理
+         if (hasFiles && enableInsights && currentDataSource.type === 'temporary') {
+           insights = [
               "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
               "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
               "元旦假期后航油需求快速回升，日均增长率为2.1%",
@@ -460,7 +509,6 @@ export function ChartsMain() {
         };
 
         setMessages(prev => [...prev, assistantMessage]);
-      }
     } catch (error) {
       console.error('处理消息错误:', error);
       toast.error(`处理消息时出错: ${error instanceof Error ? error.message : String(error)}`);
@@ -479,12 +527,7 @@ export function ChartsMain() {
     }
   }, [selectedDataSource, uploadedFiles, enableInsights]);
 
-  // 添加重置文件上传状态的函数
-  const resetFileUpload = useCallback(() => {
-    setIsDataSourceDisabled(false);
-    setSelectedDataSource('fuel_db'); // 或其他默认数据源
-    setUploadedFiles([]);
-  }, []);
+
 
   const handleQuickQuestion = useCallback((question: string) => {
     handleSendMessage(question);
@@ -593,37 +636,72 @@ export function ChartsMain() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {mockDataSources.map((source) => (
-                  <SelectItem key={source.id} value={source.id}>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        source.status === 'connected' ? 'bg-green-500' : 
-                        source.status === 'syncing' ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} />
-                      {source.name}
-                    </div>
-                  </SelectItem>
-                ))}
-                {/* 添加临时文件选项 */}
+                {/* 临时文件选项 */}
                 <SelectItem value="uploaded_file">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-blue-500" />
-                    选择临时文件
+                    <File className="w-3 h-3" />
+                    临时文件分析
                   </div>
                 </SelectItem>
+                
+                {/* 系统数据源 */}
+                {systemDataSources.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b">
+                      系统数据源
+                    </div>
+                    {systemDataSources.map((source) => (
+                      <SelectItem key={source.id} value={source.id}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${
+                            source.status === 'connected' ? 'bg-green-500' : 
+                            source.status === 'syncing' ? 'bg-yellow-500' : 'bg-red-500'
+                          }`} />
+                          <Database className="w-3 h-3" />
+                                                     <div className="flex flex-col">
+                             <span>{source.name}</span>
+                             <span className="text-xs text-muted-foreground truncate max-w-48">
+                               {source.description}
+                             </span>
+                           </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                
+                {/* 加载状态 */}
+                {dataSourcesLoading && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    正在加载数据源...
+                  </div>
+                )}
+                
+                {/* 无数据源时的提示 */}
+                {!dataSourcesLoading && systemDataSources.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    暂无系统数据源，请前往设置页面添加
+                  </div>
+                )}
               </SelectContent>
             </Select>
-            {currentDataSource && selectedDataSource !== 'uploaded_file' && (
+            {/* 数据源信息显示 */}
+            {currentDataSource && currentDataSource.type === 'system' && (
               <div className="text-sm text-muted-foreground">
-                {currentDataSource.tables} 个表 • {currentDataSource.lastUpdated.toLocaleDateString()}
+                <span className="capitalize">{currentDataSource.status === 'connected' ? '已连接' : '未连接'}</span>
+                {currentDataSource.tables > 0 && ` • ${currentDataSource.tables} 个表`}
+                {' • '}{currentDataSource.lastUpdated.toLocaleDateString()}
               </div>
             )}
+            
+            {/* 临时文件信息显示 */}
             {selectedDataSource === 'uploaded_file' && (
               <div className="flex items-center gap-2">
                 <div className="text-sm text-blue-500">
                   {uploadedFiles.length > 0 && uploadedFiles[0]?.name
-                    ? `已选择选择: ${uploadedFiles[0].name}` 
-                    : '请选择临时文件'
+                    ? `已选择: ${uploadedFiles[0].name}` 
+                    : '请选择文件进行分析'
                   }
                 </div>
                 {uploadedFiles.length > 0 && (
@@ -631,7 +709,7 @@ export function ChartsMain() {
                     variant="ghost" 
                     size="sm" 
                     onClick={resetFileUpload}
-                    className="h-7 text-xs"
+                    className="h-7 text-xs text-red-600 hover:text-red-700"
                   >
                     <X className="w-3 h-3 mr-1" />
                     清除

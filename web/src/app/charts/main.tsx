@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Badge } from "~/components/ui/badge";
 import { cn } from "~/lib/utils";
 import { InputBox } from "./components/input-box";
+import { Checkbox } from "~/components/ui/checkbox";
 import type { UploadedFile } from "./components/input-box";
 import { VmindAPI } from "~/core/api/vmind"; // 导入VmindAPI
 
@@ -150,6 +151,7 @@ export function ChartsMain() {
   const [isDataSourceDisabled, setIsDataSourceDisabled] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [showUploadButton, setShowUploadButton] = useState(false); 
+  const [enableInsights, setEnableInsights] = useState(true);
 
   const currentDataSource = useMemo(() => 
     mockDataSources.find(ds => ds.id === selectedDataSource) || mockDataSources[0],
@@ -277,10 +279,15 @@ export function ChartsMain() {
           formData.append('file_name', 'chart_' + Date.now());
           formData.append('output_type', 'html');
           formData.append('task_type', 'visualization');
+          
           // 只有当用户输入了内容时，才添加user_prompt参数
           if (question && question.trim()) {
             formData.append('user_prompt', question);
           }
+          
+          // 添加是否需要数据洞察的参数
+          formData.append('enable_insights', enableInsights.toString());
+          
           formData.append('language', 'zh');
           
           // 调用API
@@ -324,15 +331,17 @@ export function ChartsMain() {
             
             // 提取洞察
             let insights: string[] = [];
-            if (response.data.insights && Array.isArray(response.data.insights)) {
-              insights = response.data.insights.map(insight => 
-                insight.textContent?.plainText || insight.name
-              );
-            } else if (response.data.insight_md) {
-              insights = response.data.insight_md
-                .split('\n')
-                .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-                .map(line => line.replace(/^[-*]\s+/, '').trim());
+            if (enableInsights) {
+              if (response.data.insights && Array.isArray(response.data.insights)) {
+                insights = response.data.insights.map(insight => 
+                  insight.textContent?.plainText || insight.name
+                );
+              } else if (response.data.insight_md) {
+                insights = response.data.insight_md
+                  .split('\n')
+                  .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+                  .map(line => line.replace(/^[-*]\s+/, '').trim());
+              }
             }
             
             const assistantMessage: ChatMessage = {
@@ -378,12 +387,28 @@ export function ChartsMain() {
 
         // 基于问题和文件生成图表和洞察
         const charts = generateMockChart(question);
-        let insights = [
-          "航油消耗与航班架次呈正相关，但单架次消耗有下降趋势",
-          "天气因素对航油消耗的影响约占总波动的15%",
-          "建议优化航路规划，可进一步降低3-5%的燃油消耗"
-        ];
         
+        // 只有在启用洞察时才生成洞察
+        let insights: string[] = [];
+        if (enableInsights) {
+          insights = [
+            "航油消耗与航班架次呈正相关，但单架次消耗有下降趋势",
+            "天气因素对航油消耗的影响约占总波动的15%",
+            "建议优化航路规划，可进一步降低3-5%的燃油消耗"
+          ];
+          
+          // 如果有文件，替换为航油销售量的洞察
+          if (hasFiles) {
+            insights = [
+              "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
+              "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
+              "元旦假期后航油需求快速回升，日均增长率为2.1%",
+              "预计下月销量将突破21000吨，需提前做好供应链准备",
+              "数据显示最佳加油量应控制在85-90%油箱容量"
+            ];
+          }
+        }
+
         // 如果有文件，替换为航油销售量的图表
         if (hasFiles) {
           // 替换为航油销售量的图表
@@ -423,14 +448,6 @@ export function ChartsMain() {
               { date: '01-18', volume: 20700, revenue: 207000 },
             ]
           });
-          
-          insights = [
-            "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
-            "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
-            "元旦假期后航油需求快速回升，日均增长率为2.1%",
-            "预计下月销量将突破21000吨，需提前做好供应链准备",
-            "数据显示最佳加油量应控制在85-90%油箱容量"
-          ];
         }
 
         const assistantMessage: ChatMessage = {
@@ -439,7 +456,7 @@ export function ChartsMain() {
           content: responseContent,
           timestamp: new Date(),
           charts,
-          insights
+          insights: insights.length > 0 ? insights : undefined
         };
 
         setMessages(prev => [...prev, assistantMessage]);
@@ -460,7 +477,7 @@ export function ChartsMain() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDataSource, uploadedFiles]);
+  }, [selectedDataSource, uploadedFiles, enableInsights]);
 
   // 添加重置文件上传状态的函数
   const resetFileUpload = useCallback(() => {
@@ -562,7 +579,7 @@ export function ChartsMain() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4" />
               <span className="text-sm font-medium">数据源:</span>
@@ -622,6 +639,21 @@ export function ChartsMain() {
                 )}
               </div>
             )}
+            
+            {/* 新增数据洞察选项 */}
+            <div className="flex items-center space-x-2 ml-auto">
+              <Checkbox 
+                id="enable-insights"
+                checked={enableInsights}
+                onCheckedChange={(checked) => setEnableInsights(checked === true)}
+              />
+              <label
+                htmlFor="enable-insights"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                启用数据洞察
+              </label>
+            </div>
           </div>
         </motion.div>
 

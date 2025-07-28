@@ -26,6 +26,7 @@ export interface GenerateChartRequest {
   data?: any; // 支持多种数据格式：数组、字符串或其他格式
   user_prompt?: string;
   language?: string;
+  enable_insights?: boolean; // 是否启用数据洞察功能
 }
 
 // 使用文件ID进行分析的请求模型
@@ -36,6 +37,7 @@ export interface AnalyzeWithFileIdRequest {
   task_type?: string;
   user_prompt?: string;
   language?: string;
+  enable_insights?: boolean; // 是否启用数据洞察功能
 }
 
 // 图表生成响应模型

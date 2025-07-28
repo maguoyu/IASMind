@@ -129,7 +129,8 @@ process.stdin.on('end', async () => {
             dataset = [],
             file_name: fileName = `chart_${Date.now()}`,
             output_type: outputType = "png",
-            language = "zh"
+            language = "zh",
+            enable_insights = true
         } = parsedData;
         
         let result;
@@ -152,7 +153,7 @@ process.stdin.on('end', async () => {
             // 创建简单的结果
             result = {
                 chart_path: `generated_${fileName}.${outputType}`,
-                insight_md: `已生成关于"${userPrompt}"的图表。`
+                insight_md: enable_insights ? `已生成关于"${userPrompt}"的图表和数据洞察。` : `已生成关于"${userPrompt}"的图表。`
             };
         } catch (error) {
             console.error("执行过程中发生错误:", error);
@@ -193,6 +194,7 @@ process.stdin.on('end', async () => {
             csvData: Optional[str] = None,
             textData: Optional[str] = None,
             dataType: Optional[str] = "text",
+            enable_insights: bool = True,
         ):
         """
         调用 VMind 图表生成工具
@@ -205,6 +207,11 @@ process.stdin.on('end', async () => {
             dataset: 数据字典列表
             user_prompt: 图表描述
             language: 语言代码，默认为中文 'zh'
+            fieldInfo: 字段信息
+            csvData: CSV 数据
+            textData: 文本数据
+            dataType: 数据类型
+            enable_insights: 是否启用数据洞察功能，默认为 True
             
         返回:
             Dict: 包含生成的图表路径和可能的错误信息
@@ -230,7 +237,8 @@ process.stdin.on('end', async () => {
                 "fieldInfo": fieldInfo,
                 "csvData": csvData,
                 "textData": textData,
-                "dataType": dataType
+                "dataType": dataType,
+                "enable_insights": enable_insights
             }
             
             # 获取脚本路径

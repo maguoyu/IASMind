@@ -43,6 +43,7 @@ class AnalyzeWithFileIdRequest(BaseModel):
     task_type: str = Field("visualization", description="任务类型")
     user_prompt: Optional[str] = Field(None, description="用户提示")
     language: str = Field("zh", description="语言代码，默认为中文")
+    enable_insights: bool = Field(True, description="是否启用数据洞察功能")
 
 
 class GenerateChartRequest(BaseModel):
@@ -54,6 +55,7 @@ class GenerateChartRequest(BaseModel):
     data: Optional[Any] = Field(None, description="要可视化的数据，可以是JSON数组、CSV字符串或其他文本格式")
     user_prompt: Optional[str] = Field(None, description="用户提示")
     language: str = Field("zh", description="语言代码，默认为中文")
+    enable_insights: bool = Field(True, description="是否启用数据洞察功能")
 
 
 class GenerateChartResponse(BaseModel):
@@ -197,7 +199,8 @@ async def generate_chart(
             fieldInfo=fieldInfo,
             dataType=dataType,
             user_prompt=request.user_prompt,
-            language=request.language
+            language=request.language,
+            enable_insights=request.enable_insights
         )
         
         # 如果有错误，抛出异常
@@ -220,6 +223,7 @@ async def generate_chart_with_file(
     task_type: str = Form("visualization"),
     user_prompt: Optional[str] = Form(None),
     language: str = Form("zh"),
+    enable_insights: bool = Form(True),
     user=Depends(GetCurrentUser)
 ):
     """通过上传文件生成数据可视化图表"""
@@ -290,7 +294,8 @@ async def generate_chart_with_file(
             fieldInfo=fieldInfo,
             dataType=dataType,
             user_prompt=user_prompt,
-            language=language
+            language=language,
+            enable_insights=enable_insights
         )
         
         # 如果有错误，抛出异常

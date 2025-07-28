@@ -32,7 +32,8 @@ async function generateChart(vmind, options) {
         fileName,
         language,
         textData,
-        dataType
+        dataType,
+        enable_insights
     } = options;
     let result = {};
     let dataset = initialDataset;
@@ -146,6 +147,9 @@ async function generateChart(vmind, options) {
         const insights = [];
 
         try {
+            if (enable_insights) {
+                console.error("是否数据洞察:", enable_insights);
+
             // 确保spec存在且有效
             if (spec && typeof spec === 'object') {
                 const insightResult = await vmind.getInsights(spec, {
@@ -156,7 +160,8 @@ async function generateChart(vmind, options) {
                 
                 const vmindInsights = insightResult?.insights;
                 if (vmindInsights && Array.isArray(vmindInsights)) {
-                    insights.push(...vmindInsights);
+                        insights.push(...vmindInsights);
+                    }
                 }
             }
         } catch (insightError) {
@@ -226,6 +231,7 @@ async function executeVMind() {
                     language = "zh",
                     dataType = "text",
                     textData = "",
+                    enable_insights = true,
                 } = parsedData;
                 
                 try {
@@ -255,6 +261,7 @@ async function executeVMind() {
                         language,
                         dataType,
                         textData,
+                        enable_insights,
                     });
                 } catch (error) {
                     console.error("执行过程中发生错误:", error);

@@ -651,3 +651,277 @@ class FileExploration:
             'data_insights': self.data_insights,
             'last_accessed_at': last_accessed_at
         } 
+
+
+class DataSource:
+    """数据源模型类"""
+    
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id', str(uuid.uuid4()))
+        self.name = kwargs.get('name', '')
+        self.description = kwargs.get('description', '')
+        self.type = kwargs.get('type', 'mysql')  # mysql 或 oracle
+        self.host = kwargs.get('host', 'localhost')
+        self.port = kwargs.get('port', 3306 if self.type == 'mysql' else 1521)
+        self.username = kwargs.get('username', '')
+        self.password = kwargs.get('password', '')
+        self.database = kwargs.get('database', '')
+        self.schema = kwargs.get('schema', '')  # 主要用于Oracle
+        self.service_name = kwargs.get('service_name', '')  # 主要用于Oracle
+        self.ssl = kwargs.get('ssl', False)
+        self.ssl_ca = kwargs.get('ssl_ca', '')
+        self.ssl_cert = kwargs.get('ssl_cert', '')
+        self.ssl_key = kwargs.get('ssl_key', '')
+        self.status = kwargs.get('status', 'inactive')  # inactive, active, error
+        self.created_at = kwargs.get('created_at', datetime.now().isoformat())
+        self.updated_at = kwargs.get('updated_at', datetime.now().isoformat())
+        self.last_connected_at = kwargs.get('last_connected_at', None)
+        self.error_message = kwargs.get('error_message', '')
+    
+    @classmethod
+    def Create(cls, name: str, description: str, type: str, host: str, port: int, 
+               username: str, password: str, database: str, **kwargs) -> 'DataSource':
+        """创建新的数据源"""
+        ds = cls(
+            name=name,
+            description=description,
+            type=type,
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            database=database,
+            schema=kwargs.get('schema', ''),
+            service_name=kwargs.get('service_name', ''),
+            ssl=kwargs.get('ssl', False),
+            ssl_ca=kwargs.get('ssl_ca', ''),
+            ssl_cert=kwargs.get('ssl_cert', ''),
+            ssl_key=kwargs.get('ssl_key', '')
+        )
+        
+        sql = """
+        INSERT INTO data_sources (
+            id, name, description, type, host, port, username, password, 
+            database_name, schema_name, service_name, `ssl`, ssl_ca, ssl_cert, ssl_key, status
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, 
+            %s, %s, %s, %s, %s, %s, %s, %s
+        )
+        """
+        
+        db_connection.ExecuteInsert(sql, (
+            ds.id, ds.name, ds.description, ds.type, ds.host, ds.port,
+            ds.username, ds.password, ds.database, ds.schema, ds.service_name,
+            ds.ssl, ds.ssl_ca, ds.ssl_cert, ds.ssl_key, ds.status
+        ))
+        
+        return ds
+    
+    @classmethod
+    def GetById(cls, datasource_id: str) -> Optional['DataSource']:
+        """根据ID获取数据源"""
+        sql = "SELECT * FROM data_sources WHERE id = %s"
+        result = db_connection.ExecuteQuery(sql, (datasource_id,))
+        
+        if not result:
+            return None
+            
+        return cls(**{
+            'id': result[0]['id'],
+            'name': result[0]['name'],
+            'description': result[0]['description'],
+            'type': result[0]['type'],
+            'host': result[0]['host'],
+            'port': result[0]['port'],
+            'username': result[0]['username'],
+            'password': result[0]['password'],
+            'database': result[0]['database_name'],
+            'schema': result[0]['schema_name'],
+            'service_name': result[0]['service_name'],
+            'ssl': bool(result[0]['ssl']),
+            'ssl_ca': result[0]['ssl_ca'],
+            'ssl_cert': result[0]['ssl_cert'],
+            'ssl_key': result[0]['ssl_key'],
+            'status': result[0]['status'],
+            'created_at': result[0]['created_at'],
+            'updated_at': result[0]['updated_at'],
+            'last_connected_at': result[0]['last_connected_at'],
+            'error_message': result[0]['error_message']
+        })
+    
+    @classmethod
+    def GetAll(cls) -> List['DataSource']:
+        """获取所有数据源"""
+        sql = "SELECT * FROM data_sources ORDER BY created_at DESC"
+        results = db_connection.ExecuteQuery(sql)
+        
+        return [cls(**{
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'type': row['type'],
+            'host': row['host'],
+            'port': row['port'],
+            'username': row['username'],
+            'password': row['password'],
+            'database': row['database_name'],
+            'schema': row['schema_name'],
+            'service_name': row['service_name'],
+            'ssl': bool(row['ssl']),
+            'ssl_ca': row['ssl_ca'],
+            'ssl_cert': row['ssl_cert'],
+            'ssl_key': row['ssl_key'],
+            'status': row['status'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at'],
+            'last_connected_at': row['last_connected_at'],
+            'error_message': row['error_message']
+        }) for row in results]
+    
+    def Update(self) -> bool:
+        """更新数据源信息"""
+        sql = """
+        UPDATE data_sources SET
+            name = %s,
+            description = %s,
+            type = %s,
+            host = %s,
+            port = %s,
+            username = %s,
+            password = %s,
+            database_name = %s,
+            schema_name = %s,
+            service_name = %s,
+            `ssl` = %s,
+            ssl_ca = %s,
+            ssl_cert = %s,
+            ssl_key = %s,
+            status = %s,
+            updated_at = NOW(),
+            error_message = %s
+        WHERE id = %s
+        """
+        
+        affected_rows = db_connection.ExecuteUpdate(sql, (
+            self.name, self.description, self.type, self.host, self.port,
+            self.username, self.password, self.database, self.schema, self.service_name,
+            self.ssl, self.ssl_ca, self.ssl_cert, self.ssl_key, self.status,
+            self.error_message, self.id
+        ))
+        
+        return affected_rows > 0
+    
+    def Delete(self) -> bool:
+        """删除数据源"""
+        sql = "DELETE FROM data_sources WHERE id = %s"
+        affected_rows = db_connection.ExecuteDelete(sql, (self.id,))
+        
+        return affected_rows > 0
+    
+    def TestConnection(self) -> Dict[str, Any]:
+        """测试数据源连接"""
+        result = {
+            'success': False,
+            'message': '',
+            'details': {}
+        }
+        
+        try:
+            if self.type == 'mysql':
+                import pymysql
+                connection = pymysql.connect(
+                    host=self.host,
+                    port=self.port,
+                    user=self.username,
+                    password=self.password,
+                    database=self.database,
+                    charset='utf8mb4',
+                    ssl={} if self.ssl else None,
+                    connect_timeout=5
+                )
+                
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT VERSION()")
+                    version = cursor.fetchone()[0]
+                    
+                    # 获取数据库中的表数量
+                    cursor.execute("SHOW TABLES")
+                    tables = cursor.fetchall()
+                    table_count = len(tables)
+                
+                connection.close()
+                
+                result['success'] = True
+                result['message'] = f"连接成功: MySQL {version}"
+                result['details'] = {
+                    'version': version,
+                    'table_count': table_count
+                }
+                
+                # 更新数据源状态
+                self.status = 'active'
+                self.last_connected_at = datetime.now().isoformat()
+                self.error_message = ''
+                self.Update()
+                
+            elif self.type == 'oracle':
+                try:
+                    import cx_Oracle
+                except ImportError:
+                    return {
+                        'success': False,
+                        'message': '未安装cx_Oracle驱动程序，无法连接Oracle数据库',
+                        'details': {}
+                    }
+                
+                # 构建DSN
+                if self.service_name:
+                    dsn = cx_Oracle.makedsn(self.host, self.port, service_name=self.service_name)
+                else:
+                    dsn = cx_Oracle.makedsn(self.host, self.port, sid=self.database)
+                
+                connection = cx_Oracle.connect(
+                    user=self.username,
+                    password=self.password,
+                    dsn=dsn
+                )
+                
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT * FROM v$version")
+                    version_info = cursor.fetchone()[0]
+                    
+                    # 获取模式下的表数量
+                    schema = self.schema or self.username.upper()
+                    cursor.execute(f"SELECT COUNT(*) FROM ALL_TABLES WHERE OWNER = '{schema}'")
+                    table_count = cursor.fetchone()[0]
+                
+                connection.close()
+                
+                result['success'] = True
+                result['message'] = f"连接成功: {version_info}"
+                result['details'] = {
+                    'version': version_info,
+                    'table_count': table_count,
+                    'schema': schema
+                }
+                
+                # 更新数据源状态
+                self.status = 'active'
+                self.last_connected_at = datetime.now().isoformat()
+                self.error_message = ''
+                self.Update()
+            
+            else:
+                result['success'] = False
+                result['message'] = f"不支持的数据源类型: {self.type}"
+        
+        except Exception as e:
+            result['success'] = False
+            result['message'] = f"连接失败: {str(e)}"
+            
+            # 更新数据源状态
+            self.status = 'error'
+            self.error_message = str(e)
+            self.Update()
+        
+        return result 

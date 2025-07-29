@@ -93,6 +93,93 @@ export interface ColumnsResponse {
   message?: string;
 }
 
+// 元数据相关接口定义
+export interface TableMetadata {
+  name: string;
+  schema?: string;
+  type: 'table' | 'view';
+  comment?: string;
+  rows_count: number;
+  size_mb: number;
+  created_at?: string;
+  updated_at?: string;
+  columns: Column[];
+  indexes: Index[];
+  constraints: Constraint[];
+}
+
+export interface Index {
+  name: string;
+  type: 'primary' | 'unique' | 'index' | 'fulltext';
+  columns: string[];
+  unique: boolean;
+  comment?: string;
+}
+
+export interface Constraint {
+  name: string;
+  type: 'primary_key' | 'foreign_key' | 'unique' | 'check';
+  columns: string[];
+  referenced_table?: string;
+  referenced_columns?: string[];
+  comment?: string;
+}
+
+export interface DatabaseMetadata {
+  database_name: string;
+  charset?: string;
+  collation?: string;
+  size_mb: number;
+  tables_count: number;
+  views_count: number;
+  created_at?: string;
+  tables: TableMetadata[];
+}
+
+export interface MetadataResponse {
+  success: boolean;
+  data: DatabaseMetadata;
+  sync_time: string;
+  version: string;
+  message?: string;
+}
+
+export interface SyncConfig {
+  enabled: boolean;
+  interval_hours: number;
+  auto_sync: boolean;
+  include_table_stats: boolean;
+  include_indexes: boolean;
+  include_constraints: boolean;
+}
+
+export interface SyncHistory {
+  id: string;
+  datasource_id: string;
+  sync_time: string;
+  status: 'success' | 'failed' | 'partial';
+  duration_seconds: number;
+  tables_synced: number;
+  error_message?: string;
+  changes_detected: number;
+}
+
+export interface SyncHistoryResponse {
+  success: boolean;
+  history: SyncHistory[];
+  total: number;
+  message?: string;
+}
+
+export interface SyncStatusResponse {
+  success: boolean;
+  status: 'idle' | 'syncing' | 'error';
+  last_sync?: string;
+  next_sync?: string;
+  config: SyncConfig;
+  message?: string;
+}
+
 // 数据源API类
 export class DataSourceApi {
   private baseUrl = resolveServiceURL('/api/datasources');
@@ -166,6 +253,63 @@ export class DataSourceApi {
   async getTableColumns(id: string, tableName: string): Promise<ColumnsResponse> {
     const response = await apiClient.get(`${this.baseUrl}/${id}/tables/${tableName}/columns`);
     return response.data;
+  }
+
+  /**
+   * 获取数据源元数据
+   */
+  async getMetadata(id: string): Promise<MetadataResponse> {
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata`);
+    return response.data;
+  }
+
+  /**
+   * 手动同步数据源元数据
+   */
+  async syncMetadata(id: string): Promise<MetadataResponse> {
+    const response = await apiClient.post(`${this.baseUrl}/${id}/metadata/sync`);
+    return response.data;
+  }
+
+  /**
+   * 获取元数据同步配置
+   */
+  async getSyncConfig(id: string): Promise<SyncConfig> {
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/config`);
+    return response.data;
+  }
+
+  /**
+   * 更新元数据同步配置
+   */
+  async updateSyncConfig(id: string, config: Partial<SyncConfig>): Promise<SyncConfig> {
+    const response = await apiClient.put(`${this.baseUrl}/${id}/metadata/config`, config);
+    return response.data;
+  }
+
+  /**
+   * 获取元数据同步状态
+   */
+  async getSyncStatus(id: string): Promise<SyncStatusResponse> {
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/status`);
+    return response.data;
+  }
+
+  /**
+   * 获取元数据同步历史
+   */
+  async getSyncHistory(id: string, page = 1, limit = 10): Promise<SyncHistoryResponse> {
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/history`, {
+      params: { page, limit }
+    });
+    return response.data;
+  }
+
+  /**
+   * 停止元数据同步
+   */
+  async stopSync(id: string): Promise<void> {
+    await apiClient.post(`${this.baseUrl}/${id}/metadata/stop`);
   }
 }
 

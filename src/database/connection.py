@@ -172,9 +172,130 @@ class DatabaseConnection:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """
             
+            # 创建数据源表
+            data_sources_sql = """
+            CREATE TABLE IF NOT EXISTS data_sources (
+                id VARCHAR(36) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                type ENUM('mysql', 'oracle') NOT NULL DEFAULT 'mysql',
+                host VARCHAR(255) NOT NULL,
+                port INT NOT NULL,
+                username VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                database_name VARCHAR(255) NOT NULL,
+                schema_name VARCHAR(255),
+                service_name VARCHAR(255),
+                ssl BOOLEAN DEFAULT FALSE,
+                ssl_ca TEXT,
+                ssl_cert TEXT,
+                ssl_key TEXT,
+                status ENUM('inactive', 'active', 'error') DEFAULT 'inactive',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                last_connected_at TIMESTAMP NULL,
+                error_message TEXT,
+                INDEX idx_status (status),
+                INDEX idx_type (type),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+            
+            # 创建数据源元数据表
+            datasource_metadata_sql = """
+            CREATE TABLE IF NOT EXISTS datasource_metadata (
+                id VARCHAR(36) PRIMARY KEY,
+                datasource_id VARCHAR(36) NOT NULL,
+                database_name VARCHAR(255) NOT NULL,
+                charset VARCHAR(100),
+                collation VARCHAR(100),
+                size_mb DECIMAL(10,2) DEFAULT 0,
+                tables_count INT DEFAULT 0,
+                views_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                sync_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                version VARCHAR(50),
+                metadata_json JSON,
+                INDEX idx_datasource_id (datasource_id),
+                INDEX idx_sync_time (sync_time),
+                FOREIGN KEY (datasource_id) REFERENCES data_sources(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+            
+            # 创建表元数据表
+            table_metadata_sql = """
+            CREATE TABLE IF NOT EXISTS table_metadata (
+                id VARCHAR(36) PRIMARY KEY,
+                datasource_id VARCHAR(36) NOT NULL,
+                metadata_id VARCHAR(36) NOT NULL,
+                table_name VARCHAR(255) NOT NULL,
+                schema_name VARCHAR(255),
+                table_type ENUM('table', 'view') DEFAULT 'table',
+                comment TEXT,
+                rows_count BIGINT DEFAULT 0,
+                size_mb DECIMAL(10,2) DEFAULT 0,
+                created_at TIMESTAMP NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                columns_json JSON,
+                indexes_json JSON,
+                constraints_json JSON,
+                INDEX idx_datasource_id (datasource_id),
+                INDEX idx_metadata_id (metadata_id),
+                INDEX idx_table_name (table_name),
+                INDEX idx_table_type (table_type),
+                FOREIGN KEY (datasource_id) REFERENCES data_sources(id) ON DELETE CASCADE,
+                FOREIGN KEY (metadata_id) REFERENCES datasource_metadata(id) ON DELETE CASCADE,
+                UNIQUE KEY uk_datasource_table (datasource_id, table_name, schema_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+            
+            # 创建同步配置表
+            sync_config_sql = """
+            CREATE TABLE IF NOT EXISTS datasource_sync_config (
+                id VARCHAR(36) PRIMARY KEY,
+                datasource_id VARCHAR(36) NOT NULL UNIQUE,
+                enabled BOOLEAN DEFAULT FALSE,
+                interval_hours INT DEFAULT 24,
+                auto_sync BOOLEAN DEFAULT TRUE,
+                include_table_stats BOOLEAN DEFAULT TRUE,
+                include_indexes BOOLEAN DEFAULT TRUE,
+                include_constraints BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_datasource_id (datasource_id),
+                INDEX idx_enabled (enabled),
+                FOREIGN KEY (datasource_id) REFERENCES data_sources(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+            
+            # 创建同步历史表
+            sync_history_sql = """
+            CREATE TABLE IF NOT EXISTS datasource_sync_history (
+                id VARCHAR(36) PRIMARY KEY,
+                datasource_id VARCHAR(36) NOT NULL,
+                sync_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                status ENUM('success', 'failed', 'partial') NOT NULL,
+                duration_seconds INT DEFAULT 0,
+                tables_synced INT DEFAULT 0,
+                changes_detected INT DEFAULT 0,
+                error_message TEXT,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP NULL,
+                INDEX idx_datasource_id (datasource_id),
+                INDEX idx_sync_time (sync_time),
+                INDEX idx_status (status),
+                FOREIGN KEY (datasource_id) REFERENCES data_sources(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """
+            
             self.ExecuteUpdate(knowledge_base_sql)
             self.ExecuteUpdate(file_documents_sql)
             self.ExecuteUpdate(file_exploration_sql)
+            self.ExecuteUpdate(data_sources_sql)
+            self.ExecuteUpdate(datasource_metadata_sql)
+            self.ExecuteUpdate(table_metadata_sql)
+            self.ExecuteUpdate(sync_config_sql)
+            self.ExecuteUpdate(sync_history_sql)
             
             logger.info("数据库表初始化完成")
             

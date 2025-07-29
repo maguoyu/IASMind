@@ -814,7 +814,7 @@ class DataSource:
     def Delete(self) -> bool:
         """删除数据源"""
         sql = "DELETE FROM data_sources WHERE id = %s"
-        affected_rows = db_connection.ExecuteDelete(sql, (self.id,))
+        affected_rows = db_connection.ExecuteUpdate(sql, (self.id,))
         
         return affected_rows > 0
     

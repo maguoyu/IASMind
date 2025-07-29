@@ -14,7 +14,15 @@ import {
   AlertCircle,
   Loader2,
   Copy,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  Settings,
+  Clock,
+  BarChart3,
+  Key,
+  Link,
+  Archive,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,7 +38,20 @@ import { Switch } from '~/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { Separator } from '~/components/ui/separator';
 import { Alert, AlertDescription } from '~/components/ui/alert';
-import { dataSourceApi, DataSource, DataSourceCreate, DataSourceUpdate, TablesResponse, ColumnsResponse } from '~/core/api/datasource';
+import { dataSourceApi } from '~/core/api/datasource';
+import type { 
+  DataSource, 
+  DataSourceCreate, 
+  DataSourceUpdate, 
+  TablesResponse, 
+  ColumnsResponse,
+  MetadataResponse,
+  SyncConfig,
+  SyncStatusResponse,
+  SyncHistoryResponse,
+  DatabaseMetadata,
+  TableMetadata
+} from '~/core/api/datasource';
 
 interface DataSourceFormData extends Omit<DataSourceCreate, 'type'> {
   type: 'mysql' | 'oracle';
@@ -64,6 +85,17 @@ export function DataSourceTab() {
   const [tables, setTables] = useState<TablesResponse | null>(null);
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [columns, setColumns] = useState<ColumnsResponse | null>(null);
+  
+  // 元数据相关状态
+  const [metadata, setMetadata] = useState<DatabaseMetadata | null>(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatusResponse | null>(null);
+  const [syncHistory, setSyncHistory] = useState<SyncHistoryResponse | null>(null);
+  const [syncConfig, setSyncConfig] = useState<SyncConfig | null>(null);
+  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedMetadataTable, setSelectedMetadataTable] = useState<TableMetadata | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState<string>('info');
 
   // 获取数据源列表
   const fetchDataSources = useCallback(async () => {
@@ -216,6 +248,84 @@ export function DataSourceTab() {
     }
   };
 
+  // 获取元数据
+  const fetchMetadata = async (dataSourceId: string) => {
+    try {
+      setMetadataLoading(true);
+      const result = await dataSourceApi.getMetadata(dataSourceId);
+      if (result.success) {
+        setMetadata(result.data);
+      } else {
+        toast.error(result.message || '获取元数据失败');
+      }
+    } catch (error) {
+      console.error('获取元数据失败:', error);
+      toast.error('获取元数据失败');
+    } finally {
+      setMetadataLoading(false);
+    }
+  };
+
+  // 同步元数据
+  const handleSyncMetadata = async (dataSourceId: string) => {
+    try {
+      setIsSyncing(true);
+      const result = await dataSourceApi.syncMetadata(dataSourceId);
+      if (result.success) {
+        setMetadata(result.data);
+        toast.success('元数据同步成功');
+        fetchSyncStatus(dataSourceId);
+        fetchSyncHistory(dataSourceId);
+      } else {
+        toast.error(result.message || '元数据同步失败');
+      }
+    } catch (error) {
+      console.error('元数据同步失败:', error);
+      toast.error('元数据同步失败');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // 获取同步状态
+  const fetchSyncStatus = async (dataSourceId: string) => {
+    try {
+      const result = await dataSourceApi.getSyncStatus(dataSourceId);
+      if (result.success) {
+        setSyncStatus(result);
+        setSyncConfig(result.config);
+      }
+    } catch (error) {
+      console.error('获取同步状态失败:', error);
+    }
+  };
+
+  // 获取同步历史
+  const fetchSyncHistory = async (dataSourceId: string) => {
+    try {
+      const result = await dataSourceApi.getSyncHistory(dataSourceId);
+      if (result.success) {
+        setSyncHistory(result);
+      }
+    } catch (error) {
+      console.error('获取同步历史失败:', error);
+    }
+  };
+
+  // 更新同步配置
+  const handleUpdateSyncConfig = async (dataSourceId: string, config: Partial<SyncConfig>) => {
+    try {
+      const result = await dataSourceApi.updateSyncConfig(dataSourceId, config);
+      setSyncConfig(result);
+      toast.success('同步配置已保存');
+      setIsConfigDialogOpen(false);
+      fetchSyncStatus(dataSourceId);
+    } catch (error) {
+      console.error('更新同步配置失败:', error);
+      toast.error('更新同步配置失败');
+    }
+  };
+
   // 打开编辑对话框
   const openEditDialog = (dataSource: DataSource) => {
     setSelectedDataSource(dataSource);
@@ -239,13 +349,38 @@ export function DataSourceTab() {
   };
 
   // 打开详情对话框
-  const openDetailDialog = (dataSource: DataSource) => {
+  const openDetailDialog = (dataSource: DataSource, defaultTab: string = 'info') => {
     setSelectedDataSource(dataSource);
+    // 重置表结构相关状态
     setTables(null);
     setColumns(null);
     setSelectedTable('');
+    // 重置元数据相关状态
+    setMetadata(null);
+    setSyncStatus(null);
+    setSyncHistory(null);
+    setSyncConfig(null);
+    setSelectedMetadataTable(null);
+    
+    // 设置默认标签页
+    setActiveDetailTab(defaultTab);
     setIsDetailDialogOpen(true);
+    
+    // 并行获取基本数据
     fetchTables(dataSource.id);
+    fetchSyncStatus(dataSource.id);
+    fetchSyncHistory(dataSource.id);
+  };
+
+  // 打开元数据管理
+  const openMetadataDialog = (dataSource: DataSource) => {
+    openDetailDialog(dataSource, 'metadata');
+    // 如果还没有元数据，自动加载
+    setTimeout(() => {
+      if (!metadata) {
+        fetchMetadata(dataSource.id);
+      }
+    }, 200);
   };
 
   // 获取状态徽章
@@ -517,6 +652,7 @@ export function DataSourceTab() {
                         size="sm"
                         onClick={() => handleTestConnection(dataSource)}
                         disabled={testingConnection === dataSource.id}
+                        title="测试连接"
                       >
                         {testingConnection === dataSource.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -527,7 +663,17 @@ export function DataSourceTab() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => openMetadataDialog(dataSource)}
+                        title="元数据管理"
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => openDetailDialog(dataSource)}
+                        title="查看详情"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -535,6 +681,7 @@ export function DataSourceTab() {
                         variant="outline"  
                         size="sm"
                         onClick={() => openEditDialog(dataSource)}
+                        title="编辑数据源"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -543,6 +690,7 @@ export function DataSourceTab() {
                         size="sm"
                         onClick={() => handleDelete(dataSource)}
                         className="text-red-600 hover:text-red-700"
+                        title="删除数据源"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -689,7 +837,16 @@ export function DataSourceTab() {
       </Dialog>
 
       {/* 详情对话框 */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+      <Dialog 
+        open={isDetailDialogOpen} 
+        onOpenChange={(open) => {
+          setIsDetailDialogOpen(open);
+          if (!open) {
+            // 对话框关闭时重置状态
+            setActiveDetailTab('info');
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>数据源详情</DialogTitle>
@@ -698,10 +855,16 @@ export function DataSourceTab() {
             </DialogDescription>
           </DialogHeader>
           {selectedDataSource && (
-            <Tabs defaultValue="info" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+            <Tabs 
+              value={activeDetailTab} 
+              onValueChange={setActiveDetailTab} 
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="info">基本信息</TabsTrigger>
                 <TabsTrigger value="tables">表结构</TabsTrigger>
+                <TabsTrigger value="metadata">元数据</TabsTrigger>
+                <TabsTrigger value="sync">同步管理</TabsTrigger>
               </TabsList>
               
               <TabsContent value="info" className="space-y-4">
@@ -846,8 +1009,465 @@ export function DataSourceTab() {
                   </div>
                 )}
               </TabsContent>
+              
+              <TabsContent value="metadata" className="space-y-4">
+                {/* 元数据操作栏 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <BarChart3 className="w-5 h-5 text-blue-600" />
+                    <span className="font-medium">数据库元数据</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchMetadata(selectedDataSource.id)}
+                      disabled={metadataLoading}
+                    >
+                      {metadataLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      刷新
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleSyncMetadata(selectedDataSource.id)}
+                      disabled={isSyncing || metadataLoading}
+                    >
+                      {isSyncing ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      同步元数据
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 元数据内容 */}
+                {metadataLoading ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                    <div className="text-sm text-slate-500 mt-2">加载元数据中...</div>
+                  </div>
+                ) : metadata ? (
+                  <div className="space-y-4">
+                    {/* 数据库概览 */}
+                    <Card className="p-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <Label className="text-slate-500 dark:text-slate-400">数据库大小</Label>
+                          <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                            {metadata.size_mb.toFixed(2)} MB
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-slate-500 dark:text-slate-400">表数量</Label>
+                          <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                            {metadata.tables_count}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-slate-500 dark:text-slate-400">视图数量</Label>
+                          <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                            {metadata.views_count}
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-slate-500 dark:text-slate-400">字符集</Label>
+                          <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                            {metadata.charset || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* 表详情 */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-slate-900 dark:text-slate-100 font-medium">
+                          表列表 ({metadata.tables.length})
+                        </Label>
+                        <div className="mt-2 max-h-80 overflow-y-auto border rounded-md">
+                          {metadata.tables.map((table) => (
+                            <button
+                              key={table.name}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 border-b last:border-b-0 ${
+                                selectedMetadataTable?.name === table.name ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                              }`}
+                              onClick={() => setSelectedMetadataTable(table)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <Database className="w-4 h-4" />
+                                  <span className="font-medium">{table.name}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {table.type}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                  {table.rows_count} 行 | {table.size_mb.toFixed(2)} MB
+                                </div>
+                              </div>
+                              {table.comment && (
+                                <div className="text-xs text-slate-500 mt-1 truncate">
+                                  {table.comment}
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-slate-900 dark:text-slate-100 font-medium">
+                          表详情 {selectedMetadataTable && `- ${selectedMetadataTable.name}`}
+                        </Label>
+                        <div className="mt-2 max-h-80 overflow-y-auto border rounded-md p-3">
+                          {selectedMetadataTable ? (
+                            <div className="space-y-4">
+                              {/* 表基本信息 */}
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-slate-500">类型:</span>
+                                  <Badge variant="outline">{selectedMetadataTable.type}</Badge>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-slate-500">行数:</span>
+                                  <span>{selectedMetadataTable.rows_count.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-slate-500">大小:</span>
+                                  <span>{selectedMetadataTable.size_mb.toFixed(2)} MB</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-slate-500">列数:</span>
+                                  <span>{selectedMetadataTable.columns.length}</span>
+                                </div>
+                              </div>
+
+                              <Separator />
+
+                              {/* 列信息 */}
+                              <div>
+                                <h4 className="text-sm font-medium mb-2 flex items-center">
+                                  <Table className="w-4 h-4 mr-1" />
+                                  列信息
+                                </h4>
+                                <div className="space-y-1 max-h-32 overflow-y-auto">
+                                  {selectedMetadataTable.columns.map((column, index) => (
+                                    <div key={index} className="flex items-center justify-between text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                                      <div>
+                                        <span className="font-medium">{column.name}</span>
+                                        <span className="ml-2 text-slate-500">{column.type}</span>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        {!column.null && <Badge variant="outline" className="text-xs">NOT NULL</Badge>}
+                                        {column.key && <Badge variant="outline" className="text-xs">{column.key}</Badge>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* 索引信息 */}
+                              {selectedMetadataTable.indexes.length > 0 && (
+                                <>
+                                  <Separator />
+                                  <div>
+                                    <h4 className="text-sm font-medium mb-2 flex items-center">
+                                      <Key className="w-4 h-4 mr-1" />
+                                      索引 ({selectedMetadataTable.indexes.length})
+                                    </h4>
+                                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                                      {selectedMetadataTable.indexes.map((index, idx) => (
+                                        <div key={idx} className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-medium">{index.name}</span>
+                                            <Badge variant="outline" className="text-xs">{index.type}</Badge>
+                                          </div>
+                                          <div className="text-slate-500 mt-1">
+                                            列: {index.columns.join(', ')}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+
+                              {/* 约束信息 */}
+                              {selectedMetadataTable.constraints.length > 0 && (
+                                <>
+                                  <Separator />
+                                  <div>
+                                    <h4 className="text-sm font-medium mb-2 flex items-center">
+                                      <Link className="w-4 h-4 mr-1" />
+                                      约束 ({selectedMetadataTable.constraints.length})
+                                    </h4>
+                                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                                      {selectedMetadataTable.constraints.map((constraint, idx) => (
+                                        <div key={idx} className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-medium">{constraint.name}</span>
+                                            <Badge variant="outline" className="text-xs">{constraint.type}</Badge>
+                                          </div>
+                                          <div className="text-slate-500 mt-1">
+                                            列: {constraint.columns.join(', ')}
+                                            {constraint.referenced_table && (
+                                              <span> → {constraint.referenced_table}({constraint.referenced_columns?.join(', ')})</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-center text-slate-500 py-8">
+                              选择一个表查看详细信息
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Archive className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                      暂无元数据
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-4">
+                      点击"同步元数据"按钮获取最新的数据库结构信息
+                    </p>
+                    <Button onClick={() => fetchMetadata(selectedDataSource.id)}>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      获取元数据
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="sync" className="space-y-4">
+                {/* 同步状态概览 */}
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium flex items-center">
+                      <Settings className="w-5 h-5 mr-2" />
+                      同步管理
+                    </h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsConfigDialogOpen(true)}
+                      disabled={!syncConfig}
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      配置
+                    </Button>
+                  </div>
+                  
+                  {syncStatus ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <Label className="text-slate-500 dark:text-slate-400">同步状态</Label>
+                        <div className="mt-1">
+                          {syncStatus.status === 'syncing' && (
+                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              同步中
+                            </Badge>
+                          )}
+                          {syncStatus.status === 'idle' && (
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              空闲
+                            </Badge>
+                          )}
+                          {syncStatus.status === 'error' && (
+                            <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                              <XCircle className="w-3 h-3 mr-1" />
+                              错误
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-slate-500 dark:text-slate-400">自动同步</Label>
+                        <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                          {syncStatus.config.enabled ? '已启用' : '已禁用'}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-slate-500 dark:text-slate-400">上次同步</Label>
+                        <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                          {syncStatus.last_sync 
+                            ? new Date(syncStatus.last_sync).toLocaleString()
+                            : '从未同步'
+                          }
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-slate-500 dark:text-slate-400">下次同步</Label>
+                        <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                          {syncStatus.next_sync 
+                            ? new Date(syncStatus.next_sync).toLocaleString()
+                            : '未计划'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                      <div className="text-sm text-slate-500 mt-2">加载同步状态中...</div>
+                    </div>
+                  )}
+                </Card>
+
+                {/* 同步历史 */}
+                <Card className="p-4">
+                  <h4 className="text-md font-medium mb-3 flex items-center">
+                    <Clock className="w-4 h-4 mr-2" />
+                    同步历史
+                  </h4>
+                  {syncHistory && syncHistory.history.length > 0 ? (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {syncHistory.history.map((record) => (
+                        <div key={record.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded">
+                          <div className="flex items-center space-x-3">
+                            {record.status === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                            {record.status === 'failed' && <XCircle className="w-4 h-4 text-red-600" />}
+                            {record.status === 'partial' && <AlertCircle className="w-4 h-4 text-yellow-600" />}
+                            <div>
+                              <div className="text-sm font-medium">
+                                {new Date(record.sync_time).toLocaleString()}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                同步了 {record.tables_synced} 个表，耗时 {record.duration_seconds}s
+                                {record.changes_detected > 0 && ` | 检测到 ${record.changes_detected} 个变更`}
+                              </div>
+                              {record.error_message && (
+                                <div className="text-xs text-red-600 mt-1">
+                                  {record.error_message}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {record.status === 'success' ? '成功' : record.status === 'failed' ? '失败' : '部分成功'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      <Calendar className="w-8 h-8 mx-auto mb-2" />
+                      <p>暂无同步历史记录</p>
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
             </Tabs>
           )}
+
+          {/* 同步配置对话框 */}
+          <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>元数据同步配置</DialogTitle>
+                <DialogDescription>
+                  配置数据源的元数据自动同步设置
+                </DialogDescription>
+              </DialogHeader>
+              {syncConfig && selectedDataSource && (
+                <div className="space-y-4 py-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="sync-enabled">启用自动同步</Label>
+                    <Switch
+                      id="sync-enabled"
+                      checked={syncConfig.enabled}
+                      onCheckedChange={(checked) => setSyncConfig({ ...syncConfig, enabled: checked })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="sync-interval">同步间隔（小时）</Label>
+                    <Input
+                      id="sync-interval"
+                      type="number"
+                      min="1"
+                      max="168"
+                      value={syncConfig.interval_hours}
+                      onChange={(e) => setSyncConfig({ 
+                        ...syncConfig, 
+                        interval_hours: parseInt(e.target.value) || 24 
+                      })}
+                      disabled={!syncConfig.enabled}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>同步选项</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="include-stats" className="text-sm">包含表统计信息</Label>
+                        <Switch
+                          id="include-stats"
+                          checked={syncConfig.include_table_stats}
+                          onCheckedChange={(checked) => setSyncConfig({ 
+                            ...syncConfig, 
+                            include_table_stats: checked 
+                          })}
+                          disabled={!syncConfig.enabled}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="include-indexes" className="text-sm">包含索引信息</Label>
+                        <Switch
+                          id="include-indexes"
+                          checked={syncConfig.include_indexes}
+                          onCheckedChange={(checked) => setSyncConfig({ 
+                            ...syncConfig, 
+                            include_indexes: checked 
+                          })}
+                          disabled={!syncConfig.enabled}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="include-constraints" className="text-sm">包含约束信息</Label>
+                        <Switch
+                          id="include-constraints"
+                          checked={syncConfig.include_constraints}
+                          onCheckedChange={(checked) => setSyncConfig({ 
+                            ...syncConfig, 
+                            include_constraints: checked 
+                          })}
+                          disabled={!syncConfig.enabled}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsConfigDialogOpen(false)}>
+                  取消
+                </Button>
+                <Button 
+                  onClick={() => selectedDataSource && syncConfig && handleUpdateSyncConfig(selectedDataSource.id, syncConfig)}
+                  disabled={!syncConfig}
+                >
+                  保存配置
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </DialogContent>
       </Dialog>
     </div>

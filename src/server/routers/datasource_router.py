@@ -8,10 +8,11 @@
 
 import logging
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends, Body, Query
 from pydantic import BaseModel, Field
 
 from src.database.models import DataSource
+from src.server.services.metadata_service import MetadataService
 from ..auth_middleware import GetCurrentUser, GetCurrentAdminUser
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,36 @@ class ConnectionTestResponse(BaseModel):
     success: bool = Field(..., description="连接是否成功")
     message: str = Field(..., description="连接结果消息")
     details: Dict[str, Any] = Field(default_factory=dict, description="详细信息")
+
+# 元数据相关模型
+class SyncConfigUpdate(BaseModel):
+    enabled: Optional[bool] = Field(None, description="是否启用自动同步")
+    interval_hours: Optional[int] = Field(None, description="同步间隔（小时）", ge=1, le=168)
+    auto_sync: Optional[bool] = Field(None, description="是否自动同步")
+    include_table_stats: Optional[bool] = Field(None, description="是否包含表统计信息")
+    include_indexes: Optional[bool] = Field(None, description="是否包含索引信息")
+    include_constraints: Optional[bool] = Field(None, description="是否包含约束信息")
+
+class MetadataResponse(BaseModel):
+    success: bool = Field(..., description="操作是否成功")
+    data: Optional[Dict[str, Any]] = Field(None, description="元数据内容")
+    sync_time: Optional[str] = Field(None, description="同步时间")
+    version: Optional[str] = Field(None, description="版本号")
+    message: str = Field(..., description="响应消息")
+
+class SyncStatusResponse(BaseModel):
+    success: bool = Field(..., description="操作是否成功")
+    status: str = Field(..., description="同步状态")
+    last_sync: Optional[str] = Field(None, description="上次同步时间")
+    next_sync: Optional[str] = Field(None, description="下次同步时间")
+    config: Dict[str, Any] = Field(..., description="同步配置")
+    message: str = Field(..., description="响应消息")
+
+class SyncHistoryResponse(BaseModel):
+    success: bool = Field(..., description="操作是否成功")
+    history: List[Dict[str, Any]] = Field(..., description="同步历史列表")
+    total: int = Field(..., description="总记录数")
+    message: str = Field(..., description="响应消息")
 
 
 @router.post("", response_model=DataSourceResponse, status_code=201)
@@ -576,4 +607,153 @@ async def get_table_columns(
             "success": False,
             "message": f"获取表列信息失败: {str(e)}",
             "columns": []
-        } 
+        }
+
+
+# ==================== 元数据管理API ====================
+
+@router.get("/{datasource_id}/metadata", response_model=MetadataResponse)
+async def get_metadata(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """获取数据源元数据"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        result = MetadataService.get_database_metadata(datasource_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取元数据失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取元数据失败: {str(e)}")
+
+
+@router.post("/{datasource_id}/metadata/sync", response_model=MetadataResponse)
+async def sync_metadata(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """手动同步数据源元数据"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        result = MetadataService.sync_database_metadata(datasource_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"同步元数据失败: {e}")
+        raise HTTPException(status_code=500, detail=f"同步元数据失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/config")
+async def get_sync_config(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """获取元数据同步配置"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        config = MetadataService.get_sync_config(datasource_id)
+        return config
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取同步配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取同步配置失败: {str(e)}")
+
+
+@router.put("/{datasource_id}/metadata/config")
+async def update_sync_config(
+    datasource_id: str,
+    config: SyncConfigUpdate,
+    user=Depends(GetCurrentAdminUser)
+):
+    """更新元数据同步配置"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        # 过滤None值
+        config_dict = {k: v for k, v in config.dict().items() if v is not None}
+        
+        result = MetadataService.update_sync_config(datasource_id, config_dict)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"更新同步配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"更新同步配置失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/status", response_model=SyncStatusResponse)
+async def get_sync_status(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """获取元数据同步状态"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        result = MetadataService.get_sync_status(datasource_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取同步状态失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取同步状态失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/history", response_model=SyncHistoryResponse)
+async def get_sync_history(
+    datasource_id: str,
+    page: int = Query(1, ge=1, description="页码"),
+    limit: int = Query(10, ge=1, le=100, description="每页记录数"),
+    user=Depends(GetCurrentUser)
+):
+    """获取元数据同步历史"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        result = MetadataService.get_sync_history(datasource_id, page, limit)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取同步历史失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取同步历史失败: {str(e)}")
+
+
+@router.post("/{datasource_id}/metadata/stop")
+async def stop_sync(
+    datasource_id: str,
+    user=Depends(GetCurrentAdminUser)
+):
+    """停止元数据同步"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        # 这里可以实现停止同步的逻辑
+        # 目前返回成功状态
+        return {"success": True, "message": "同步已停止"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"停止同步失败: {e}")
+        raise HTTPException(status_code=500, detail=f"停止同步失败: {str(e)}") 

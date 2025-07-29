@@ -148,9 +148,7 @@ export function ChartsMain() {
   const [tablesLoading, setTablesLoading] = useState(false);
   
   // 文件工作表选择相关状态（用于Excel等多工作表文件）
-  const [selectedSheet, setSelectedSheet] = useState<string>('');
-  const [sheetsList, setSheetsList] = useState<string[]>([]);
-  const [sheetsLoading, setSheetsLoading] = useState(false);
+
 
   // 合并所有数据源（系统数据源 + 临时文件）
   const allDataSources = useMemo(() => {
@@ -218,42 +216,7 @@ export function ChartsMain() {
     }
   }, []);
 
-  // 解析上传文件的工作表（主要用于Excel文件）
-  const parseFileSheets = useCallback(async (file: UploadedFile) => {
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      // 非Excel文件，默认只有一个"数据表"
-      setSheetsList(['数据表']);
-      setSelectedSheet('数据表');
-      return;
-    }
 
-    try {
-      setSheetsLoading(true);
-      setSheetsList([]);
-      setSelectedSheet('');
-
-      // 对于Excel文件，尝试使用SheetJS库解析工作表
-      // 这里暂时模拟一些常见的工作表名称
-      // 在实际项目中，可以使用xlsx库来读取真实的工作表名称
-      const mockSheets = ['Sheet1', '数据明细', '汇总表', '图表数据'];
-      
-      // 模拟异步解析
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setSheetsList(mockSheets);
-      setSelectedSheet(mockSheets[0] || 'Sheet1'); // 默认选择第一个工作表
-      
-      toast.success(`检测到 ${mockSheets.length} 个工作表`);
-    } catch (error) {
-      console.error('解析文件工作表失败:', error);
-      // 解析失败时，提供默认工作表
-      setSheetsList(['Sheet1']);
-      setSelectedSheet('Sheet1');
-      toast.warning('无法解析工作表信息，将使用默认设置');
-    } finally {
-      setSheetsLoading(false);
-    }
-  }, []);
 
   // 处理数据源变更
   const handleDataSourceChange = useCallback((value: string) => {
@@ -269,17 +232,11 @@ export function ChartsMain() {
       // 如果选择了上传临时文件，但没有上传文件，显示提示
       if (!uploadedFiles || uploadedFiles.length === 0) {
         toast.info('请选择文件进行分析');
-        // 清空工作表状态
-        setSheetsList([]);
-        setSelectedSheet('');
       }
     } else {
       // 如果选择了其他数据源，清理已上传的文件，隐藏上传按钮
       setUploadedFiles([]);
       setShowUploadButton(false);
-      // 清空工作表状态
-      setSheetsList([]);
-      setSelectedSheet('');
       
       // 如果是系统数据源，获取表列表
       const isSystemDataSource = systemDataSources.some(ds => ds.id === value);
@@ -296,20 +253,12 @@ export function ChartsMain() {
       toast.success(`已选择文件: ${files[0].name}`);
       // 有文件时锁定为临时文件数据源
       setSelectedDataSource('uploaded_file');
-      // 解析文件工作表
-      parseFileSheets(files[0]);
-    } else {
-      // 清空工作表状态
-      setSheetsList([]);
-      setSelectedSheet('');
     }
-  }, [parseFileSheets]);
+  }, []);
 
   // 重置文件上传
   const resetFileUpload = useCallback(() => {
     setUploadedFiles([]);
-    setSheetsList([]);
-    setSelectedSheet('');
     toast.info('已清除选择的文件');
   }, []);
 
@@ -329,13 +278,7 @@ export function ChartsMain() {
       return;
     }
     
-    // 检查是否选择了临时文件数据源但没选择工作表（对于Excel文件）
-    if (selectedDataSource === 'uploaded_file' && uploadedFiles.length > 0 && uploadedFiles[0] && 
-        (uploadedFiles[0].name.endsWith('.xlsx') || uploadedFiles[0].name.endsWith('.xls')) && 
-        !selectedSheet) {
-      toast.error('请先选择要分析的工作表');
-      return;
-    }
+
     
     // 检查是否选择了系统数据源但没选择表
     const isSystemDataSource = systemDataSources.some(ds => ds.id === selectedDataSource);
@@ -351,9 +294,7 @@ export function ChartsMain() {
       userMessageContent += `\n\n📊 数据源: ${dataSourceName}\n📋 数据表: ${selectedTable}`;
     } else if (selectedDataSource === 'uploaded_file' && uploadedFiles.length > 0 && uploadedFiles[0]) {
       userMessageContent += `\n\n📁 文件: ${uploadedFiles[0].name}`;
-      if (selectedSheet && selectedSheet !== '数据表') {
-        userMessageContent += `\n📄 工作表: ${selectedSheet}`;
-      }
+
     }
     
     // 使用本地状态中的文件
@@ -663,60 +604,64 @@ export function ChartsMain() {
   }, []);
   
   const renderChart = (chart: ChartData) => {
-    const chartHeight = 300;
+    const chartHeight = 500; // 增加图表高度以提升显示效果
     
     switch (chart.type) {
       case 'bar':
         return (
-          <div style={{ width: '100%', height: chartHeight }}>
+          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
             <VChart 
               spec={{
                 type: 'bar',
                 data: [{ id: 'barData', values: chart.data }],
                 xField: chart.data[0]?.route ? 'route' : (chart.data[0]?.category ? 'category' : 'name'),
-                yField: chart.data[0]?.efficiency ? 'efficiency' : (chart.data[0]?.sales ? 'sales' : 'value')
+                yField: chart.data[0]?.efficiency ? 'efficiency' : (chart.data[0]?.sales ? 'sales' : 'value'),
+                padding: { top: 20, right: 40, bottom: 60, left: 80 }
               }} 
             />
           </div>
         );
       
-      case 'pie':
+            case 'pie':
         return (
-          <div style={{ width: '100%', height: chartHeight }}>
+          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
             <VChart 
               spec={{
                 type: 'pie',
                 data: [{ id: 'pieData', values: chart.data }],
                 angleField: 'value',
-                categoryField: 'name'
+                categoryField: 'name',
+                padding: { top: 40, right: 80, bottom: 60, left: 80 }
               }}
             />
           </div>
         );
       
-      case 'line':
+            case 'line':
         return (
-          <div style={{ width: '100%', height: chartHeight }}>
+          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
             <VChart 
               spec={{
                 type: 'line',
                 data: [{ id: 'lineData', values: chart.data }],
                 xField: chart.data[0]?.month ? 'month' : (chart.data[0]?.date ? 'date' : 'x'),
-                yField: chart.data[0]?.consumption ? 'consumption' : (chart.data[0]?.volume ? 'volume' : 'sales')
+                yField: chart.data[0]?.consumption ? 'consumption' : (chart.data[0]?.volume ? 'volume' : 'sales'),
+                padding: { top: 20, right: 40, bottom: 60, left: 80 }
               }}
             />
           </div>
         );
       
-      case 'area':
+            case 'area':
         return (
-          <div style={{ width: '100%', height: chartHeight }}>
+          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
             <VChart 
               spec={{
                 type: 'area',
                 data: [{ id: 'areaData', values: chart.data }],
                 xField: 'month',
-                yField: chart.data[0]?.A320 ? ['A320', 'B737', 'B777'] : 'revenue'
+                yField: chart.data[0]?.A320 ? ['A320', 'B737', 'B777'] : 'revenue',
+                padding: { top: 60, right: 40, bottom: 60, left: 80 }
               }}
             />
           </div>
@@ -724,7 +669,7 @@ export function ChartsMain() {
       
       case 'custom':
         return (
-          <div style={{ width: '100%', height: chartHeight }}>
+          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
             <VChart spec={chart.config} />
           </div>
         );
@@ -735,11 +680,11 @@ export function ChartsMain() {
   };
 
     return (
-    <div className={cn("flex h-full w-full justify-center-safe px-4 pt-12 pb-4")}>
-      <div className={cn("w-[768px] flex flex-col h-full")}>
-        {/* 数据源选择区域 */}
+    <div className={cn("flex h-full w-full")}>
+      <div className={cn("max-w-7xl mx-auto w-full flex flex-col h-full")}>
+        {/* 数据源选择区域 - 固定在顶部 */}
         <motion.div 
-          className="mb-4 p-4 bg-card rounded-lg border"
+          className="sticky top-20 z-40 mb-4 p-4 bg-card rounded-lg border backdrop-blur-sm bg-card/95 shadow-sm"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -817,28 +762,7 @@ export function ChartsMain() {
               </div>
             )}
             
-            {/* 临时文件信息显示 */}
-            {selectedDataSource === 'uploaded_file' && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="text-sm text-blue-500">
-                  {uploadedFiles.length > 0 && uploadedFiles[0]?.name
-                    ? `已选择: ${uploadedFiles[0].name}` 
-                    : '请选择文件进行分析'
-                  }
-                </div>
-                {uploadedFiles.length > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={resetFileUpload}
-                    className="h-7 text-xs text-red-600 hover:text-red-700"
-                  >
-                    <X className="w-3 h-3 mr-1" />
-                    清除
-                  </Button>
-                )}
-              </div>
-            )}
+      
 
             
             {/* 新增数据洞察选项 */}
@@ -859,8 +783,8 @@ export function ChartsMain() {
         </motion.div>
 
         {/* 消息列表区域 */}
-        <div className="flex flex-grow flex-col">
-          <div className="flex-grow overflow-y-auto space-y-4 mb-6">
+        <div className="flex flex-grow flex-col px-4">
+          <div className="flex-grow overflow-y-auto space-y-4 mb-6 pt-4">
             {messages.map((message) => (
               <motion.div 
                 key={message.id} 
@@ -875,7 +799,7 @@ export function ChartsMain() {
                   </div>
                 )}
                 
-                <div className={`max-w-lg ${message.type === 'user' ? 'order-first' : ''}`}>
+                <div className={`${message.type === 'user' ? 'max-w-lg order-first' : 'w-full max-w-none'}`}>
                   <div className={`p-3 rounded-lg ${
                     message.type === 'user' 
                       ? 'bg-primary text-primary-foreground ml-auto' 
@@ -887,48 +811,20 @@ export function ChartsMain() {
                     </p>
                   </div>
                   
-                  {/* 显示用户上传的文件 */}
-                  {message.type === 'user' && message.files && message.files.length > 0 && (
-                    <div className="mt-3 bg-muted/50 rounded-lg p-3 border">
-                      <div className="text-sm font-medium mb-2 flex items-center gap-1">
-                        <FileText size={14} />
-                        选择的文件
-                      </div>
-                      <ul className="space-y-2">
-                        {message.files.map((file) => (
-                          <li 
-                            key={file.id} 
-                            className="flex items-center gap-2 text-sm"
-                          >
-                            {file.type.includes('json') ? (
-                              <File size={14} className="text-orange-500" />
-                            ) : file.type.includes('csv') || file.name.endsWith('.csv') ? (
-                              <File size={14} className="text-green-500" />
-                            ) : file.type.includes('sheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls') ? (
-                              <File size={14} className="text-blue-500" />
-                            ) : (
-                              <File size={14} className="text-gray-500" />
-                            )}
-                            <span className="truncate">{file.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              ({formatFileSize(file.size)})
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+            
 
                   {/* 图表展示 */}
                   {message.charts && message.charts.length > 0 && (
-                    <div className="mt-3 space-y-3">
+                    <div className="mt-3 space-y-4">
                       {message.charts.map((chart, index) => (
-                        <Card key={index}>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">{chart.title}</CardTitle>
+                        <Card key={index} className="w-full">
+                          <CardHeader className="pb-4">
+                            <CardTitle className="text-lg font-semibold">{chart.title}</CardTitle>
                           </CardHeader>
-                          <CardContent>
-                            {renderChart(chart)}
+                          <CardContent className="p-6">
+                            <div className="w-full">
+                              {renderChart(chart)}
+                            </div>
                           </CardContent>
                         </Card>
                       ))}
@@ -1067,12 +963,6 @@ export function ChartsMain() {
               tablesLoading={tablesLoading}
               onTableChange={setSelectedTable}
               onFetchTables={fetchTables}
-              // 工作表选择相关props
-              selectedSheet={selectedSheet}
-              sheetsList={sheetsList}
-              sheetsLoading={sheetsLoading}
-              onSheetChange={setSelectedSheet}
-              onParseSheets={parseFileSheets}
             />
           </div>
         </div>

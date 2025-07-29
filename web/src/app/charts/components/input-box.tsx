@@ -63,12 +63,7 @@ export function InputBox({
   tablesLoading = false,
   onTableChange,
   onFetchTables,
-  // 工作表选择相关props
-  selectedSheet,
-  sheetsList = [],
-  sheetsLoading = false,
-  onSheetChange,
-  onParseSheets,
+
 }: {
   className?: string;
   size?: "large" | "normal";
@@ -96,12 +91,7 @@ export function InputBox({
   tablesLoading?: boolean;
   onTableChange?: (table: string) => void;
   onFetchTables?: (dataSourceId: string) => void;
-  // 工作表选择相关props
-  selectedSheet?: string;
-  sheetsList?: string[];
-  sheetsLoading?: boolean;
-  onSheetChange?: (sheet: string) => void;
-  onParseSheets?: (file: UploadedFile) => void;
+
 }) {
   const enableDeepThinking = useSettingsStore(
     (state) => state.general.enableDeepThinking,
@@ -374,67 +364,7 @@ export function InputBox({
         )}
 
         {/* 数据选择器 - 根据数据源类型显示不同的选择器 */}
-        {selectedDataSource === 'uploaded_file' ? (
-          // 工作表选择器 - 仅对Excel文件显示
-          uploadedFiles.length > 0 && uploadedFiles[0] &&
-          (uploadedFiles[0].name.endsWith('.xlsx') || uploadedFiles[0].name.endsWith('.xls')) && (
-            <div className="px-4 pt-2 pb-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1">
-                  <FileText size={14} className="text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">工作表:</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Select 
-                    value={selectedSheet || ''} 
-                    onValueChange={onSheetChange}
-                    disabled={sheetsLoading || sheetsList.length === 0}
-                  >
-                    <SelectTrigger className={`w-40 h-7 text-xs ${sheetsLoading ? 'opacity-70' : ''}`}>
-                      <SelectValue placeholder={
-                        sheetsLoading ? "解析中..." : 
-                        sheetsList.length === 0 ? "暂无工作表" : 
-                        "选择工作表"
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sheetsList.map((sheetName) => (
-                        <SelectItem key={sheetName} value={sheetName}>
-                          <div className="flex items-center gap-2">
-                            <FileText className="w-3 h-3" />
-                            <span className="text-xs">{sheetName}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                      
-                      {sheetsLoading && (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                          正在解析工作表...
-                        </div>
-                      )}
-                      
-                      {!sheetsLoading && sheetsList.length === 0 && (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                          暂无可用工作表
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {selectedSheet && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 hover:bg-destructive/10"
-                      onClick={() => onSheetChange?.('')}
-                    >
-                      <X size={12} className="text-muted-foreground hover:text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        ) : (
+        {selectedDataSource !== 'uploaded_file' && (
           // 数据表选择器 - 仅对系统数据源显示
           selectedDataSource && systemDataSources.some(ds => ds.id === selectedDataSource) && (
             <div className="px-4 pt-2 pb-1">

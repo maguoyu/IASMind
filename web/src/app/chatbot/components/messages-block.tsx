@@ -42,6 +42,7 @@ export function MessagesBlock({ className }: { className?: string }) {
         resources?: Array<Resource>;
         enableOnlineSearch?: boolean;
         enableKnowledgeRetrieval?: boolean;
+        files?: Array<any>;
       },
     ) => {
       const abortController = getGlobalAbortController();
@@ -55,6 +56,7 @@ export function MessagesBlock({ className }: { className?: string }) {
             resources: options?.resources,
             enableOnlineSearch: options?.enableOnlineSearch,
             enableKnowledgeRetrieval: options?.enableKnowledgeRetrieval,
+            files: options?.files,
           },
           {
             abortSignal: abortController.signal,

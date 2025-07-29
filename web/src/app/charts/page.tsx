@@ -9,7 +9,7 @@ import { ChartsMain } from "./main";
 export default function ChartsPage() {
   return (
     <Layout fullHeight={true} showFooter={false}>
-      <div className="flex h-full w-full justify-center overscroll-none">
+      <div className="flex h-full w-full overscroll-none">
         <ChartsMain />
       </div>
     </Layout>

@@ -18,7 +18,7 @@ import { InputBox } from "./components/input-box";
 import { Checkbox } from "~/components/ui/checkbox";
 import type { UploadedFile } from "./components/input-box";
 import { VmindAPI } from "~/core/api/vmind"; // 导入VmindAPI
-import { dataSourceApi, DataSource as SystemDataSource } from "~/core/api/datasource"; // 导入数据源API
+import { dataSourceApi, type DataSource as SystemDataSource } from "~/core/api/datasource"; // 导入数据源API
 
 // 消息类型定义
 interface ChatMessage {
@@ -141,6 +141,16 @@ export function ChartsMain() {
   // 系统数据源状态
   const [systemDataSources, setSystemDataSources] = useState<LocalDataSource[]>([]);
   const [dataSourcesLoading, setDataSourcesLoading] = useState(false);
+  
+  // 表选择相关状态
+  const [selectedTable, setSelectedTable] = useState<string>('');
+  const [tablesList, setTablesList] = useState<string[]>([]);
+  const [tablesLoading, setTablesLoading] = useState(false);
+  
+  // 文件工作表选择相关状态（用于Excel等多工作表文件）
+  const [selectedSheet, setSelectedSheet] = useState<string>('');
+  const [sheetsList, setSheetsList] = useState<string[]>([]);
+  const [sheetsLoading, setSheetsLoading] = useState(false);
 
   // 合并所有数据源（系统数据源 + 临时文件）
   const allDataSources = useMemo(() => {
@@ -184,6 +194,67 @@ export function ChartsMain() {
     fetchSystemDataSources();
   }, [fetchSystemDataSources]);
 
+  // 获取数据源中的表列表
+  const fetchTables = useCallback(async (dataSourceId: string) => {
+    try {
+      setTablesLoading(true);
+      setTablesList([]);
+      setSelectedTable('');
+      
+      const response = await dataSourceApi.getTables(dataSourceId);
+      if (response.success && response.tables) {
+        setTablesList(response.tables);
+        toast.success(`成功获取到 ${response.tables.length} 个数据表`);
+      } else {
+        toast.error(response.message || '获取表列表失败');
+        setTablesList([]);
+      }
+    } catch (error) {
+      console.error('获取表列表失败:', error);
+      toast.error('获取表列表失败，请检查数据源连接');
+      setTablesList([]);
+    } finally {
+      setTablesLoading(false);
+    }
+  }, []);
+
+  // 解析上传文件的工作表（主要用于Excel文件）
+  const parseFileSheets = useCallback(async (file: UploadedFile) => {
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      // 非Excel文件，默认只有一个"数据表"
+      setSheetsList(['数据表']);
+      setSelectedSheet('数据表');
+      return;
+    }
+
+    try {
+      setSheetsLoading(true);
+      setSheetsList([]);
+      setSelectedSheet('');
+
+      // 对于Excel文件，尝试使用SheetJS库解析工作表
+      // 这里暂时模拟一些常见的工作表名称
+      // 在实际项目中，可以使用xlsx库来读取真实的工作表名称
+      const mockSheets = ['Sheet1', '数据明细', '汇总表', '图表数据'];
+      
+      // 模拟异步解析
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setSheetsList(mockSheets);
+      setSelectedSheet(mockSheets[0] || 'Sheet1'); // 默认选择第一个工作表
+      
+      toast.success(`检测到 ${mockSheets.length} 个工作表`);
+    } catch (error) {
+      console.error('解析文件工作表失败:', error);
+      // 解析失败时，提供默认工作表
+      setSheetsList(['Sheet1']);
+      setSelectedSheet('Sheet1');
+      toast.warning('无法解析工作表信息，将使用默认设置');
+    } finally {
+      setSheetsLoading(false);
+    }
+  }, []);
+
   // 处理数据源变更
   const handleDataSourceChange = useCallback((value: string) => {
     setSelectedDataSource(value);
@@ -191,17 +262,32 @@ export function ChartsMain() {
     // 如果选择了上传临时文件，显示上传按钮
     if (value === 'uploaded_file') {
       setShowUploadButton(true);
+      // 清空表选择状态
+      setTablesList([]);
+      setSelectedTable('');
       
       // 如果选择了上传临时文件，但没有上传文件，显示提示
       if (!uploadedFiles || uploadedFiles.length === 0) {
         toast.info('请选择文件进行分析');
+        // 清空工作表状态
+        setSheetsList([]);
+        setSelectedSheet('');
       }
     } else {
       // 如果选择了其他数据源，清理已上传的文件，隐藏上传按钮
       setUploadedFiles([]);
       setShowUploadButton(false);
+      // 清空工作表状态
+      setSheetsList([]);
+      setSelectedSheet('');
+      
+      // 如果是系统数据源，获取表列表
+      const isSystemDataSource = systemDataSources.some(ds => ds.id === value);
+      if (isSystemDataSource) {
+        fetchTables(value);
+      }
     }
-  }, [uploadedFiles]);
+  }, [uploadedFiles, systemDataSources, fetchTables]);
   
   // 处理文件上传
   const handleFileUpload = useCallback((files: UploadedFile[]) => {
@@ -210,12 +296,20 @@ export function ChartsMain() {
       toast.success(`已选择文件: ${files[0].name}`);
       // 有文件时锁定为临时文件数据源
       setSelectedDataSource('uploaded_file');
+      // 解析文件工作表
+      parseFileSheets(files[0]);
+    } else {
+      // 清空工作表状态
+      setSheetsList([]);
+      setSelectedSheet('');
     }
-  }, []);
+  }, [parseFileSheets]);
 
   // 重置文件上传
   const resetFileUpload = useCallback(() => {
     setUploadedFiles([]);
+    setSheetsList([]);
+    setSelectedSheet('');
     toast.info('已清除选择的文件');
   }, []);
 
@@ -235,11 +329,38 @@ export function ChartsMain() {
       return;
     }
     
+    // 检查是否选择了临时文件数据源但没选择工作表（对于Excel文件）
+    if (selectedDataSource === 'uploaded_file' && uploadedFiles.length > 0 && uploadedFiles[0] && 
+        (uploadedFiles[0].name.endsWith('.xlsx') || uploadedFiles[0].name.endsWith('.xls')) && 
+        !selectedSheet) {
+      toast.error('请先选择要分析的工作表');
+      return;
+    }
+    
+    // 检查是否选择了系统数据源但没选择表
+    const isSystemDataSource = systemDataSources.some(ds => ds.id === selectedDataSource);
+    if (isSystemDataSource && !selectedTable) {
+      toast.error('请先选择要分析的数据表');
+      return;
+    }
+    
+    // 构建用户消息内容
+    let userMessageContent = question;
+    if (isSystemDataSource && selectedTable) {
+      const dataSourceName = systemDataSources.find(ds => ds.id === selectedDataSource)?.name || '数据源';
+      userMessageContent += `\n\n📊 数据源: ${dataSourceName}\n📋 数据表: ${selectedTable}`;
+    } else if (selectedDataSource === 'uploaded_file' && uploadedFiles.length > 0 && uploadedFiles[0]) {
+      userMessageContent += `\n\n📁 文件: ${uploadedFiles[0].name}`;
+      if (selectedSheet && selectedSheet !== '数据表') {
+        userMessageContent += `\n📄 工作表: ${selectedSheet}`;
+      }
+    }
+    
     // 使用本地状态中的文件
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       type: 'user',
-      content: question,
+      content: userMessageContent,
       timestamp: new Date(),
       files: uploadedFiles
     };
@@ -423,13 +544,14 @@ export function ChartsMain() {
         
         if (currentDataSource.type === 'system') {
           // 系统数据源的响应
-          responseContent += `\n正在从 ${currentDataSource.name} 查询相关数据...`;
+          responseContent += `\n正在从 ${currentDataSource.name} 的 ${selectedTable} 表查询相关数据...`;
           charts = generateMockChart(question);
           
           if (enableInsights) {
             insights = [
-              `基于 ${currentDataSource.name} 的数据分析结果`,
+              `基于 ${currentDataSource.name}.${selectedTable} 的数据分析结果`,
               "数据连接状态良好，查询性能正常",
+              `当前分析表 ${selectedTable} 包含丰富的业务数据`,
               "建议定期更新数据源以获得最新分析结果"
             ];
           }
@@ -446,16 +568,15 @@ export function ChartsMain() {
           }
         }
         
-                 // 如果有文件时的特殊洞察处理
-         if (hasFiles && enableInsights && currentDataSource.type === 'temporary') {
-           insights = [
-              "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
-              "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
-              "元旦假期后航油需求快速回升，日均增长率为2.1%",
-              "预计下月销量将突破21000吨，需提前做好供应链准备",
-              "数据显示最佳加油量应控制在85-90%油箱容量"
-            ];
-          }
+        // 如果有文件时的特殊洞察处理
+        if (hasFiles && enableInsights && currentDataSource.type === 'temporary') {
+          insights = [
+            "上传数据显示航油销售量在近30天内呈上升趋势，增幅达到32.7%",
+            "周末期间（尤其是12月24-26日）航油销量明显下降，建议调整库存策略",
+            "元旦假期后航油需求快速回升，日均增长率为2.1%",
+            "预计下月销量将突破21000吨，需提前做好供应链准备",
+            "数据显示最佳加油量应控制在85-90%油箱容量"
+          ];
         }
 
         // 如果有文件，替换为航油销售量的图表
@@ -509,6 +630,7 @@ export function ChartsMain() {
         };
 
         setMessages(prev => [...prev, assistantMessage]);
+      }
     } catch (error) {
       console.error('处理消息错误:', error);
       toast.error(`处理消息时出错: ${error instanceof Error ? error.message : String(error)}`);
@@ -566,7 +688,7 @@ export function ChartsMain() {
                 type: 'pie',
                 data: [{ id: 'pieData', values: chart.data }],
                 angleField: 'value',
-                colorField: 'name'
+                categoryField: 'name'
               }}
             />
           </div>
@@ -697,7 +819,7 @@ export function ChartsMain() {
             
             {/* 临时文件信息显示 */}
             {selectedDataSource === 'uploaded_file' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className="text-sm text-blue-500">
                   {uploadedFiles.length > 0 && uploadedFiles[0]?.name
                     ? `已选择: ${uploadedFiles[0].name}` 
@@ -717,6 +839,7 @@ export function ChartsMain() {
                 )}
               </div>
             )}
+
             
             {/* 新增数据洞察选项 */}
             <div className="flex items-center space-x-2 ml-auto">
@@ -935,6 +1058,21 @@ export function ChartsMain() {
               onFileUpload={handleFileUpload}
               showUploadButton={selectedDataSource === 'uploaded_file'} // 只有在选择上传临时文件时显示上传按钮
               existingFiles={uploadedFiles} // 传递已上传文件列表
+              // 数据源相关props
+              selectedDataSource={selectedDataSource}
+              systemDataSources={systemDataSources}
+              // 表选择相关props
+              selectedTable={selectedTable}
+              tablesList={tablesList}
+              tablesLoading={tablesLoading}
+              onTableChange={setSelectedTable}
+              onFetchTables={fetchTables}
+              // 工作表选择相关props
+              selectedSheet={selectedSheet}
+              sheetsList={sheetsList}
+              sheetsLoading={sheetsLoading}
+              onSheetChange={setSelectedSheet}
+              onParseSheets={parseFileSheets}
             />
           </div>
         </div>

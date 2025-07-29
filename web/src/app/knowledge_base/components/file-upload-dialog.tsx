@@ -95,6 +95,9 @@ export function FileUploadDialog({
     try {
       for (let i = 0; i < uploadFiles.length; i++) {
         const file = uploadFiles[i];
+        if (!file || !file.file) {
+          continue;
+        }
         
         // 更新状态为上传中
         setUploadFiles((prev) =>

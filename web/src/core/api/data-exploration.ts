@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 // SPDX-License-Identifier: MIT
 
-import { apiClient, ApiResponse } from './config';
+import { apiClient, type ApiResponse } from './config';
 
 // Types
 export interface FileExploration {

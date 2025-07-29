@@ -12,7 +12,7 @@ import { Input } from "~/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { knowledgeBaseApi, FileDocument, KnowledgeBase } from "~/core/api/knowledge-base";
+import { knowledgeBaseApi, type FileDocument, type KnowledgeBase } from "~/core/api/knowledge-base";
 import { toast } from "sonner";
 
 import { BatchVectorizeDialog } from "./batch-vectorize-dialog";

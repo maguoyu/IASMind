@@ -1,6 +1,5 @@
 {
 	"dependencies": {
-		"@visactor/vchart": "^2.0.0",
-		"@visactor/react-vchart": "^2.0.0"
+
 	}
 }

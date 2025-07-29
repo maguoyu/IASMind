@@ -253,7 +253,7 @@ pip install pycryptodome pyjwt python-jose[cryptography] pillow
 
 #### Node.js 依赖
 ```bash
-npm install zustand
+pnpm add zustand
 ```
 
 ## 安全建议

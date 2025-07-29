@@ -1,15 +1,15 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { ApiResponse } from "./config";
+import type { ApiResponse } from "./config";
 import { useAuthStore } from "~/core/store/auth-store";
 
 /**
  * API响应处理Hook返回类型
  */
 export interface ApiHandlerHook {
-  handleResponse: <T>(response: ApiResponse<T>) => ApiResponse<T>;
-  wrapApiCall: <T>(apiCall: () => Promise<ApiResponse<T>>) => Promise<ApiResponse<T>>;
+  handleResponse: <T,>(response: ApiResponse<T>) => ApiResponse<T>;
+  wrapApiCall: <T,>(apiCall: () => Promise<ApiResponse<T>>) => Promise<ApiResponse<T>>;
 }
 
 /**
@@ -24,7 +24,7 @@ export function useApiHandler(): ApiHandlerHook {
    * @param response API响应
    * @returns 处理后的响应
    */
-  const handleResponse = <T>(response: ApiResponse<T>): ApiResponse<T> => {
+  const handleResponse = <T,>(response: ApiResponse<T>): ApiResponse<T> => {
     // 检查是否存在错误状态码
     if (response.status) {
       // 处理403未授权状态码
@@ -49,7 +49,7 @@ export function useApiHandler(): ApiHandlerHook {
    * @param apiCall API调用函数
    * @returns 包装后的API调用结果
    */
-  const wrapApiCall = async <T>(apiCall: () => Promise<ApiResponse<T>>): Promise<ApiResponse<T>> => {
+  const wrapApiCall = async <T,>(apiCall: () => Promise<ApiResponse<T>>): Promise<ApiResponse<T>> => {
     try {
       const response = await apiCall();
       return handleResponse(response);

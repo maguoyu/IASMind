@@ -45,8 +45,10 @@ export default function LLMDemoPage() {
   
   // Update model when LLM type changes
   useEffect(() => {
-    if (availableModels[llmType]?.length > 0) {
-      setModel(availableModels[llmType][0]);
+    const models = availableModels[llmType];
+    if (models && models.length > 0) {
+      const firstModel = models[0];
+      setModel(firstModel || "");
     } else {
       setModel("");
     }
@@ -72,7 +74,9 @@ export default function LLMDemoPage() {
         llm_type: llmType,
       });
       
-      setResponse(result.choices[0].message.content);
+      const firstChoice = result.choices?.[0];
+      const content = firstChoice?.message?.content;
+      setResponse(content || "没有返回内容");
     } catch (err) {
       setError(`请求失败: ${err instanceof Error ? err.message : String(err)}`);
     } finally {

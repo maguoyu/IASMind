@@ -1,4 +1,4 @@
-import { ApiResponse } from "./config";
+import type { ApiResponse } from "./config";
 import { useAuthStore } from "~/core/store/auth-store";
 
 /**

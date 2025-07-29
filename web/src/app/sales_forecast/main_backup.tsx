@@ -2,7 +2,6 @@
 
 import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, BarChart3, Target as TargetIcon, Trophy as TrophyIcon, ChevronDown, ChevronRight, Settings, Database, Users, Calendar, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";

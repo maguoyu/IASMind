@@ -387,35 +387,16 @@ export function DataExplorationMain() {
       
       // 处理数据洞察 - 处理多种可能的格式
       const extractInsights = () => {
-        // 检查insights数组
-        if (Array.isArray(response.data.insights) && response.data.insights.length > 0) {
-          console.log("从insights数组提取洞察:", response.data.insights);
+        // 检查insights字段
+        if (response.data.insights && Array.isArray(response.data.insights)) {
+          console.log("从insights提取洞察:", response.data.insights);
+          const recommendations = response.data.insights.map(insight => ({
+            type: "visualization",
+            chart_type: insight.type || "general",
+            description: insight.textContent?.plainText || insight.name || "无描述"
+          }));
           return {
-            recommendations: response.data.insights.map((insight: any) => ({
-              type: "visualization",
-              chart_type: insight.type || "unknown",
-              description: insight.textContent?.plainText || insight.description || "无描述"
-            }))
-          };
-        }
-        
-        // 检查insight_md字段
-        if (response.data.insight_md) {
-          console.log("从insight_md提取洞察:", response.data.insight_md);
-          return {
-            recommendations: [{
-              type: "visualization",
-              chart_type: "general",
-              description: response.data.insight_md
-            }]
-          };
-        }
-        
-        // 检查是否有直接的recommendations
-        if (response.data.recommendations && Array.isArray(response.data.recommendations)) {
-          console.log("从recommendations提取洞察:", response.data.recommendations);
-          return {
-            recommendations: response.data.recommendations
+            recommendations
           };
         }
         
@@ -692,7 +673,7 @@ export function DataExplorationMain() {
                   {/* 图表显示区域 */}
                   {visualizationSpec ? (
                     <div className="h-[500px] w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700">
-                      <VChart spec={visualizationSpec} />
+                      <VChart spec={visualizationSpec as any} />
                     </div>
                   ) : (
                     <div className="h-[500px] w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
@@ -709,7 +690,7 @@ export function DataExplorationMain() {
                     <div className="mt-4">
                       <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">数据洞察</h4>
                       <div className="space-y-2">
-                        {insightsData.recommendations.map((recommendation, index) => (
+                        {insightsData.recommendations.map((recommendation: any, index: number) => (
                           <div 
                             key={index}
                             className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border-l-4 border-blue-400"

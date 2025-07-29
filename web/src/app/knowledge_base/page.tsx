@@ -68,13 +68,13 @@ export default function KnowledgeBasePage() {
       setKnowledgeBases(response.knowledge_bases);
       
       // 如果没有选中的知识库，选择第一个
-      setSelectedKnowledgeBase(current => {
+      setSelectedKnowledgeBase((current: KnowledgeBase | null): KnowledgeBase | null => {
         if (!current && response.knowledge_bases.length > 0) {
-          return response.knowledge_bases[0];
+          return response.knowledge_bases[0] || null;
         } else if (current) {
           // 更新当前选中的知识库信息
           const updatedKb = response.knowledge_bases.find(kb => kb.id === current.id);
-          return updatedKb ? updatedKb : null;
+          return updatedKb || null;
         }
         return current;
       });
@@ -475,7 +475,7 @@ export default function KnowledgeBasePage() {
         <FileUploadDialog
           open={showUploadDialog}
           onOpenChange={setShowUploadDialog}
-          selectedKnowledgeBase={selectedKnowledgeBase}
+          selectedKnowledgeBase={selectedKnowledgeBase || undefined}
           onUploadComplete={() => {
             setShowUploadDialog(false);
             // 刷新知识库信息

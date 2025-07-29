@@ -4,9 +4,9 @@ import { BarChartOutlined, FileTextOutlined, LineChartOutlined, PieChartOutlined
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useRef } from "react";
 import { VChart } from '@visactor/react-vchart';
-import type { ISpec } from '@visactor/vchart';
+import type { ISpec } from '@visactor/react-vchart';
+
 import { toast } from "sonner";
-import * as XLSX from 'xlsx';
 
 import type { GenerateChartRequest, GenerateChartResponse, ChartInsight } from '~/core/api/vmind';
 import { VmindAPI } from '~/core/api/vmind';
@@ -77,7 +77,8 @@ export function VmindTestMain() {
     }
     
     // 检查分隔符一致性
-    const firstLineCommas = (lines[0].match(/,/g) || []).length;
+    const firstLine = lines[0];
+    const firstLineCommas = firstLine ? (firstLine.match(/,/g) || []).length : 0;
     if (firstLineCommas === 0) {  // 必须有逗号分隔
       return false;
     }
@@ -379,7 +380,7 @@ export function VmindTestMain() {
             
             {insights && insights.length > 0 ? (
               <div className="space-y-3">
-                {insights.map((insight, index) => (
+                {insights.map((insight: ChartInsight, index: number) => (
                   <div 
                     key={index}
                     className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border-l-4 border-blue-400"

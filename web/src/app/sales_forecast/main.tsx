@@ -3,7 +3,6 @@
 import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, Target as TargetIcon, ChevronDown, ChevronRight, Settings } from "lucide-react";
 import { ShoppingCartOutlined, DollarOutlined, UserOutlined, CalendarOutlined, FilterOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { VChart } from '@visactor/react-vchart';
 
 import { Badge } from "~/components/ui/badge";

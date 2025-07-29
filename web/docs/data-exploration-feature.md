@@ -202,7 +202,7 @@ interface DataFile {
 
 #### 环境要求
 - Node.js 18.0.0 或更高版本
-- npm 或 pnpm 包管理器
+- pnpm 包管理器
 - 现代浏览器支持
 
 #### 安装和运行
@@ -211,10 +211,10 @@ interface DataFile {
 cd web
 
 # 安装依赖
-npm install
+pnpm install
 
 # 启动开发服务器
-npm run dev
+pnpm dev
 
 # 访问应用
 # 开发环境: http://localhost:3000/data_exploration
@@ -223,10 +223,10 @@ npm run dev
 #### 构建部署
 ```bash
 # 构建生产版本
-npm run build
+pnpm build
 
 # 启动生产服务器
-npm run start
+pnpm start
 ```
 
 ### 🧪 测试

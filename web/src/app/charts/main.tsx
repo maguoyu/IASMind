@@ -250,7 +250,7 @@ export function ChartsMain() {
   const handleFileUpload = useCallback((files: UploadedFile[]) => {
     setUploadedFiles(files);
     if (files.length > 0 && files[0]?.name) {
-      toast.success(`已选择文件: ${files[0].name}`);
+      // toast.success(`已选择文件: ${files[0].name}`);
       // 有文件时锁定为临时文件数据源
       setSelectedDataSource('uploaded_file');
     }

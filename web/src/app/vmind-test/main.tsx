@@ -114,7 +114,7 @@ export function VmindTestMain() {
     if (!supportedTypes.includes(fileExt)) {
       toast.warning(`文件类型 ${fileExt} 可能不受支持。支持的类型: .xlsx, .xls, .csv, .json, .txt, .text`);
     } else {
-      toast.success(`已选择文件: ${file.name}`);
+      // toast.success(`已选择文件: ${file.name}`);
     }
   };
 

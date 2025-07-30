@@ -643,15 +643,78 @@ async def get_table_columns(
 @router.get("/{datasource_id}/metadata", response_model=MetadataResponse)
 async def get_metadata(
     datasource_id: str,
+    use_cache: bool = Query(False, description="是否使用缓存数据，默认False（实时查询）"),
     user=Depends(GetCurrentUser)
 ):
-    """获取数据源元数据"""
+    """
+    获取数据源元数据
+    
+    Args:
+        datasource_id: 数据源ID
+        use_cache: 是否使用缓存数据，默认False（实时查询）
+            - True: 从本地缓存表读取，速度快但可能不是最新数据
+            - False: 直接从数据源实时查询，数据最新但速度较慢
+    """
     try:
         datasource = DataSource.GetById(datasource_id)
         if not datasource:
             raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
         
-        result = MetadataService.get_database_metadata(datasource_id)
+        logger.info(f"获取数据源 {datasource_id} 元数据，使用缓存: {use_cache}")
+        result = MetadataService.get_database_metadata(datasource_id, use_cache=use_cache)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取元数据失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取元数据失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/realtime", response_model=MetadataResponse)
+async def get_metadata_realtime(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """
+    实时获取数据源元数据（强制从数据源查询）
+    
+    这个端点总是从数据源实时查询最新的元数据信息，不使用缓存。
+    适用于需要确保数据最新的场景。
+    """
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        logger.info(f"强制实时获取数据源 {datasource_id} 元数据")
+        result = MetadataService.get_database_metadata(datasource_id, use_cache=False)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"实时获取元数据失败: {e}")
+        raise HTTPException(status_code=500, detail=f"实时获取元数据失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/cached", response_model=MetadataResponse)
+async def get_metadata_cached(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """
+    从缓存获取数据源元数据（已弃用，使用实时查询代替）
+    
+    缓存功能已弃用，将返回实时查询结果。
+    """
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        logger.warning(f"缓存查询功能已弃用，使用实时查询代替")
+        result = MetadataService.get_database_metadata(datasource_id, use_cache=False)
+        if result['success']:
+            result['message'] = "缓存功能已弃用，已返回实时查询结果"
         return result
     except HTTPException:
         raise
@@ -665,19 +728,23 @@ async def sync_metadata(
     datasource_id: str,
     user=Depends(GetCurrentUser)
 ):
-    """手动同步数据源元数据"""
+    """同步数据源元数据（已弃用，使用实时查询代替）"""
     try:
         datasource = DataSource.GetById(datasource_id)
         if not datasource:
             raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
         
-        result = MetadataService.sync_database_metadata(datasource_id)
+        # 元数据同步功能已弃用，返回实时查询结果
+        logger.warning(f"元数据同步功能已弃用，使用实时查询代替")
+        result = MetadataService.get_database_metadata(datasource_id, use_cache=False)
+        if result['success']:
+            result['message'] = "同步功能已弃用，已返回实时查询结果"
         return result
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"同步元数据失败: {e}")
-        raise HTTPException(status_code=500, detail=f"同步元数据失败: {str(e)}")
+        logger.exception(f"获取元数据失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取元数据失败: {str(e)}")
 
 
 @router.get("/{datasource_id}/metadata/config")

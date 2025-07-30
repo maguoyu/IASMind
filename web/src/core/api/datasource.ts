@@ -66,15 +66,16 @@ export interface Table {
 }
 
 export interface Column {
-  name: string;
-  type: string;
-  null: boolean;
-  key?: string;
-  default?: any;
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+  column_key?: string;
+  column_default?: any;
   extra?: string;
-  length?: number;
-  precision?: number;
-  scale?: number;
+  column_comment?: string;
+  character_maximum_length?: number;
+  numeric_precision?: number;
+  numeric_scale?: number;
 }
 
 export interface TablesResponse {
@@ -96,10 +97,10 @@ export interface ColumnsResponse {
 
 // 元数据相关接口定义
 export interface TableMetadata {
-  name: string;
+  table_name: string;
   schema?: string;
   type: 'table' | 'view';
-  comment?: string;
+  table_comment?: string;
   rows_count: number;
   size_mb: number;
   created_at?: string;
@@ -110,20 +111,20 @@ export interface TableMetadata {
 }
 
 export interface Index {
-  name: string;
-  type: 'primary' | 'unique' | 'index' | 'fulltext';
+  index_name: string;
+  index_type: string;
   columns: string[];
   unique: boolean;
-  comment?: string;
+  index_comment?: string;
 }
 
 export interface Constraint {
-  name: string;
-  type: 'primary_key' | 'foreign_key' | 'unique' | 'check';
+  constraint_name: string;
+  constraint_type: string;
   columns: string[];
   referenced_table?: string;
   referenced_columns?: string[];
-  comment?: string;
+  constraint_comment?: string;
 }
 
 export interface DatabaseMetadata {
@@ -257,10 +258,20 @@ export class DataSourceApi {
   }
 
   /**
-   * 获取数据源元数据
+   * 获取数据源元数据（实时查询）
+   * @param id 数据源ID
    */
   async getMetadata(id: string): Promise<MetadataResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata`);
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/realtime`);
+    return response.data;
+  }
+
+  /**
+   * 实时获取数据源元数据（强制从数据源查询）
+   * 总是从数据源实时查询最新的元数据信息
+   */
+  async getMetadataRealtime(id: string): Promise<MetadataResponse> {
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/realtime`);
     return response.data;
   }
 

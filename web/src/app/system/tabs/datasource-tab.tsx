@@ -43,8 +43,6 @@ import type {
   DataSource, 
   DataSourceCreate, 
   DataSourceUpdate, 
-  TablesResponse, 
-  ColumnsResponse,
   MetadataResponse,
   SyncConfig,
   SyncStatusResponse,
@@ -82,9 +80,6 @@ export function DataSourceTab() {
     ssl_key: '',
   });
   const [testingConnection, setTestingConnection] = useState<string | null>(null);
-  const [tables, setTables] = useState<TablesResponse | null>(null);
-  const [selectedTable, setSelectedTable] = useState<string>('');
-  const [columns, setColumns] = useState<ColumnsResponse | null>(null);
   
   // 元数据相关状态
   const [metadata, setMetadata] = useState<DatabaseMetadata | null>(null);
@@ -95,7 +90,8 @@ export function DataSourceTab() {
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedMetadataTable, setSelectedMetadataTable] = useState<TableMetadata | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<string>('info');
+  const [activeDetailTab, setActiveDetailTab] = useState<string>('metadata');
+
 
   // 获取数据源列表
   const fetchDataSources = useCallback(async () => {
@@ -112,7 +108,7 @@ export function DataSourceTab() {
   }, []);
 
   useEffect(() => {
-    fetchDataSources();
+    void fetchDataSources();
   }, [fetchDataSources]);
 
   // 重置表单
@@ -148,7 +144,7 @@ export function DataSourceTab() {
       toast.success('数据源创建成功');
       setIsCreateDialogOpen(false);
       resetForm();
-      fetchDataSources();
+      void fetchDataSources();
     } catch (error) {
       console.error('创建数据源失败:', error);
       toast.error('创建数据源失败');
@@ -181,7 +177,7 @@ export function DataSourceTab() {
       setIsEditDialogOpen(false);
       setSelectedDataSource(null);
       resetForm();
-      fetchDataSources();
+      void fetchDataSources();
     } catch (error) {
       console.error('更新数据源失败:', error);
       toast.error('更新数据源失败');
@@ -197,7 +193,7 @@ export function DataSourceTab() {
     try {
       await dataSourceApi.delete(dataSource.id);
       toast.success('数据源删除成功');
-      fetchDataSources();
+      void fetchDataSources();
     } catch (error) {
       console.error('删除数据源失败:', error);
       toast.error('删除数据源失败');
@@ -220,41 +216,20 @@ export function DataSourceTab() {
       toast.error('测试连接失败');
     } finally {
       setTestingConnection(null);
-      fetchDataSources(); // 刷新状态
+      void fetchDataSources(); // 刷新状态
     }
   };
 
-  // 获取表列表
-  const fetchTables = async (dataSourceId: string) => {
-    try {
-      const result = await dataSourceApi.getTables(dataSourceId);
-      setTables(result);
-      setSelectedTable('');
-      setColumns(null);
-    } catch (error) {
-      console.error('获取表列表失败:', error);
-      toast.error('获取表列表失败');
-    }
-  };
 
-  // 获取表列信息
-  const fetchColumns = async (dataSourceId: string, tableName: string) => {
-    try {
-      const result = await dataSourceApi.getTableColumns(dataSourceId, tableName);
-      setColumns(result);
-    } catch (error) {
-      console.error('获取表结构失败:', error);
-      toast.error('获取表结构失败');
-    }
-  };
 
-  // 获取元数据
+  // 获取元数据（实时查询）
   const fetchMetadata = async (dataSourceId: string) => {
     try {
       setMetadataLoading(true);
       const result = await dataSourceApi.getMetadata(dataSourceId);
       if (result.success) {
         setMetadata(result.data);
+        toast.success('元数据获取成功');
       } else {
         toast.error(result.message || '获取元数据失败');
       }
@@ -266,22 +241,20 @@ export function DataSourceTab() {
     }
   };
 
-  // 同步元数据
-  const handleSyncMetadata = async (dataSourceId: string) => {
+  // 刷新元数据（实时查询）
+  const handleRefreshMetadata = async (dataSourceId: string) => {
     try {
       setIsSyncing(true);
-      const result = await dataSourceApi.syncMetadata(dataSourceId);
+      const result = await dataSourceApi.getMetadata(dataSourceId);
       if (result.success) {
         setMetadata(result.data);
-        toast.success('元数据同步成功');
-        fetchSyncStatus(dataSourceId);
-        fetchSyncHistory(dataSourceId);
+        toast.success('元数据刷新成功');
       } else {
-        toast.error(result.message || '元数据同步失败');
+        toast.error(result.message || '元数据刷新失败');
       }
     } catch (error) {
-      console.error('元数据同步失败:', error);
-      toast.error('元数据同步失败');
+      console.error('元数据刷新失败:', error);
+      toast.error('元数据刷新失败');
     } finally {
       setIsSyncing(false);
     }
@@ -349,12 +322,8 @@ export function DataSourceTab() {
   };
 
   // 打开详情对话框
-  const openDetailDialog = (dataSource: DataSource, defaultTab: string = 'info') => {
+  const openDetailDialog = (dataSource: DataSource, defaultTab = 'metadata') => {
     setSelectedDataSource(dataSource);
-    // 重置表结构相关状态
-    setTables(null);
-    setColumns(null);
-    setSelectedTable('');
     // 重置元数据相关状态
     setMetadata(null);
     setSyncStatus(null);
@@ -366,10 +335,9 @@ export function DataSourceTab() {
     setActiveDetailTab(defaultTab);
     setIsDetailDialogOpen(true);
     
-    // 并行获取基本数据
-    fetchTables(dataSource.id);
-    fetchSyncStatus(dataSource.id);
-    fetchSyncHistory(dataSource.id);
+    // 获取同步相关数据
+    void fetchSyncStatus(dataSource.id);
+    void fetchSyncHistory(dataSource.id);
   };
 
   // 打开元数据管理
@@ -378,7 +346,7 @@ export function DataSourceTab() {
     // 如果还没有元数据，自动加载
     setTimeout(() => {
       if (!metadata) {
-        fetchMetadata(dataSource.id);
+        void fetchMetadata(dataSource.id);
       }
     }, 200);
   };
@@ -843,15 +811,15 @@ export function DataSourceTab() {
           setIsDetailDialogOpen(open);
           if (!open) {
             // 对话框关闭时重置状态
-            setActiveDetailTab('info');
+            setActiveDetailTab('metadata');
           }
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-none max-h-[95vh] overflow-y-auto" style={{ width: '95vw', maxWidth: 'none' }}>
           <DialogHeader>
-            <DialogTitle>数据源详情</DialogTitle>
+            <DialogTitle>元数据管理</DialogTitle>
             <DialogDescription>
-              查看数据源配置和数据库结构信息
+              查看数据源数据库结构信息和同步管理
             </DialogDescription>
           </DialogHeader>
           {selectedDataSource && (
@@ -860,157 +828,12 @@ export function DataSourceTab() {
               onValueChange={setActiveDetailTab} 
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="info">基本信息</TabsTrigger>
-                <TabsTrigger value="tables">表结构</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="metadata">元数据</TabsTrigger>
                 <TabsTrigger value="sync">同步管理</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="info" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">数据源名称</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.name}</div>
-                  </div>
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">数据库类型</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.type.toUpperCase()}</div>
-                  </div>
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">主机地址</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.host}:{selectedDataSource.port}</div>
-                  </div>
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">数据库名</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.database_name}</div>
-                  </div>
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">用户名</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.username}</div>
-                  </div>
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">连接状态</Label>
-                    <div className="mt-1">{getStatusBadge(selectedDataSource.status)}</div>
-                  </div>
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">创建时间</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">
-                      {new Date(selectedDataSource.created_at).toLocaleString()}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">最后连接</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">
-                      {selectedDataSource.last_connected_at 
-                        ? new Date(selectedDataSource.last_connected_at).toLocaleString()
-                        : '从未连接'
-                      }
-                    </div>
-                  </div>
-                </div>
-                {selectedDataSource.schema_name && (
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">模式名</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.schema_name}</div>
-                  </div>
-                )}
-                {selectedDataSource.service_name && (
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">服务名</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.service_name}</div>
-                  </div>
-                )}
-                {selectedDataSource.description && (
-                  <div>
-                    <Label className="text-slate-500 dark:text-slate-400">描述</Label>
-                    <div className="mt-1 text-slate-900 dark:text-slate-100">{selectedDataSource.description}</div>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="tables" className="space-y-4">
-                {tables ? (
-                  tables.success ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-slate-900 dark:text-slate-100 font-medium">表列表 ({tables.count})</Label>
-                        <div className="mt-2 max-h-64 overflow-y-auto border rounded-md">
-                          {tables.tables.map((tableName) => (
-                            <button
-                              key={tableName}
-                              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 border-b last:border-b-0 ${
-                                selectedTable === tableName ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                              }`}
-                              onClick={() => {
-                                setSelectedTable(tableName);
-                                fetchColumns(selectedDataSource.id, tableName);
-                              }}
-                            >
-                              <div className="flex items-center space-x-2">
-                                <Table className="w-4 h-4" />
-                                <span>{tableName}</span>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-slate-900 dark:text-slate-100 font-medium">
-                          表结构 {selectedTable && `- ${selectedTable}`}
-                        </Label>
-                        <div className="mt-2 max-h-64 overflow-y-auto border rounded-md">
-                          {columns ? (
-                            columns.success ? (
-                              <div className="p-2 space-y-1">
-                                {columns.columns.map((column, index) => (
-                                  <div key={index} className="flex items-center justify-between text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
-                                    <div>
-                                      <span className="font-medium">{column.name}</span>
-                                      <span className="ml-2 text-slate-500">{column.type}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-1">
-                                      {!column.null && <Badge variant="outline" className="text-xs">NOT NULL</Badge>}
-                                      {column.key && <Badge variant="outline" className="text-xs">{column.key}</Badge>}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="p-4 text-center text-slate-500">
-                                {columns.message || '获取表结构失败'}
-                              </div>
-                            )
-                          ) : selectedTable ? (
-                            <div className="p-4 text-center">
-                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                              <div className="text-sm text-slate-500 mt-2">加载表结构中...</div>
-                            </div>
-                          ) : (
-                            <div className="p-4 text-center text-slate-500">
-                              选择一个表查看结构
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        {tables.message || '无法获取表列表，请检查数据源连接'}
-                      </AlertDescription>
-                    </Alert>
-                  )
-                ) : (
-                  <div className="text-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-                    <div className="text-sm text-slate-500 mt-2">加载表列表中...</div>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="metadata" className="space-y-4">
+              <TabsContent value="metadata" className="space-y-6 pt-4">
                 {/* 元数据操作栏 */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -1033,7 +856,7 @@ export function DataSourceTab() {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => handleSyncMetadata(selectedDataSource.id)}
+                                              onClick={() => handleRefreshMetadata(selectedDataSource.id)}
                       disabled={isSyncing || metadataLoading}
                     >
                       {isSyncing ? (
@@ -1041,7 +864,7 @@ export function DataSourceTab() {
                       ) : (
                         <RefreshCw className="w-4 h-4 mr-2" />
                       )}
-                      同步元数据
+                                              刷新元数据
                     </Button>
                   </div>
                 </div>
@@ -1088,21 +911,21 @@ export function DataSourceTab() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-slate-900 dark:text-slate-100 font-medium">
-                          表列表 ({metadata.tables.length})
+                          数据库表 ({metadata.tables.length})
                         </Label>
-                        <div className="mt-2 max-h-80 overflow-y-auto border rounded-md">
+                        <div className="mt-2 max-h-96 overflow-y-auto border rounded-md">
                           {metadata.tables.map((table) => (
                             <button
-                              key={table.name}
+                              key={table.table_name}
                               className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 border-b last:border-b-0 ${
-                                selectedMetadataTable?.name === table.name ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                selectedMetadataTable?.table_name === table.table_name ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                               }`}
                               onClick={() => setSelectedMetadataTable(table)}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   <Database className="w-4 h-4" />
-                                  <span className="font-medium">{table.name}</span>
+                                  <span className="font-medium">{table.table_name}</span>
                                   <Badge variant="outline" className="text-xs">
                                     {table.type}
                                   </Badge>
@@ -1111,9 +934,9 @@ export function DataSourceTab() {
                                   {table.rows_count} 行 | {table.size_mb.toFixed(2)} MB
                                 </div>
                               </div>
-                              {table.comment && (
+                              {table.table_comment && (
                                 <div className="text-xs text-slate-500 mt-1 truncate">
-                                  {table.comment}
+                                  {table.table_comment}
                                 </div>
                               )}
                             </button>
@@ -1123,9 +946,9 @@ export function DataSourceTab() {
                       
                       <div>
                         <Label className="text-slate-900 dark:text-slate-100 font-medium">
-                          表详情 {selectedMetadataTable && `- ${selectedMetadataTable.name}`}
+                          表详情 {selectedMetadataTable && `- ${selectedMetadataTable.table_name}`}
                         </Label>
-                        <div className="mt-2 max-h-80 overflow-y-auto border rounded-md p-3">
+                        <div className="mt-2 max-h-96 overflow-y-auto border rounded-md p-4">
                           {selectedMetadataTable ? (
                             <div className="space-y-4">
                               {/* 表基本信息 */}
@@ -1156,16 +979,16 @@ export function DataSourceTab() {
                                   <Table className="w-4 h-4 mr-1" />
                                   列信息
                                 </h4>
-                                <div className="space-y-1 max-h-32 overflow-y-auto">
+                                <div className="space-y-1 max-h-40 overflow-y-auto">
                                   {selectedMetadataTable.columns.map((column, index) => (
                                     <div key={index} className="flex items-center justify-between text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
                                       <div>
-                                        <span className="font-medium">{column.name}</span>
-                                        <span className="ml-2 text-slate-500">{column.type}</span>
+                                        <span className="font-medium">{column.column_name}</span>
+                                        <span className="ml-2 text-slate-500">{column.data_type}</span>
                                       </div>
                                       <div className="flex items-center space-x-1">
-                                        {!column.null && <Badge variant="outline" className="text-xs">NOT NULL</Badge>}
-                                        {column.key && <Badge variant="outline" className="text-xs">{column.key}</Badge>}
+                                        {column.is_nullable === 'NO' && <Badge variant="outline" className="text-xs">NOT NULL</Badge>}
+                                        {column.column_key && <Badge variant="outline" className="text-xs">{column.column_key}</Badge>}
                                       </div>
                                     </div>
                                   ))}
@@ -1181,12 +1004,12 @@ export function DataSourceTab() {
                                       <Key className="w-4 h-4 mr-1" />
                                       索引 ({selectedMetadataTable.indexes.length})
                                     </h4>
-                                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                                    <div className="space-y-1 max-h-32 overflow-y-auto">
                                       {selectedMetadataTable.indexes.map((index, idx) => (
                                         <div key={idx} className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
                                           <div className="flex items-center justify-between">
-                                            <span className="font-medium">{index.name}</span>
-                                            <Badge variant="outline" className="text-xs">{index.type}</Badge>
+                                            <span className="font-medium">{index.index_name}</span>
+                                            <Badge variant="outline" className="text-xs">{index.index_type}</Badge>
                                           </div>
                                           <div className="text-slate-500 mt-1">
                                             列: {index.columns.join(', ')}
@@ -1207,12 +1030,12 @@ export function DataSourceTab() {
                                       <Link className="w-4 h-4 mr-1" />
                                       约束 ({selectedMetadataTable.constraints.length})
                                     </h4>
-                                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                                    <div className="space-y-1 max-h-32 overflow-y-auto">
                                       {selectedMetadataTable.constraints.map((constraint, idx) => (
                                         <div key={idx} className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
                                           <div className="flex items-center justify-between">
-                                            <span className="font-medium">{constraint.name}</span>
-                                            <Badge variant="outline" className="text-xs">{constraint.type}</Badge>
+                                            <span className="font-medium">{constraint.constraint_name}</span>
+                                            <Badge variant="outline" className="text-xs">{constraint.constraint_type}</Badge>
                                           </div>
                                           <div className="text-slate-500 mt-1">
                                             列: {constraint.columns.join(', ')}
@@ -1243,7 +1066,7 @@ export function DataSourceTab() {
                       暂无元数据
                     </h3>
                     <p className="text-slate-600 dark:text-slate-400 mb-4">
-                      点击"同步元数据"按钮获取最新的数据库结构信息
+                      点击"获取元数据"按钮获取最新的数据库结构信息
                     </p>
                     <Button onClick={() => fetchMetadata(selectedDataSource.id)}>
                       <RefreshCw className="w-4 h-4 mr-2" />
@@ -1253,7 +1076,7 @@ export function DataSourceTab() {
                 )}
               </TabsContent>
 
-              <TabsContent value="sync" className="space-y-4">
+              <TabsContent value="sync" className="space-y-6 pt-4">
                 {/* 同步状态概览 */}
                 <Card className="p-4">
                   <div className="flex items-center justify-between mb-4">
@@ -1337,7 +1160,7 @@ export function DataSourceTab() {
                     同步历史
                   </h4>
                   {syncHistory && syncHistory.history.length > 0 ? (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
                       {syncHistory.history.map((record) => (
                         <div key={record.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded">
                           <div className="flex items-center space-x-3">
@@ -1380,9 +1203,9 @@ export function DataSourceTab() {
           <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>元数据同步配置</DialogTitle>
+                <DialogTitle>元数据配置</DialogTitle>
                 <DialogDescription>
-                  配置数据源的元数据自动同步设置
+                  元数据自动同步功能已弃用，现在始终使用实时查询
                 </DialogDescription>
               </DialogHeader>
               {syncConfig && selectedDataSource && (

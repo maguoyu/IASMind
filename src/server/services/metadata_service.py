@@ -23,94 +23,17 @@ class MetadataService:
     """元数据管理服务类"""
     
     @staticmethod
-    def get_database_metadata(datasource_id: str) -> Dict[str, Any]:
-        """获取数据源的完整元数据"""
-        try:
-            # 从数据库获取已缓存的元数据
-            sql = """
-            SELECT dm.*, GROUP_CONCAT(tm.id) as table_ids
-            FROM datasource_metadata dm
-            LEFT JOIN table_metadata tm ON dm.id = tm.metadata_id
-            WHERE dm.datasource_id = %s
-            GROUP BY dm.id
-            ORDER BY dm.sync_time DESC
-            LIMIT 1
-            """
-            result = db_connection.ExecuteQuery(sql, (datasource_id,))
-            
-            if not result:
-                return {
-                    "success": False,
-                    "message": "未找到元数据，请先同步数据源元数据",
-                    "data": None,
-                    "sync_time": None,
-                    "version": None
-                }
-            
-            metadata_record = result[0]
-            
-            # 获取表详细信息
-            tables_sql = """
-            SELECT * FROM table_metadata 
-            WHERE metadata_id = %s
-            ORDER BY table_name
-            """
-            tables_result = db_connection.ExecuteQuery(tables_sql, (metadata_record['id'],))
-            
-            # 构建表元数据
-            tables = []
-            for table_row in tables_result:
-                table_data = {
-                    'name': table_row['table_name'],
-                    'schema': table_row['schema_name'],
-                    'type': table_row['table_type'],
-                    'comment': table_row['comment'],
-                    'rows_count': table_row['rows_count'],
-                    'size_mb': float(table_row['size_mb']) if table_row['size_mb'] else 0.0,
-                    'created_at': table_row['created_at'].isoformat() if table_row['created_at'] else None,
-                    'updated_at': table_row['updated_at'].isoformat() if table_row['updated_at'] else None,
-                    'columns': json.loads(table_row['columns_json']) if table_row['columns_json'] else [],
-                    'indexes': json.loads(table_row['indexes_json']) if table_row['indexes_json'] else [],
-                    'constraints': json.loads(table_row['constraints_json']) if table_row['constraints_json'] else []
-                }
-                tables.append(table_data)
-            
-            # 构建数据库元数据响应
-            database_metadata = {
-                'database_name': metadata_record['database_name'],
-                'charset': metadata_record['charset'],
-                'collation': metadata_record['collation'],
-                'size_mb': float(metadata_record['size_mb']) if metadata_record['size_mb'] else 0.0,
-                'tables_count': metadata_record['tables_count'],
-                'views_count': metadata_record['views_count'],
-                'created_at': metadata_record['created_at'].isoformat() if metadata_record['created_at'] else None,
-                'tables': tables
-            }
-            
-            return {
-                "success": True,
-                "data": database_metadata,
-                "sync_time": metadata_record['sync_time'].isoformat() if metadata_record['sync_time'] else None,
-                "version": metadata_record['version'],
-                "message": "获取元数据成功"
-            }
-            
-        except Exception as e:
-            logger.exception(f"获取元数据失败: {e}")
-            return {
-                "success": False,
-                "message": f"获取元数据失败: {str(e)}",
-                "data": None,
-                "sync_time": None,
-                "version": None
-            }
-    
-    @staticmethod
-    def sync_database_metadata(datasource_id: str) -> Dict[str, Any]:
-        """同步数据源元数据"""
-        sync_start_time = datetime.now()
-        sync_history_id = str(uuid.uuid4())
+    def get_database_metadata(datasource_id: str, use_cache: bool = False) -> Dict[str, Any]:
+        """
+        获取数据源的完整元数据
         
+        Args:
+            datasource_id: 数据源ID
+            use_cache: 是否使用缓存数据（默认False，直接从数据源实时查询）
+            
+        Returns:
+            元数据信息字典
+        """
         try:
             # 获取数据源信息
             datasource = DataSource.GetById(datasource_id)
@@ -123,67 +46,54 @@ class MetadataService:
                     "version": None
                 }
             
-            # 创建同步记录
-            MetadataService._create_sync_history(sync_history_id, datasource_id, 'running')
+            # 缓存功能已弃用，始终使用实时查询
+            if use_cache:
+                logger.warning("缓存功能已弃用，将使用实时查询代替")
+                # 继续执行实时查询
             
-            # 根据数据源类型同步元数据
+            # 默认进行实时查询
+            logger.info(f"开始实时获取数据源 {datasource_id} 的元数据")
+            
+            # 根据数据源类型进行实时查询
             if datasource.type == 'mysql':
-                metadata_result = MetadataService._sync_mysql_metadata(datasource)
+                metadata_result = MetadataService._get_mysql_metadata_realtime(datasource)
             elif datasource.type == 'oracle':
-                metadata_result = MetadataService._sync_oracle_metadata(datasource)
+                metadata_result = MetadataService._get_oracle_metadata_realtime(datasource)
             else:
-                raise ValueError(f"不支持的数据源类型: {datasource.type}")
+                return {
+                    "success": False,
+                    "message": f"不支持的数据源类型: {datasource.type}",
+                    "data": None,
+                    "sync_time": None,
+                    "version": None
+                }
             
-            if not metadata_result['success']:
-                MetadataService._update_sync_history(
-                    sync_history_id, 'failed', 
-                    int((datetime.now() - sync_start_time).total_seconds()),
-                    0, 0, metadata_result['message']
-                )
-                return metadata_result
+            if metadata_result['success']:
+                # 添加实时查询的时间戳
+                metadata_result['sync_time'] = datetime.now().isoformat()
+                metadata_result['version'] = 'realtime'
+                logger.info(f"数据源 {datasource_id} 元数据实时获取成功")
             
-            # 保存元数据到数据库
-            metadata_id = MetadataService._save_metadata_to_db(
-                datasource_id, metadata_result['data']
-            )
-            
-            # 更新同步历史为成功
-            tables_synced = len(metadata_result['data']['tables'])
-            MetadataService._update_sync_history(
-                sync_history_id, 'success',
-                int((datetime.now() - sync_start_time).total_seconds()),
-                tables_synced, 0  # changes_detected 可以后续实现
-            )
-            
-            return {
-                "success": True,
-                "data": metadata_result['data'],
-                "sync_time": datetime.now().isoformat(),
-                "version": "1.0",
-                "message": "元数据同步成功"
-            }
+            return metadata_result
             
         except Exception as e:
-            logger.exception(f"同步元数据失败: {e}")
-            # 更新同步历史为失败
-            MetadataService._update_sync_history(
-                sync_history_id, 'failed',
-                int((datetime.now() - sync_start_time).total_seconds()),
-                0, 0, str(e)
-            )
-            
+            logger.exception(f"获取元数据失败: {e}")
             return {
                 "success": False,
-                "message": f"同步元数据失败: {str(e)}",
+                "message": f"获取元数据失败: {str(e)}",
                 "data": None,
                 "sync_time": None,
                 "version": None
             }
     
+
+    
     @staticmethod
-    def _sync_mysql_metadata(datasource: DataSource) -> Dict[str, Any]:
-        """同步MySQL数据源元数据"""
+    def _get_mysql_metadata_realtime(datasource: DataSource) -> Dict[str, Any]:
+        """实时获取MySQL数据源元数据"""
         try:
+            logger.info(f"开始实时查询MySQL数据源: {datasource.host}:{datasource.port}/{datasource.database}")
+            
             import pymysql
             
             connection = pymysql.connect(
@@ -192,7 +102,9 @@ class MetadataService:
                 user=datasource.username,
                 password=datasource.password,
                 database=datasource.database,
-                charset='utf8mb4'
+                charset='utf8mb4',
+                connect_timeout=10,  # 设置连接超时
+                read_timeout=30      # 设置读取超时
             )
             
             with connection.cursor() as cursor:
@@ -238,7 +150,7 @@ class MetadataService:
                         views_count = stat[1]
                 
                 # 获取详细表信息
-                tables = MetadataService._get_mysql_tables_metadata(cursor, datasource.database)
+                tables = MetadataService._get_mysql_tables_metadata_realtime(cursor, datasource.database)
             
             connection.close()
             
@@ -253,23 +165,25 @@ class MetadataService:
                 'tables': tables
             }
             
+            logger.info(f"MySQL元数据实时查询成功，获取到 {len(tables)} 个表")
+            
             return {
                 'success': True,
                 'data': database_metadata,
-                'message': 'MySQL元数据同步成功'
+                'message': f'MySQL元数据实时获取成功，共 {len(tables)} 个表'
             }
             
         except Exception as e:
-            logger.exception(f"同步MySQL元数据失败: {e}")
+            logger.exception(f"实时获取MySQL元数据失败: {e}")
             return {
                 'success': False,
                 'data': None,
-                'message': f"同步MySQL元数据失败: {str(e)}"
+                'message': f"实时获取MySQL元数据失败: {str(e)}"
             }
     
     @staticmethod
-    def _get_mysql_tables_metadata(cursor, database_name: str) -> List[Dict[str, Any]]:
-        """获取MySQL表的详细元数据"""
+    def _get_mysql_tables_metadata_realtime(cursor, database_name: str) -> List[Dict[str, Any]]:
+        """实时获取MySQL表的详细元数据"""
         tables = []
         
         try:
@@ -295,19 +209,19 @@ class MetadataService:
                 table_type = 'table' if table_info[1] == 'BASE TABLE' else 'view'
                 
                 # 获取列信息
-                columns = MetadataService._get_mysql_columns(cursor, database_name, table_name)
+                columns = MetadataService._get_mysql_columns_realtime(cursor, database_name, table_name)
                 
                 # 获取索引信息
-                indexes = MetadataService._get_mysql_indexes(cursor, database_name, table_name)
+                indexes = MetadataService._get_mysql_indexes_realtime(cursor, database_name, table_name)
                 
                 # 获取约束信息
-                constraints = MetadataService._get_mysql_constraints(cursor, database_name, table_name)
+                constraints = MetadataService._get_mysql_constraints_realtime(cursor, database_name, table_name)
                 
                 table_metadata = {
-                    'name': table_name,
+                    'table_name': table_name,
                     'schema': database_name,
                     'type': table_type,
-                    'comment': table_info[2],
+                    'table_comment': table_info[2] or '',
                     'rows_count': table_info[3] if table_info[3] else 0,
                     'size_mb': float(table_info[4]) if table_info[4] else 0.0,
                     'created_at': table_info[5].isoformat() if table_info[5] else None,
@@ -320,13 +234,13 @@ class MetadataService:
                 tables.append(table_metadata)
                 
         except Exception as e:
-            logger.exception(f"获取MySQL表元数据失败: {e}")
+            logger.exception(f"实时获取MySQL表元数据失败: {e}")
         
         return tables
     
     @staticmethod
-    def _get_mysql_columns(cursor, database_name: str, table_name: str) -> List[Dict[str, Any]]:
-        """获取MySQL表的列信息"""
+    def _get_mysql_columns_realtime(cursor, database_name: str, table_name: str) -> List[Dict[str, Any]]:
+        """实时获取MySQL表的列信息"""
         cursor.execute("""
             SELECT 
                 column_name,
@@ -347,24 +261,24 @@ class MetadataService:
         columns = []
         for col in cursor.fetchall():
             column_data = {
-                'name': col[0],
-                'type': col[1],
-                'null': col[2] == 'YES',
-                'key': col[3] if col[3] else None,
-                'default': col[4],
+                'column_name': col[0],
+                'data_type': col[1],
+                'is_nullable': col[2],
+                'column_key': col[3] if col[3] else None,
+                'column_default': col[4],
                 'extra': col[5],
-                'length': col[6],
-                'precision': col[7],
-                'scale': col[8],
-                'comment': col[9]
+                'character_maximum_length': col[6],
+                'numeric_precision': col[7],
+                'numeric_scale': col[8],
+                'column_comment': col[9] or ''
             }
             columns.append(column_data)
         
         return columns
     
     @staticmethod
-    def _get_mysql_indexes(cursor, database_name: str, table_name: str) -> List[Dict[str, Any]]:
-        """获取MySQL表的索引信息"""
+    def _get_mysql_indexes_realtime(cursor, database_name: str, table_name: str) -> List[Dict[str, Any]]:
+        """实时获取MySQL表的索引信息"""
         cursor.execute("""
             SELECT 
                 index_name,
@@ -391,11 +305,11 @@ class MetadataService:
                     index_type = 'index'
                 
                 indexes_dict[index_name] = {
-                    'name': index_name,
-                    'type': index_type,
+                    'index_name': index_name,
+                    'index_type': index_type,
                     'columns': [],
                     'unique': row[2] == 0,
-                    'comment': row[4]
+                    'index_comment': row[4] or ''
                 }
             
             indexes_dict[index_name]['columns'].append(row[1])
@@ -403,8 +317,8 @@ class MetadataService:
         return list(indexes_dict.values())
     
     @staticmethod
-    def _get_mysql_constraints(cursor, database_name: str, table_name: str) -> List[Dict[str, Any]]:
-        """获取MySQL表的约束信息"""
+    def _get_mysql_constraints_realtime(cursor, database_name: str, table_name: str) -> List[Dict[str, Any]]:
+        """实时获取MySQL表的约束信息"""
         constraints = []
         
         try:
@@ -432,8 +346,8 @@ class MetadataService:
                 constraint_name = row[0]
                 if constraint_name not in fk_constraints:
                     fk_constraints[constraint_name] = {
-                        'name': constraint_name,
-                        'type': 'foreign_key',
+                        'constraint_name': constraint_name,
+                        'constraint_type': 'foreign_key',
                         'columns': [],
                         'referenced_table': row[2],
                         'referenced_columns': []
@@ -444,131 +358,164 @@ class MetadataService:
             
             constraints.extend(list(fk_constraints.values()))
             
-            # 获取检查约束（MySQL 8.0+）
-            try:
-                cursor.execute("""
-                    SELECT 
-                        constraint_name,
-                        check_clause
-                    FROM information_schema.check_constraints
-                    WHERE constraint_schema = %s 
-                        AND constraint_name IN (
-                            SELECT constraint_name 
-                            FROM information_schema.table_constraints 
-                            WHERE table_schema = %s AND table_name = %s
-                            AND constraint_type = 'CHECK'
-                        )
-                """, (database_name, database_name, table_name))
-                
-                for row in cursor.fetchall():
-                    constraints.append({
-                        'name': row[0],
-                        'type': 'check',
-                        'columns': [],  # 检查约束可能涉及多列或表达式
-                        'comment': row[1]
-                    })
-            except Exception:
-                # MySQL版本不支持检查约束，忽略
-                pass
-                
         except Exception as e:
             logger.exception(f"获取MySQL约束信息失败: {e}")
         
         return constraints
     
     @staticmethod
-    def _sync_oracle_metadata(datasource: DataSource) -> Dict[str, Any]:
-        """同步Oracle数据源元数据"""
-        # Oracle元数据同步的实现
-        # 由于Oracle比较复杂，这里提供基本框架
-        return {
-            'success': False,
-            'data': None,
-            'message': 'Oracle元数据同步功能待实现'
-        }
-    
-    @staticmethod
-    def _save_metadata_to_db(datasource_id: str, metadata: Dict[str, Any]) -> str:
-        """将元数据保存到数据库"""
+    def _get_oracle_metadata_realtime(datasource: DataSource) -> Dict[str, Any]:
+        """实时获取Oracle数据源元数据"""
         try:
-            metadata_id = str(uuid.uuid4())
+            logger.info(f"开始实时查询Oracle数据源: {datasource.host}:{datasource.port}/{datasource.service_name}")
             
-            # 保存数据源元数据主记录
-            metadata_sql = """
-            INSERT INTO datasource_metadata (
-                id, datasource_id, database_name, charset, collation,
-                size_mb, tables_count, views_count, version, metadata_json
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                database_name = VALUES(database_name),
-                charset = VALUES(charset),
-                collation = VALUES(collation),
-                size_mb = VALUES(size_mb),
-                tables_count = VALUES(tables_count),
-                views_count = VALUES(views_count),
-                sync_time = CURRENT_TIMESTAMP,
-                version = VALUES(version),
-                metadata_json = VALUES(metadata_json)
-            """
+            # Oracle实时查询的实现
+            # 这里提供基本框架，可以根据需要完善
+            import cx_Oracle
             
-            # 先删除旧的元数据记录
-            db_connection.ExecuteUpdate(
-                "DELETE FROM datasource_metadata WHERE datasource_id = %s",
-                (datasource_id,)
+            # 构建连接字符串
+            if datasource.service_name:
+                dsn = cx_Oracle.makedsn(datasource.host, datasource.port, service_name=datasource.service_name)
+            else:
+                dsn = cx_Oracle.makedsn(datasource.host, datasource.port, sid=datasource.database)
+            
+            connection = cx_Oracle.connect(
+                user=datasource.username,
+                password=datasource.password,
+                dsn=dsn,
+                encoding="UTF-8"
             )
             
-            db_connection.ExecuteInsert(metadata_sql, (
-                metadata_id,
-                datasource_id,
-                metadata['database_name'],
-                metadata.get('charset'),
-                metadata.get('collation'),
-                metadata['size_mb'],
-                metadata['tables_count'],
-                metadata['views_count'],
-                '1.0',
-                json.dumps(metadata)
-            ))
-            
-            # 保存表元数据
-            for table in metadata['tables']:
-                table_id = str(uuid.uuid4())
-                table_sql = """
-                INSERT INTO table_metadata (
-                    id, datasource_id, metadata_id, table_name, schema_name,
-                    table_type, comment, rows_count, size_mb, created_at,
-                    columns_json, indexes_json, constraints_json
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """
+            with connection.cursor() as cursor:
+                # 获取数据库基本信息
+                cursor.execute("SELECT user FROM dual")
+                schema_name = cursor.fetchone()[0]
                 
-                created_at = None
-                if table.get('created_at'):
-                    try:
-                        created_at = datetime.fromisoformat(table['created_at'].replace('Z', '+00:00'))
-                    except:
-                        created_at = None
+                # 获取表统计信息
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM user_tables
+                """)
+                tables_count = cursor.fetchone()[0]
                 
-                db_connection.ExecuteInsert(table_sql, (
-                    table_id,
-                    datasource_id,
-                    metadata_id,
-                    table['name'],
-                    table.get('schema'),
-                    table['type'],
-                    table.get('comment'),
-                    table['rows_count'],
-                    table['size_mb'],
-                    created_at,
-                    json.dumps(table['columns']),
-                    json.dumps(table['indexes']),
-                    json.dumps(table['constraints'])
-                ))
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM user_views
+                """)
+                views_count = cursor.fetchone()[0]
+                
+                # 获取详细表信息
+                tables = MetadataService._get_oracle_tables_metadata_realtime(cursor, schema_name)
             
-            return metadata_id
+            connection.close()
+            
+            database_metadata = {
+                'database_name': schema_name,
+                'charset': None,  # Oracle字符集信息需要特殊查询
+                'collation': None,
+                'size_mb': 0.0,   # Oracle大小计算较复杂
+                'tables_count': tables_count,
+                'views_count': views_count,
+                'created_at': None,
+                'tables': tables
+            }
+            
+            logger.info(f"Oracle元数据实时查询成功，获取到 {len(tables)} 个表")
+            
+            return {
+                'success': True,
+                'data': database_metadata,
+                'message': f'Oracle元数据实时获取成功，共 {len(tables)} 个表'
+            }
             
         except Exception as e:
-            logger.exception(f"保存元数据到数据库失败: {e}")
-            raise
+            logger.exception(f"实时获取Oracle元数据失败: {e}")
+            return {
+                'success': False,
+                'data': None,
+                'message': f"实时获取Oracle元数据失败: {str(e)}"
+            }
+    
+    @staticmethod
+    def _get_oracle_tables_metadata_realtime(cursor, schema_name: str) -> List[Dict[str, Any]]:
+        """实时获取Oracle表的详细元数据"""
+        tables = []
+        
+        try:
+            # 获取表的基本信息
+            cursor.execute("""
+                SELECT 
+                    table_name,
+                    'table' as table_type,
+                    NVL(comments, '') as table_comment,
+                    NVL(num_rows, 0) as table_rows
+                FROM user_tables t
+                LEFT JOIN user_tab_comments c ON t.table_name = c.table_name
+                ORDER BY table_name
+            """)
+            
+            for row in cursor.fetchall():
+                table_name = row[0]
+                
+                # 获取列信息（简化版）
+                cursor.execute("""
+                    SELECT 
+                        column_name,
+                        data_type,
+                        nullable,
+                        NVL(comments, '') as column_comment
+                    FROM user_tab_columns c
+                    LEFT JOIN user_col_comments cc ON c.table_name = cc.table_name 
+                        AND c.column_name = cc.column_name
+                    WHERE c.table_name = :table_name
+                    ORDER BY column_id
+                """, {'table_name': table_name})
+                
+                columns = []
+                for col in cursor.fetchall():
+                    columns.append({
+                        'column_name': col[0],
+                        'data_type': col[1],
+                        'is_nullable': col[2],
+                        'column_key': None,  # Oracle主键信息需要额外查询
+                        'column_default': None,
+                        'column_comment': col[3]
+                    })
+                
+                table_metadata = {
+                    'table_name': table_name,
+                    'schema': schema_name,
+                    'type': 'table',
+                    'table_comment': row[2],
+                    'rows_count': row[3],
+                    'size_mb': 0.0,  # Oracle表大小计算较复杂
+                    'created_at': None,
+                    'updated_at': None,
+                    'columns': columns,
+                    'indexes': [],   # 索引信息可以后续添加
+                    'constraints': [] # 约束信息可以后续添加
+                }
+                
+                tables.append(table_metadata)
+                
+        except Exception as e:
+            logger.exception(f"获取Oracle表元数据失败: {e}")
+        
+        return tables
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
     
     @staticmethod
     def _create_sync_history(history_id: str, datasource_id: str, status: str):

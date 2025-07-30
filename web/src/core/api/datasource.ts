@@ -146,41 +146,7 @@ export interface MetadataResponse {
   message?: string;
 }
 
-export interface SyncConfig {
-  enabled: boolean;
-  interval_hours: number;
-  auto_sync: boolean;
-  include_table_stats: boolean;
-  include_indexes: boolean;
-  include_constraints: boolean;
-}
 
-export interface SyncHistory {
-  id: string;
-  datasource_id: string;
-  sync_time: string;
-  status: 'success' | 'failed' | 'partial';
-  duration_seconds: number;
-  tables_synced: number;
-  error_message?: string;
-  changes_detected: number;
-}
-
-export interface SyncHistoryResponse {
-  success: boolean;
-  history: SyncHistory[];
-  total: number;
-  message?: string;
-}
-
-export interface SyncStatusResponse {
-  success: boolean;
-  status: 'idle' | 'syncing' | 'error';
-  last_sync?: string;
-  next_sync?: string;
-  config: SyncConfig;
-  message?: string;
-}
 
 // 数据源API类
 export class DataSourceApi {
@@ -291,31 +257,7 @@ export class DataSourceApi {
     return response.data;
   }
 
-  /**
-   * 更新元数据同步配置
-   */
-  async updateSyncConfig(id: string, config: Partial<SyncConfig>): Promise<SyncConfig> {
-    const response = await apiClient.put(`${this.baseUrl}/${id}/metadata/config`, config);
-    return response.data;
-  }
 
-  /**
-   * 获取元数据同步状态
-   */
-  async getSyncStatus(id: string): Promise<SyncStatusResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/status`);
-    return response.data;
-  }
-
-  /**
-   * 获取元数据同步历史
-   */
-  async getSyncHistory(id: string, page = 1, limit = 10): Promise<SyncHistoryResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/history`, {
-      params: { page, limit }
-    });
-    return response.data;
-  }
 
   /**
    * 停止元数据同步

@@ -203,51 +203,12 @@ class DatabaseConnection:
             
 
             
-            # 创建同步配置表
-            sync_config_sql = """
-            CREATE TABLE IF NOT EXISTS datasource_sync_config (
-                id VARCHAR(36) PRIMARY KEY,
-                datasource_id VARCHAR(36) NOT NULL UNIQUE,
-                enabled TINYINT(1) DEFAULT 0,
-                interval_hours INT DEFAULT 24,
-                auto_sync TINYINT(1) DEFAULT 1,
-                include_table_stats TINYINT(1) DEFAULT 1,
-                include_indexes TINYINT(1) DEFAULT 1,
-                include_constraints TINYINT(1) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_datasource_id (datasource_id),
-                INDEX idx_enabled (enabled),
-                FOREIGN KEY (datasource_id) REFERENCES data_sources(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            """
-            
-            # 创建同步历史表
-            sync_history_sql = """
-            CREATE TABLE IF NOT EXISTS datasource_sync_history (
-                id VARCHAR(36) PRIMARY KEY,
-                datasource_id VARCHAR(36) NOT NULL,
-                sync_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                status ENUM('success', 'failed', 'partial') NOT NULL,
-                duration_seconds INT DEFAULT 0,
-                tables_synced INT DEFAULT 0,
-                changes_detected INT DEFAULT 0,
-                error_message TEXT,
-                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP NULL,
-                INDEX idx_datasource_id (datasource_id),
-                INDEX idx_sync_time (sync_time),
-                INDEX idx_status (status),
-                FOREIGN KEY (datasource_id) REFERENCES data_sources(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            """
+
             
             self.ExecuteUpdate(knowledge_base_sql)
             self.ExecuteUpdate(file_documents_sql)
             self.ExecuteUpdate(file_exploration_sql)
             self.ExecuteUpdate(data_sources_sql)
-            self.ExecuteUpdate(sync_config_sql)
-            self.ExecuteUpdate(sync_history_sql)
             
             logger.info("数据库表初始化完成")
             

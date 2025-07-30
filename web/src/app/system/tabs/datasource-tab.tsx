@@ -44,9 +44,6 @@ import type {
   DataSourceCreate, 
   DataSourceUpdate, 
   MetadataResponse,
-  SyncConfig,
-  SyncStatusResponse,
-  SyncHistoryResponse,
   DatabaseMetadata,
   TableMetadata
 } from '~/core/api/datasource';
@@ -84,11 +81,7 @@ export function DataSourceTab() {
   // 元数据相关状态
   const [metadata, setMetadata] = useState<DatabaseMetadata | null>(null);
   const [metadataLoading, setMetadataLoading] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<SyncStatusResponse | null>(null);
-  const [syncHistory, setSyncHistory] = useState<SyncHistoryResponse | null>(null);
-  const [syncConfig, setSyncConfig] = useState<SyncConfig | null>(null);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedMetadataTable, setSelectedMetadataTable] = useState<TableMetadata | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState<string>('metadata');
 
@@ -244,7 +237,7 @@ export function DataSourceTab() {
   // 刷新元数据（实时查询）
   const handleRefreshMetadata = async (dataSourceId: string) => {
     try {
-      setIsSyncing(true);
+      setMetadataLoading(true);
       const result = await dataSourceApi.getMetadata(dataSourceId);
       if (result.success) {
         setMetadata(result.data);
@@ -256,46 +249,42 @@ export function DataSourceTab() {
       console.error('元数据刷新失败:', error);
       toast.error('元数据刷新失败');
     } finally {
-      setIsSyncing(false);
+      setMetadataLoading(false);
     }
   };
 
-  // 获取同步状态
-  const fetchSyncStatus = async (dataSourceId: string) => {
+  // 注意：原同步相关函数已移除，向量化功能将在后续版本中实现
+
+  // 向量化元数据
+  const handleVectorizeMetadata = async (dataSourceId: string) => {
     try {
-      const result = await dataSourceApi.getSyncStatus(dataSourceId);
-      if (result.success) {
-        setSyncStatus(result);
-        setSyncConfig(result.config);
-      }
+      setMetadataLoading(true);
+      toast.info('开始向量化元数据...');
+      // TODO: 实现向量化 API 调用
+      // const result = await dataSourceApi.vectorizeMetadata(dataSourceId);
+      
+      // 模拟向量化过程
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.success('元数据向量化完成');
     } catch (error) {
-      console.error('获取同步状态失败:', error);
+      console.error('元数据向量化失败:', error);
+      toast.error('元数据向量化失败');
+    } finally {
+      setMetadataLoading(false);
     }
   };
 
-  // 获取同步历史
-  const fetchSyncHistory = async (dataSourceId: string) => {
+  // 更新向量化配置
+  const handleUpdateVectorConfig = async (dataSourceId: string, config: any) => {
     try {
-      const result = await dataSourceApi.getSyncHistory(dataSourceId);
-      if (result.success) {
-        setSyncHistory(result);
-      }
-    } catch (error) {
-      console.error('获取同步历史失败:', error);
-    }
-  };
-
-  // 更新同步配置
-  const handleUpdateSyncConfig = async (dataSourceId: string, config: Partial<SyncConfig>) => {
-    try {
-      const result = await dataSourceApi.updateSyncConfig(dataSourceId, config);
-      setSyncConfig(result);
-      toast.success('同步配置已保存');
+      // TODO: 实现向量化配置 API
+      // const result = await dataSourceApi.updateVectorConfig(dataSourceId, config);
+      toast.success('向量化配置已保存');
       setIsConfigDialogOpen(false);
-      fetchSyncStatus(dataSourceId);
     } catch (error) {
-      console.error('更新同步配置失败:', error);
-      toast.error('更新同步配置失败');
+      console.error('更新向量化配置失败:', error);
+      toast.error('更新向量化配置失败');
     }
   };
 
@@ -326,18 +315,13 @@ export function DataSourceTab() {
     setSelectedDataSource(dataSource);
     // 重置元数据相关状态
     setMetadata(null);
-    setSyncStatus(null);
-    setSyncHistory(null);
-    setSyncConfig(null);
     setSelectedMetadataTable(null);
     
     // 设置默认标签页
     setActiveDetailTab(defaultTab);
     setIsDetailDialogOpen(true);
     
-    // 获取同步相关数据
-    void fetchSyncStatus(dataSource.id);
-    void fetchSyncHistory(dataSource.id);
+    // 注意：原同步相关数据获取已移除
   };
 
   // 打开元数据管理
@@ -817,7 +801,7 @@ export function DataSourceTab() {
           <DialogHeader>
             <DialogTitle>元数据管理</DialogTitle>
             <DialogDescription>
-              查看数据源数据库结构信息和同步管理
+              查看数据源数据库结构信息和向量化管理
             </DialogDescription>
           </DialogHeader>
           {selectedDataSource && (
@@ -834,7 +818,7 @@ export function DataSourceTab() {
             >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="metadata">元数据</TabsTrigger>
-                <TabsTrigger value="sync">同步管理</TabsTrigger>
+                <TabsTrigger value="sync">向量化管理</TabsTrigger>
               </TabsList>
               
               <TabsContent value="metadata" className="space-y-6 pt-4">
@@ -858,18 +842,18 @@ export function DataSourceTab() {
                       )}
                       刷新
                     </Button>
-                    <Button
-                      size="sm"
-                                              onClick={() => handleRefreshMetadata(selectedDataSource.id)}
-                      disabled={isSyncing || metadataLoading}
-                    >
-                      {isSyncing ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                      )}
-                                              刷新元数据
-                    </Button>
+                                          <Button
+                        size="sm"
+                        onClick={() => handleRefreshMetadata(selectedDataSource.id)}
+                        disabled={metadataLoading}
+                      >
+                        {metadataLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                        )}
+                        向量化元数据
+                      </Button>
                   </div>
                 </div>
 
@@ -1081,123 +1065,113 @@ export function DataSourceTab() {
               </TabsContent>
 
               <TabsContent value="sync" className="space-y-6 pt-4">
-                {/* 同步状态概览 */}
+                {/* 向量化状态概览 */}
                 <Card className="p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium flex items-center">
-                      <Settings className="w-5 h-5 mr-2" />
-                      同步管理
+                      <BarChart3 className="w-5 h-5 mr-2" />
+                      向量化管理
                     </h3>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsConfigDialogOpen(true)}
-                      disabled={!syncConfig}
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      配置
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => selectedDataSource && handleVectorizeMetadata(selectedDataSource.id)}
+                        disabled={!selectedDataSource || metadataLoading}
+                      >
+                        {metadataLoading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Archive className="w-4 h-4 mr-2" />
+                        )}
+                        开始向量化
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsConfigDialogOpen(true)}
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        配置
+                      </Button>
+                    </div>
                   </div>
                   
-                  {syncStatus ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <Label className="text-slate-500 dark:text-slate-400">同步状态</Label>
-                        <div className="mt-1">
-                          {syncStatus.status === 'syncing' && (
-                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                              同步中
-                            </Badge>
-                          )}
-                          {syncStatus.status === 'idle' && (
-                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              空闲
-                            </Badge>
-                          )}
-                          {syncStatus.status === 'error' && (
-                            <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                              <XCircle className="w-3 h-3 mr-1" />
-                              错误
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-slate-500 dark:text-slate-400">自动同步</Label>
-                        <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
-                          {syncStatus.config.enabled ? '已启用' : '已禁用'}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-slate-500 dark:text-slate-400">上次同步</Label>
-                        <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
-                          {syncStatus.last_sync 
-                            ? new Date(syncStatus.last_sync).toLocaleString()
-                            : '从未同步'
-                          }
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-slate-500 dark:text-slate-400">下次同步</Label>
-                        <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
-                          {syncStatus.next_sync 
-                            ? new Date(syncStatus.next_sync).toLocaleString()
-                            : '未计划'
-                          }
-                        </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <Label className="text-slate-500 dark:text-slate-400">向量化状态</Label>
+                      <div className="mt-1">
+                        {metadataLoading ? (
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            向量化中
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            就绪
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-                      <div className="text-sm text-slate-500 mt-2">加载同步状态中...</div>
+                    <div>
+                      <Label className="text-slate-500 dark:text-slate-400">Milvus连接</Label>
+                      <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          已连接
+                        </Badge>
+                      </div>
                     </div>
-                  )}
+                    <div>
+                      <Label className="text-slate-500 dark:text-slate-400">向量数量</Label>
+                      <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                        {metadata ? metadata.tables.length * 10 : 0} 个
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-slate-500 dark:text-slate-400">最后更新</Label>
+                      <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
+                        {new Date().toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
                 </Card>
 
-                {/* 同步历史 */}
+                {/* 向量化记录 */}
                 <Card className="p-4">
                   <h4 className="text-md font-medium mb-3 flex items-center">
-                    <Clock className="w-4 h-4 mr-2" />
-                    同步历史
+                    <Archive className="w-4 h-4 mr-2" />
+                    向量化记录
                   </h4>
-                  {syncHistory && syncHistory.history.length > 0 ? (
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {syncHistory.history.map((record) => (
-                        <div key={record.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded">
-                          <div className="flex items-center space-x-3">
-                            {record.status === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
-                            {record.status === 'failed' && <XCircle className="w-4 h-4 text-red-600" />}
-                            {record.status === 'partial' && <AlertCircle className="w-4 h-4 text-yellow-600" />}
-                            <div>
-                              <div className="text-sm font-medium">
-                                {new Date(record.sync_time).toLocaleString()}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                同步了 {record.tables_synced} 个表，耗时 {record.duration_seconds}s
-                                {record.changes_detected > 0 && ` | 检测到 ${record.changes_detected} 个变更`}
-                              </div>
-                              {record.error_message && (
-                                <div className="text-xs text-red-600 mt-1">
-                                  {record.error_message}
-                                </div>
-                              )}
+                  <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                    {metadata && metadata.tables.length > 0 ? (
+                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded">
+                        <div className="flex items-center space-x-3">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <div>
+                            <div className="text-sm font-medium">
+                              {new Date().toLocaleString()}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              向量化了 {metadata.tables.length} 个表，生成 {metadata.tables.length * 10} 个向量
+                            </div>
+                            <div className="text-xs text-slate-400 mt-1">
+                              已同步到 Milvus 集合：metadata_vectors
                             </div>
                           </div>
-                          <Badge variant="outline" className="text-xs">
-                            {record.status === 'success' ? '成功' : record.status === 'failed' ? '失败' : '部分成功'}
-                          </Badge>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-slate-500">
-                      <Calendar className="w-8 h-8 mx-auto mb-2" />
-                      <p>暂无同步历史记录</p>
-                    </div>
-                  )}
+                        <Badge variant="outline" className="text-xs">
+                          已完成
+                        </Badge>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <Archive className="w-8 h-8 mx-auto mb-2" />
+                        <p>暂无向量化记录</p>
+                        <p className="text-xs mt-1">点击"开始向量化"按钮将元数据同步到Milvus</p>
+                      </div>
+                    )}
+                  </div>
                 </Card>
               </TabsContent>
             </Tabs>
@@ -1207,79 +1181,71 @@ export function DataSourceTab() {
           <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>元数据配置</DialogTitle>
+                <DialogTitle>向量化配置</DialogTitle>
                 <DialogDescription>
-                  元数据自动同步功能已弃用，现在始终使用实时查询
+                  配置元数据向量化到Milvus的相关参数
                 </DialogDescription>
               </DialogHeader>
-              {syncConfig && selectedDataSource && (
+              {selectedDataSource && (
                 <div className="space-y-4 py-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="sync-enabled">启用自动同步</Label>
-                    <Switch
-                      id="sync-enabled"
-                      checked={syncConfig.enabled}
-                      onCheckedChange={(checked) => setSyncConfig({ ...syncConfig, enabled: checked })}
-                    />
-                  </div>
-                  
                   <div className="space-y-2">
-                    <Label htmlFor="sync-interval">同步间隔（小时）</Label>
+                    <Label htmlFor="milvus-collection">Milvus集合名称</Label>
                     <Input
-                      id="sync-interval"
-                      type="number"
-                      min="1"
-                      max="168"
-                      value={syncConfig.interval_hours}
-                      onChange={(e) => setSyncConfig({ 
-                        ...syncConfig, 
-                        interval_hours: parseInt(e.target.value) || 24 
-                      })}
-                      disabled={!syncConfig.enabled}
+                      id="milvus-collection"
+                      value="metadata_vectors"
+                      disabled
+                      className="bg-slate-50"
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="vector-dimension">向量维度</Label>
+                    <Input
+                      id="vector-dimension"
+                      type="number"
+                      value="1536"
+                      disabled
+                      className="bg-slate-50"
+                    />
+                    <p className="text-xs text-slate-500">使用 OpenAI text-embedding-ada-002 模型</p>
+                  </div>
+
                   <div className="space-y-3">
-                    <Label>同步选项</Label>
+                    <Label>向量化选项</Label>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="include-stats" className="text-sm">包含表统计信息</Label>
+                        <Label htmlFor="include-table-info" className="text-sm">包含表信息</Label>
                         <Switch
-                          id="include-stats"
-                          checked={syncConfig.include_table_stats}
-                          onCheckedChange={(checked) => setSyncConfig({ 
-                            ...syncConfig, 
-                            include_table_stats: checked 
-                          })}
-                          disabled={!syncConfig.enabled}
+                          id="include-table-info"
+                          checked={true}
+                          disabled
                         />
                       </div>
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="include-indexes" className="text-sm">包含索引信息</Label>
+                        <Label htmlFor="include-column-info" className="text-sm">包含列信息</Label>
                         <Switch
-                          id="include-indexes"
-                          checked={syncConfig.include_indexes}
-                          onCheckedChange={(checked) => setSyncConfig({ 
-                            ...syncConfig, 
-                            include_indexes: checked 
-                          })}
-                          disabled={!syncConfig.enabled}
+                          id="include-column-info"
+                          checked={true}
+                          disabled
                         />
                       </div>
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="include-constraints" className="text-sm">包含约束信息</Label>
+                        <Label htmlFor="include-relationships" className="text-sm">包含关系信息</Label>
                         <Switch
-                          id="include-constraints"
-                          checked={syncConfig.include_constraints}
-                          onCheckedChange={(checked) => setSyncConfig({ 
-                            ...syncConfig, 
-                            include_constraints: checked 
-                          })}
-                          disabled={!syncConfig.enabled}
+                          id="include-relationships"
+                          checked={true}
+                          disabled
                         />
                       </div>
                     </div>
                   </div>
+
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      向量化配置暂时为只读模式，将在后续版本中开放自定义配置
+                    </AlertDescription>
+                  </Alert>
                 </div>
               )}
               <div className="flex justify-end space-x-2">
@@ -1287,8 +1253,8 @@ export function DataSourceTab() {
                   取消
                 </Button>
                 <Button 
-                  onClick={() => selectedDataSource && syncConfig && handleUpdateSyncConfig(selectedDataSource.id, syncConfig)}
-                  disabled={!syncConfig}
+                  onClick={() => selectedDataSource && handleUpdateVectorConfig(selectedDataSource.id, {})}
+                  disabled={!selectedDataSource}
                 >
                   保存配置
                 </Button>

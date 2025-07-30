@@ -433,8 +433,22 @@ async def get_tables(
             )
             
             with connection.cursor() as cursor:
-                cursor.execute("SHOW TABLES")
-                tables = [row[0] for row in cursor.fetchall()]
+                # 获取表名和注释
+                cursor.execute("""
+                    SELECT TABLE_NAME, TABLE_COMMENT
+                    FROM INFORMATION_SCHEMA.TABLES 
+                    WHERE TABLE_SCHEMA = %s 
+                    AND TABLE_TYPE = 'BASE TABLE'
+                    ORDER BY TABLE_NAME
+                """, (datasource.database,))
+                
+                tables = []
+                for row in cursor.fetchall():
+                    table_name, table_comment = row
+                    tables.append({
+                        "name": table_name,
+                        "description": table_comment if table_comment else f"{table_name} 数据表"
+                    })
             
             connection.close()
             
@@ -468,8 +482,22 @@ async def get_tables(
             
             with connection.cursor() as cursor:
                 schema = datasource.schema or datasource.username.upper()
-                cursor.execute(f"SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = '{schema}' ORDER BY TABLE_NAME")
-                tables = [row[0] for row in cursor.fetchall()]
+                # 获取表名和注释
+                cursor.execute(f"""
+                    SELECT t.TABLE_NAME, NVL(c.COMMENTS, t.TABLE_NAME || ' 数据表') as DESCRIPTION
+                    FROM ALL_TABLES t
+                    LEFT JOIN ALL_TAB_COMMENTS c ON t.OWNER = c.OWNER AND t.TABLE_NAME = c.TABLE_NAME
+                    WHERE t.OWNER = '{schema}'
+                    ORDER BY t.TABLE_NAME
+                """)
+                
+                tables = []
+                for row in cursor.fetchall():
+                    table_name, description = row
+                    tables.append({
+                        "name": table_name,
+                        "description": description
+                    })
             
             connection.close()
             

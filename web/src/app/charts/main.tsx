@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X } from "lucide-react";
 import { VChart } from '@visactor/react-vchart';
@@ -144,10 +144,11 @@ export function ChartsMain() {
   
   // 表选择相关状态
   const [selectedTable, setSelectedTable] = useState<string>('');
-  const [tablesList, setTablesList] = useState<string[]>([]);
+  const [tablesList, setTablesList] = useState<Array<{name: string; description?: string}>>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
   
   // 文件工作表选择相关状态（用于Excel等多工作表文件）
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   // 合并所有数据源（系统数据源 + 临时文件）
@@ -204,7 +205,7 @@ export function ChartsMain() {
         setTablesList(response.tables);
         toast.success(`成功获取到 ${response.tables.length} 个数据表`);
       } else {
-        toast.error(response.message || '获取表列表失败');
+        toast.error(response.message ?? '获取表列表失败');
         setTablesList([]);
       }
     } catch (error) {
@@ -261,6 +262,39 @@ export function ChartsMain() {
     setUploadedFiles([]);
     toast.info('已清除选择的文件');
   }, []);
+
+  // 处理HTML input的文件选择
+  const handleFileInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (!file) return; // 额外的安全检查
+      
+      // 创建FileReader来读取文件内容
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const uploadedFile: UploadedFile = {
+          id: `file-${Date.now()}`,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          content: e.target?.result as string
+        };
+        
+        handleFileUpload([uploadedFile]);
+      };
+      
+      // 根据文件类型选择读取方式
+      if (file.type.includes('text') || file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsDataURL(file);
+      }
+    }
+    
+    // 清空input的值，以便可以重新选择同一个文件
+    event.target.value = '';
+  }, [handleFileUpload]);
 
   const handleSendMessage = useCallback(async (
     question: string, 
@@ -762,10 +796,7 @@ export function ChartsMain() {
               </div>
             )}
             
-      
-
-            
-            {/* 新增数据洞察选项 */}
+            {/* 数据洞察选项 */}
             <div className="flex items-center space-x-2 ml-auto">
               <Checkbox 
                 id="enable-insights"
@@ -779,6 +810,111 @@ export function ChartsMain() {
                 启用数据洞察
               </label>
             </div>
+          </div>
+
+          {/* 第二行：文件选择或表选择 */}
+          <div className="flex flex-wrap items-center gap-4">
+            {/* 临时文件选择 - 当选择临时文件数据源时显示 */}
+            {selectedDataSource === 'uploaded_file' && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium">选择文件:</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileInputChange}
+                  multiple={false}
+                  accept=".csv,.json,.xlsx,.xls,.txt,.text"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs"
+                >
+                  <File className="w-3 h-3 mr-1" />
+                  选择文件
+                </Button>
+                
+                {/* 显示已选择的文件 */}
+                {uploadedFiles.length > 0 && uploadedFiles[0] && (
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1">
+                    <FileText className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground truncate max-w-48">
+                      {uploadedFiles[0].name}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-4 w-4 p-0 hover:bg-destructive/10"
+                      onClick={resetFileUpload}
+                    >
+                      <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 系统数据源信息和表选择 */}
+            {currentDataSource && currentDataSource.type === 'system' && (
+              <>
+                {/* 数据源信息显示 */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Badge variant="outline" className="text-xs">
+                    {currentDataSource.status === 'connected' ? '已连接' : '未连接'}
+                  </Badge>
+                  {currentDataSource.tables > 0 && (
+                    <span className="text-xs">{currentDataSource.tables} 个表</span>
+                  )}
+                  <span className="text-xs">{currentDataSource.lastUpdated.toLocaleDateString()}</span>
+                </div>
+                
+                {/* 表选择区域 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">数据表:</span>
+                  <Select value={selectedTable} onValueChange={setSelectedTable}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="请选择数据表" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tablesLoading ? (
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          正在加载表列表...
+                        </div>
+                      ) : tablesList.length > 0 ? (
+                        tablesList.map((table) => (
+                          <SelectItem key={table.name} value={table.name}>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">{table.name}</span>
+                              {table.description && (
+                                <span className="text-xs text-muted-foreground truncate max-w-60">
+                                  {table.description}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          暂无可用数据表
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {!tablesLoading && currentDataSource && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchTables(currentDataSource.id)}
+                      className="text-xs"
+                    >
+                      刷新
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -951,18 +1087,10 @@ export function ChartsMain() {
               className="h-full w-full"
               responding={isLoading}
               onSend={handleSendMessage}
-              onFileUpload={handleFileUpload}
-              showUploadButton={selectedDataSource === 'uploaded_file'} // 只有在选择上传临时文件时显示上传按钮
               existingFiles={uploadedFiles} // 传递已上传文件列表
               // 数据源相关props
               selectedDataSource={selectedDataSource}
               systemDataSources={systemDataSources}
-              // 表选择相关props
-              selectedTable={selectedTable}
-              tablesList={tablesList}
-              tablesLoading={tablesLoading}
-              onTableChange={setSelectedTable}
-              onFetchTables={fetchTables}
             />
           </div>
         </div>

@@ -62,6 +62,7 @@ export interface ConnectionTestResponse {
 
 export interface Table {
   name: string;
+  description?: string;
 }
 
 export interface Column {
@@ -78,7 +79,7 @@ export interface Column {
 
 export interface TablesResponse {
   success: boolean;
-  tables: string[];
+  tables: Table[];
   count: number;
   schema?: string;
   message?: string;

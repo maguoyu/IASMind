@@ -787,36 +787,10 @@ export function ChartsMain() {
                 )}
               </SelectContent>
             </Select>
-            {/* 数据源信息显示 */}
-            {currentDataSource && currentDataSource.type === 'system' && (
-              <div className="text-sm text-muted-foreground">
-                <span className="capitalize">{currentDataSource.status === 'connected' ? '已连接' : '未连接'}</span>
-                {currentDataSource.tables > 0 && ` • ${currentDataSource.tables} 个表`}
-                {' • '}{currentDataSource.lastUpdated.toLocaleDateString()}
-              </div>
-            )}
-            
-            {/* 数据洞察选项 */}
-            <div className="flex items-center space-x-2 ml-auto">
-              <Checkbox 
-                id="enable-insights"
-                checked={enableInsights}
-                onCheckedChange={(checked) => setEnableInsights(checked === true)}
-              />
-              <label
-                htmlFor="enable-insights"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                启用数据洞察
-              </label>
-            </div>
-          </div>
 
-          {/* 第二行：文件选择或表选择 */}
-          <div className="flex flex-wrap items-center gap-4">
             {/* 临时文件选择 - 当选择临时文件数据源时显示 */}
             {selectedDataSource === 'uploaded_file' && (
-              <div className="flex items-center gap-2 flex-wrap">
+              <>
                 <span className="text-sm font-medium">选择文件:</span>
                 <input
                   ref={fileInputRef}
@@ -853,12 +827,53 @@ export function ChartsMain() {
                     </Button>
                   </div>
                 )}
-              </div>
+              </>
             )}
 
-            {/* 系统数据源信息和表选择 */}
+            {/* 系统数据源的表选择 */}
             {currentDataSource && currentDataSource.type === 'system' && (
               <>
+                <span className="text-sm font-medium">数据表:</span>
+                <Select value={selectedTable} onValueChange={setSelectedTable}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="请选择数据表" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tablesLoading ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        正在加载表列表...
+                      </div>
+                    ) : tablesList.length > 0 ? (
+                      tablesList.map((table) => (
+                        <SelectItem key={table.name} value={table.name}>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{table.name}</span>
+                            {table.description && (
+                              <span className="text-xs text-muted-foreground truncate max-w-60">
+                                {table.description}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        暂无可用数据表
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                {!tablesLoading && currentDataSource && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchTables(currentDataSource.id)}
+                    className="text-xs"
+                  >
+                    刷新
+                  </Button>
+                )}
+                
                 {/* 数据源信息显示 */}
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Badge variant="outline" className="text-xs">
@@ -869,52 +884,23 @@ export function ChartsMain() {
                   )}
                   <span className="text-xs">{currentDataSource.lastUpdated.toLocaleDateString()}</span>
                 </div>
-                
-                {/* 表选择区域 */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">数据表:</span>
-                  <Select value={selectedTable} onValueChange={setSelectedTable}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="请选择数据表" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tablesLoading ? (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                          正在加载表列表...
-                        </div>
-                      ) : tablesList.length > 0 ? (
-                        tablesList.map((table) => (
-                          <SelectItem key={table.name} value={table.name}>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-sm">{table.name}</span>
-                              {table.description && (
-                                <span className="text-xs text-muted-foreground truncate max-w-60">
-                                  {table.description}
-                                </span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                          暂无可用数据表
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {!tablesLoading && currentDataSource && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fetchTables(currentDataSource.id)}
-                      className="text-xs"
-                    >
-                      刷新
-                    </Button>
-                  )}
-                </div>
               </>
             )}
+            
+            {/* 数据洞察选项 */}
+            <div className="flex items-center space-x-2 ml-auto">
+              <Checkbox 
+                id="enable-insights"
+                checked={enableInsights}
+                onCheckedChange={(checked) => setEnableInsights(checked === true)}
+              />
+              <label
+                htmlFor="enable-insights"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                启用数据洞察
+              </label>
+            </div>
           </div>
         </motion.div>
 

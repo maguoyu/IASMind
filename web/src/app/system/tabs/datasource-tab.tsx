@@ -343,12 +343,10 @@ export function DataSourceTab() {
   // 打开元数据管理
   const openMetadataDialog = (dataSource: DataSource) => {
     openDetailDialog(dataSource, 'metadata');
-    // 如果还没有元数据，自动加载
+    // 自动获取元数据
     setTimeout(() => {
-      if (!metadata) {
-        void fetchMetadata(dataSource.id);
-      }
-    }, 200);
+      void fetchMetadata(dataSource.id);
+    }, 150);
   };
 
   // 获取状态徽章
@@ -825,7 +823,13 @@ export function DataSourceTab() {
           {selectedDataSource && (
             <Tabs 
               value={activeDetailTab} 
-              onValueChange={setActiveDetailTab} 
+              onValueChange={(value) => {
+                setActiveDetailTab(value);
+                // 切换到元数据tab时，如果没有数据则获取
+                if (value === 'metadata' && selectedDataSource && !metadata) {
+                  void fetchMetadata(selectedDataSource.id);
+                }
+              }}
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-2">

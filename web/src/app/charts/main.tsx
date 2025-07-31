@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X, Eye, ChevronDown, ChevronUp, Table, RotateCcw } from "lucide-react";
+import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X, Eye, ChevronDown, ChevronUp, Table, RotateCcw, Trash2, MessageSquareX } from "lucide-react";
 import { VChart } from '@visactor/react-vchart';
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
@@ -85,6 +85,75 @@ const quickQuestions = [
   "不同机型的航油成本对比",
   "各机场起降架次分布"
 ];
+
+// 本地存储工具函数
+const STORAGE_KEY = 'chatbi_messages';
+const STORAGE_EXPIRY_DAYS = 3;
+
+interface StoredMessage extends ChatMessage {
+  storedAt: number; // 存储时间戳
+}
+
+const messageStorage = {
+  // 保存消息到本地存储
+  save: (messages: ChatMessage[]) => {
+    try {
+      const storedMessages: StoredMessage[] = messages.map(msg => ({
+        ...msg,
+        storedAt: Date.now()
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(storedMessages));
+    } catch (error) {
+      console.warn('保存消息到本地存储失败:', error);
+    }
+  },
+
+  // 从本地存储加载消息
+  load: (): ChatMessage[] => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return [];
+
+      const storedMessages: StoredMessage[] = JSON.parse(stored);
+      const now = Date.now();
+      const expiryTime = STORAGE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+      // 过滤掉过期消息并转换回ChatMessage格式
+      const validMessages = storedMessages
+        .filter(msg => (now - msg.storedAt) < expiryTime)
+        .map(({ storedAt, ...msg }) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+
+      // 如果有消息被过滤掉，更新存储
+      if (validMessages.length !== storedMessages.length) {
+        messageStorage.save(validMessages);
+      }
+
+      return validMessages;
+    } catch (error) {
+      console.warn('从本地存储加载消息失败:', error);
+      return [];
+    }
+  },
+
+  // 清空所有消息
+  clear: () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn('清空消息存储失败:', error);
+    }
+  },
+
+  // 删除单条消息
+  deleteMessage: (messageId: string, allMessages: ChatMessage[]): ChatMessage[] => {
+    const updatedMessages = allMessages.filter(msg => msg.id !== messageId);
+    messageStorage.save(updatedMessages);
+    return updatedMessages;
+  }
+};
 
 // 检查文本是否符合CSV格式标准（参考后端is_valid_csv函数）
 const isValidCSV = (text: string): boolean => {
@@ -454,7 +523,7 @@ const generateMockChart = (question: string): ChartData[] => {
 };
 
 export function ChartsMain() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => messageStorage.load());
   const [selectedDataSource, setSelectedDataSource] = useState('uploaded_file'); // 默认选择临时文件
   const [isLoading, setIsLoading] = useState(false);
   const [isDataSourceDisabled, setIsDataSourceDisabled] = useState(false);
@@ -473,6 +542,13 @@ export function ChartsMain() {
   
   // 文件工作表选择相关状态（用于Excel等多工作表文件）
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 消息变化时自动保存到本地存储
+  useEffect(() => {
+    if (messages.length > 0) {
+      messageStorage.save(messages);
+    }
+  }, [messages]);
 
 
   // 合并所有数据源（系统数据源 + 临时文件）
@@ -612,6 +688,20 @@ export function ChartsMain() {
   const resetFileUpload = useCallback(() => {
     setUploadedFiles([]);
     toast.info('已清除选择的文件');
+  }, []);
+
+  // 删除单条消息
+  const deleteMessage = useCallback((messageId: string) => {
+    const updatedMessages = messageStorage.deleteMessage(messageId, messages);
+    setMessages(updatedMessages);
+    toast.success('消息已删除');
+  }, [messages]);
+
+  // 清空所有对话
+  const clearAllMessages = useCallback(() => {
+    setMessages([]);
+    messageStorage.clear();
+    toast.success('所有对话已清空');
   }, []);
 
   // 处理HTML input的文件选择
@@ -1303,12 +1393,27 @@ export function ChartsMain() {
                 )}
                 
                 <div className={`${message.type === 'user' ? 'max-w-lg order-first' : 'w-full max-w-none'}`}>
-                  <div className={`p-3 rounded-lg ${
+                  <div className={`p-3 rounded-lg relative group ${
                     message.type === 'user' 
                       ? 'bg-primary text-primary-foreground ml-auto' 
                       : 'bg-card border'
                   }`}>
-                    <p className="text-sm whitespace-pre-line">{message.content}</p>
+                    {/* 删除按钮 */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteMessage(message.id)}
+                      className={`absolute top-2 right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${
+                        message.type === 'user' 
+                          ? 'hover:bg-primary-foreground/20 text-primary-foreground/70 hover:text-primary-foreground' 
+                          : 'hover:bg-destructive hover:text-destructive-foreground'
+                      }`}
+                      title="删除此消息"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                    
+                    <p className="text-sm whitespace-pre-line pr-8">{message.content}</p>
                     <p className={`text-xs mt-1 opacity-70`}>
                       {message.timestamp.toLocaleTimeString()}
                     </p>
@@ -1375,37 +1480,40 @@ export function ChartsMain() {
                         ) : (
                           /* 表格显示 */
                           <div className="max-h-40 overflow-auto border rounded text-xs">
-                            {/* 表头 */}
-                            <div className="bg-muted/50 border-b sticky top-0">
-                              <div className="flex">
-                                {message.filePreview.headers.map((header, index) => (
-                                  <div
-                                    key={index}
-                                    className="px-2 py-1 font-medium text-left min-w-20 max-w-32 truncate border-r last:border-r-0"
-                                    title={header}
-                                  >
-                                    {header}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            
-                            {/* 数据行 (显示前10行) */}
-                            <div className="divide-y">
-                              {message.filePreview.rows.slice(0, 10).map((row, rowIndex) => (
-                                <div key={rowIndex} className="flex hover:bg-muted/20">
-                                  {row.map((cell, cellIndex) => (
-                                    <div
-                                      key={cellIndex}
-                                      className="px-2 py-1 min-w-20 max-w-32 truncate border-r last:border-r-0"
-                                      title={cell}
+                            <table className="w-full table-fixed">
+                              {/* 表头 */}
+                              <thead className="bg-muted/50 border-b sticky top-0">
+                                <tr>
+                                  {message.filePreview.headers.map((header, index) => (
+                                    <th
+                                      key={index}
+                                      className="px-2 py-1 font-medium text-left truncate border-r last:border-r-0"
+                                      style={{ width: `${100 / message.filePreview.headers.length}%` }}
+                                      title={header}
                                     >
-                                      {cell || '-'}
-                                    </div>
+                                      {header}
+                                    </th>
                                   ))}
-                                </div>
-                              ))}
-                            </div>
+                                </tr>
+                              </thead>
+                              
+                              {/* 数据行 (显示前10行) */}
+                              <tbody className="divide-y">
+                                {message.filePreview.rows.slice(0, 10).map((row, rowIndex) => (
+                                  <tr key={rowIndex} className="hover:bg-muted/20">
+                                    {row.map((cell, cellIndex) => (
+                                      <td
+                                        key={cellIndex}
+                                        className="px-2 py-1 truncate border-r last:border-r-0"
+                                        title={cell}
+                                      >
+                                        {cell || '-'}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         )}
                         
@@ -1476,6 +1584,20 @@ export function ChartsMain() {
 
           {/* 快速问题 / 输入区域 */}
           <div className="relative flex shrink-0 pb-4 pt-2 flex-col">
+            {/* 清空对话按钮 - 仅在有消息时显示 */}
+            {messages.length > 0 && (
+              <div className="flex justify-center mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllMessages}
+                  className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                >
+                  <MessageSquareX className="w-4 h-4 mr-2" />
+                  清空所有对话
+                </Button>
+              </div>
+            )}
             {!isLoading && messages.length === 0 && (
               <motion.div
                 className="w-full mb-6"

@@ -1368,7 +1368,7 @@ export function ChartsMain() {
                         {message.filePreview.headers.length === 1 && message.filePreview.headers[0] === '文本内容' ? (
                           /* 纯文本显示 */
                           <div className="max-h-40 overflow-auto border rounded bg-muted/20">
-                            <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
+                            <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed break-words break-all overflow-wrap-anywhere">
                               {message.filePreview.rows[0]?.[0] || ''}
                             </pre>
                           </div>

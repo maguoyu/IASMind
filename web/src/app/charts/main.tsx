@@ -798,7 +798,17 @@ export function ChartsMain() {
       files?: Array<UploadedFile>;
     }
   ) => {
-    if (!question.trim() && (!uploadedFiles || uploadedFiles.length === 0)) return;
+    // 检查用户输入是否为空
+    if (!question.trim()) {
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        // 有文件但没有输入内容
+        toast.error('请输入您的分析需求，如"预览文件"、"分析数据趋势"等');
+      } else {
+        // 没有文件也没有输入内容
+        toast.error('请先选择文件并输入您的需求，或选择系统数据源进行分析');
+      }
+      return;
+    }
     
     // 检查是否选择了临时文件数据源但没上传文件
     if (selectedDataSource === 'uploaded_file' && (!uploadedFiles || uploadedFiles.length === 0)) {

@@ -95,13 +95,18 @@ export function InputBox({
     // setUploadedFiles(existingFiles); // This line is removed as per the edit hint
   }, [existingFiles]);
 
+  // 检查是否可以发送消息
+  const canSendMessage = useMemo(() => {
+    return currentPrompt.trim() !== "" || existingFiles.length > 0;
+  }, [currentPrompt, existingFiles]);
+
   // 处理消息发送
   const handleSendMessage = useCallback(
     (message: string) => {
       if (responding) {
         onCancel?.();
       } else {
-        if (message.trim() === "" && existingFiles.length === 0) { // Changed from uploadedFiles to existingFiles
+        if (!canSendMessage) {
           return;
         }
 
@@ -110,13 +115,13 @@ export function InputBox({
         onSend?.(message, {
           interruptFeedback: feedback?.option.value,
           resources,
-          files: existingFiles, // Changed from uploadedFiles to existingFiles
+          files: existingFiles,
         });
         // 发送后不清空文件列表，由父组件控制
         // setCurrentPrompt("");
       }
     },
-    [responding, onCancel, onSend, feedback, onRemoveFeedback, existingFiles], // Changed from uploadedFiles to existingFiles
+    [responding, onCancel, onSend, feedback, onRemoveFeedback, existingFiles, canSendMessage],
   );
 
   const handleEnhancePrompt = useCallback(async () => {
@@ -232,13 +237,22 @@ export function InputBox({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Tooltip title="Enhance prompt with AI">
+          <Tooltip 
+            title={
+              isEnhancing 
+                ? "正在优化提示词..." 
+                : currentPrompt.trim() === ""
+                  ? "请先输入内容再优化"
+                  : "使用 AI 优化提示词"
+            }
+          >
             <Button
               variant="ghost"
               size="icon"
               className={cn(
                 "hover:bg-accent h-10 w-10",
                 isEnhancing && "animate-pulse",
+                currentPrompt.trim() === "" && "opacity-50"
               )}
               onClick={handleEnhancePrompt}
               disabled={isEnhancing || currentPrompt.trim() === ""}
@@ -252,12 +266,24 @@ export function InputBox({
               )}
             </Button>
           </Tooltip>
-          <Tooltip title={responding ? "Stop" : "Send"}>
+          <Tooltip 
+            title={
+              responding 
+                ? "停止生成" 
+                : !canSendMessage 
+                  ? "请输入分析需求或选择文件" 
+                  : "发送消息"
+            }
+          >
             <Button
               variant="outline"
               size="icon"
-              className={cn("h-10 w-10 rounded-full")}
+              className={cn(
+                "h-10 w-10 rounded-full",
+                !canSendMessage && !responding && "opacity-50 cursor-not-allowed"
+              )}
               onClick={() => inputRef.current?.submit()}
+              disabled={!canSendMessage && !responding}
             >
               {responding ? (
                 <div className="flex h-10 w-10 items-center justify-center">

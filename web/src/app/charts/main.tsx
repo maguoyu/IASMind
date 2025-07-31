@@ -652,35 +652,12 @@ export function ChartsMain() {
     console.log('handleFileUpload 被调用，文件数量:', files.length);
     setUploadedFiles(files);
     if (files.length > 0 && files[0]?.name) {
-      // 自动解析并预览文件
       const file = files[0];
-      console.log('开始解析文件:', file.name, '内容长度:', file.content?.length);
-      
-      const previewData = parseFileContent(file);
-      console.log('文件解析结果:', previewData);
-      
-      if (previewData) {
-        console.log('创建文件预览消息，文件ID:', file.id);
-        
-        // 创建包含文件预览的消息
-        const filePreviewMessage: ChatMessage = {
-          id: `file-preview-${Date.now()}`,
-          type: 'assistant',
-          content: `已选择文件：${file.name}\n文件类型：${previewData.fileInfo.extension}\n数据行数：${previewData.totalRows}行\n文件大小：${previewData.fileInfo.size}`,
-          timestamp: new Date(),
-          filePreview: previewData,
-          files: [file]
-        };
-        
-        setMessages(prev => [...prev, filePreviewMessage]);
-        toast.success(`已选择文件: ${file.name}，文件预览已显示在对话中`);
-      } else {
-        console.log('文件解析失败或不支持的格式');
-        toast.warning(`已选择文件: ${file.name}，但无法预览此文件格式`);
-      }
+      console.log('文件已选择:', file.name, '内容长度:', file.content?.length);
       
       // 有文件时锁定为临时文件数据源
       setSelectedDataSource('uploaded_file');
+      toast.success(`已选择文件: ${file.name}，可以开始分析或预览`);
     }
   }, []);
 
@@ -702,6 +679,52 @@ export function ChartsMain() {
     setMessages([]);
     messageStorage.clear();
     toast.success('所有对话已清空');
+  }, []);
+
+  // 检测用户意图是否为文件预览
+  const isFilePreviewIntent = useCallback((userInput: string): boolean => {
+    const input = userInput.toLowerCase().trim();
+    
+    // 预览相关关键词
+    const previewKeywords = [
+      '预览', '查看', '显示', '展示', '看看', '看一下', '看一眼',
+      '文件内容', '数据内容', '文件格式', '数据格式', '数据结构',
+      '表头', '列名', '字段', '头部', '前几行', '前几条',
+      'preview', 'show', 'view', 'display', 'head', 'sample'
+    ];
+    
+    // 文件相关词汇
+    const fileKeywords = [
+      '文件', '数据', '表格', '内容', '格式', 'csv', 'excel', 'xlsx', 'txt', 'json'
+    ];
+    
+    // 检查是否包含预览意图关键词
+    const hasPreviewKeyword = previewKeywords.some(keyword => input.includes(keyword));
+    
+    // 检查是否是简单的预览请求（如"预览文件"、"查看数据"等）
+    const isSimplePreviewRequest = hasPreviewKeyword && fileKeywords.some(keyword => input.includes(keyword));
+    
+    // 检查是否是常见的预览表达方式
+    const commonPreviewPhrases = [
+      input === '预览',
+      input === '查看',
+      input === '显示',
+      input === '看看',
+      input === '文件内容',
+      input === '数据内容',
+      input === '数据结构',
+      input.includes('看看文件'),
+      input.includes('查看文件'),
+      input.includes('预览文件'),
+      input.includes('显示文件'),
+      input.includes('文件是什么'),
+      input.includes('数据是什么'),
+      input.includes('什么内容'),
+      input.includes('数据格式'),
+      input.includes('文件格式')
+    ];
+    
+    return isSimplePreviewRequest || commonPreviewPhrases.some(phrase => phrase);
   }, []);
 
   // 处理HTML input的文件选择
@@ -812,6 +835,33 @@ export function ChartsMain() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    
+    // 检测用户意图是否为文件预览
+    if (uploadedFiles && uploadedFiles.length > 0 && isFilePreviewIntent(question)) {
+      const file = uploadedFiles[0];
+      if (!file) return;
+      
+      const previewData = parseFileContent(file);
+      
+      if (previewData) {
+        // 创建文件预览消息
+        const filePreviewMessage: ChatMessage = {
+          id: `file-preview-${Date.now()}`,
+          type: 'assistant',
+          content: `文件预览：${file.name}\n文件类型：${previewData.fileInfo.extension}\n数据行数：${previewData.totalRows}行\n文件大小：${previewData.fileInfo.size}`,
+          timestamp: new Date(),
+          filePreview: previewData,
+          files: [file]
+        };
+        
+        setMessages(prev => [...prev, filePreviewMessage]);
+        return; // 直接返回，不继续进行分析
+      } else {
+        toast.warning('无法预览此文件格式');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {

@@ -140,6 +140,26 @@ class BusinessEntityRecognizer:
             "物流运输": {
                 "keywords": ["物流", "logistics", "运输", "transport", "配送", "发货"],
                 "related_concepts": ["仓库", "路线", "司机", "车辆", "收货"]
+            },
+            "航空管理": {
+                "keywords": ["航空", "aviation", "aircraft", "airplane", "飞机", "机场", "airport"],
+                "related_concepts": ["起降", "跑道", "候机楼", "塔台", "航站楼", "机坪"]
+            },
+            "航班运营": {
+                "keywords": ["航班", "flight", "班次", "航线", "route", "起飞", "降落"],
+                "related_concepts": ["时刻表", "延误", "取消", "准点率", "机型", "座位"]
+            },
+            "航油管理": {
+                "keywords": ["航油", "fuel", "燃油", "油料", "加油", "航空煤油"],
+                "related_concepts": ["油耗", "消耗", "效率", "成本", "油箱", "补给"]
+            },
+            "机型设备": {
+                "keywords": ["机型", "aircraft_type", "boeing", "airbus", "B737", "A320", "设备"],
+                "related_concepts": ["维修", "保养", "检修", "零件", "性能", "配置"]
+            },
+            "航空数据": {
+                "keywords": ["架次", "frequency", "passenger", "乘客", "载客", "货运"],
+                "related_concepts": ["客座率", "载重", "里程", "飞行时间", "统计", "分析"]
             }
         }
         

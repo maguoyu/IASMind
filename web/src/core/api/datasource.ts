@@ -146,6 +146,59 @@ export interface MetadataResponse {
   message?: string;
 }
 
+// 向量化相关接口
+export interface VectorizeRequest {
+  include_tables: boolean;
+  include_columns: boolean;
+  include_relationships: boolean;
+  include_indexes: boolean;
+  include_constraints: boolean;
+}
+
+export interface VectorizeResponse {
+  success: boolean;
+  vectors_count: number;
+  collection_name: string;
+  processing_time: number;
+  message: string;
+}
+
+export interface VectorizeStatusResponse {
+  success: boolean;
+  status: 'idle' | 'processing' | 'completed' | 'error';
+  progress: number;
+  vectors_count: number;
+  total_items: number;
+  started_at?: string;
+  completed_at?: string;
+  error_message?: string;
+  message: string;
+}
+
+export interface MetadataSearchRequest {
+  query: string;
+  datasource_ids?: string[];
+  limit: number;
+}
+
+export interface MetadataSearchResult {
+  content: string;
+  score: number;
+  datasource_id: string;
+  item_type: string;
+  item_name: string;
+  table_name?: string;
+  column_name?: string;
+  raw_data: any;
+}
+
+export interface MetadataSearchResponse {
+  success: boolean;
+  query: string;
+  results: MetadataSearchResult[];
+  count: number;
+  message: string;
+}
 
 
 // 数据源API类
@@ -242,28 +295,43 @@ export class DataSourceApi {
   }
 
   /**
-   * 手动同步数据源元数据
+   * 向量化数据源元数据
    */
-  async syncMetadata(id: string): Promise<MetadataResponse> {
-    const response = await apiClient.post(`${this.baseUrl}/${id}/metadata/sync`);
+  async vectorizeMetadata(id: string, request: VectorizeRequest): Promise<VectorizeResponse> {
+    const response = await apiClient.post(`${this.baseUrl}/${id}/metadata/vectorize`, request);
     return response.data;
   }
 
   /**
-   * 获取元数据同步配置
+   * 获取元数据向量化状态
    */
-  async getSyncConfig(id: string): Promise<SyncConfig> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/config`);
+  async getVectorizeStatus(id: string): Promise<VectorizeStatusResponse> {
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/vectorize/status`);
     return response.data;
   }
 
-
+  /**
+   * 删除数据源的元数据向量
+   */
+  async deleteMetadataVectors(id: string): Promise<{ success: boolean; message: string; deleted_count: number }> {
+    const response = await apiClient.delete(`${this.baseUrl}/${id}/metadata/vectors`);
+    return response.data;
+  }
 
   /**
-   * 停止元数据同步
+   * 搜索元数据向量（为text2sql提供支撑）
    */
-  async stopSync(id: string): Promise<void> {
-    await apiClient.post(`${this.baseUrl}/${id}/metadata/stop`);
+  async searchMetadataVectors(request: MetadataSearchRequest): Promise<MetadataSearchResponse> {
+    const response = await apiClient.post(`${this.baseUrl}/metadata/search`, request);
+    return response.data;
+  }
+
+  /**
+   * 获取元数据向量统计信息
+   */
+  async getVectorizeStats(id: string): Promise<{ success: boolean; stats: any; message: string }> {
+    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/vectorize/stats`);
+    return response.data;
   }
 }
 

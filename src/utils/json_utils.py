@@ -4,8 +4,52 @@
 import logging
 import json
 import json_repair
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def safe_json_loads(json_str: str, default: Any = None) -> Any:
+    """
+    安全地解析JSON字符串
+    
+    Args:
+        json_str (str): JSON字符串
+        default (Any): 解析失败时的默认值
+        
+    Returns:
+        Any: 解析后的对象，或默认值
+    """
+    if not json_str or not isinstance(json_str, str):
+        return default if default is not None else {}
+    
+    try:
+        return json.loads(json_str)
+    except (json.JSONDecodeError, TypeError, ValueError) as e:
+        logger.warning(f"JSON解析失败: {e}, 内容: {json_str[:100]}...")
+        return default if default is not None else {}
+
+
+def safe_json_dumps(obj: Any, default: Optional[str] = None, ensure_ascii: bool = False) -> str:
+    """
+    安全地序列化对象为JSON字符串
+    
+    Args:
+        obj (Any): 要序列化的对象
+        default (Optional[str]): 序列化失败时的默认值
+        ensure_ascii (bool): 是否确保ASCII编码
+        
+    Returns:
+        str: JSON字符串，或默认值
+    """
+    if obj is None:
+        return default if default is not None else "{}"
+    
+    try:
+        return json.dumps(obj, ensure_ascii=ensure_ascii, separators=(',', ':'))
+    except (TypeError, ValueError, OverflowError) as e:
+        logger.warning(f"JSON序列化失败: {e}, 对象类型: {type(obj)}")
+        return default if default is not None else "{}"
 
 
 def repair_json_output(content: str) -> str:

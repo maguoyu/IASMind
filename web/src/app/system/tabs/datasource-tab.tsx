@@ -45,7 +45,13 @@ import type {
   DataSourceUpdate, 
   MetadataResponse,
   DatabaseMetadata,
-  TableMetadata
+  TableMetadata,
+  VectorizeRequest,
+  VectorizeResponse,
+  VectorizeStatusResponse,
+  MetadataSearchRequest,
+  MetadataSearchResponse,
+  MetadataSearchResult
 } from '~/core/api/datasource';
 
 interface DataSourceFormData extends Omit<DataSourceCreate, 'type'> {
@@ -84,6 +90,11 @@ export function DataSourceTab() {
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [selectedMetadataTable, setSelectedMetadataTable] = useState<TableMetadata | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState<string>('metadata');
+  
+  // 元数据搜索相关状态
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<MetadataSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
 
   // 获取数据源列表
@@ -260,13 +271,24 @@ export function DataSourceTab() {
     try {
       setMetadataLoading(true);
       toast.info('开始向量化元数据...');
-      // TODO: 实现向量化 API 调用
-      // const result = await dataSourceApi.vectorizeMetadata(dataSourceId);
       
-      // 模拟向量化过程
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 配置向量化参数
+      const vectorizeRequest: VectorizeRequest = {
+        include_tables: true,
+        include_columns: true,
+        include_relationships: true,
+        include_indexes: false,
+        include_constraints: false
+      };
       
-      toast.success('元数据向量化完成');
+      // 调用向量化API
+      const result = await dataSourceApi.vectorizeMetadata(dataSourceId, vectorizeRequest);
+      
+      if (result.success) {
+        toast.success(`元数据向量化完成！生成了 ${result.vectors_count} 个向量，耗时 ${result.processing_time.toFixed(2)} 秒`);
+      } else {
+        toast.error(result.message || '向量化失败');
+      }
     } catch (error) {
       console.error('元数据向量化失败:', error);
       toast.error('元数据向量化失败');
@@ -285,6 +307,39 @@ export function DataSourceTab() {
     } catch (error) {
       console.error('更新向量化配置失败:', error);
       toast.error('更新向量化配置失败');
+    }
+  };
+
+  // 搜索元数据向量
+  const handleSearchMetadata = async () => {
+    if (!selectedDataSource || !searchQuery.trim()) {
+      toast.error('请输入搜索查询');
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      setSearchResults([]);
+
+      const searchRequest: MetadataSearchRequest = {
+        query: searchQuery.trim(),
+        datasource_ids: [selectedDataSource.id],
+        limit: 20
+      };
+
+      const result = await dataSourceApi.searchMetadataVectors(searchRequest);
+      
+      if (result.success) {
+        setSearchResults(result.results);
+        toast.success(`搜索完成，找到 ${result.count} 个相关结果`);
+      } else {
+        toast.error(result.message || '搜索失败');
+      }
+    } catch (error) {
+      console.error('搜索元数据失败:', error);
+      toast.error('搜索元数据失败');
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -316,6 +371,11 @@ export function DataSourceTab() {
     // 重置元数据相关状态
     setMetadata(null);
     setSelectedMetadataTable(null);
+    
+    // 重置搜索相关状态
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchLoading(false);
     
     // 设置默认标签页
     setActiveDetailTab(defaultTab);
@@ -1169,6 +1229,99 @@ export function DataSourceTab() {
                         <Archive className="w-8 h-8 mx-auto mb-2" />
                         <p>暂无向量化记录</p>
                         <p className="text-xs mt-1">点击"开始向量化"按钮将元数据同步到Milvus</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* 搜索测试 */}
+                <Card className="p-4">
+                  <h4 className="text-md font-medium mb-3 flex items-center">
+                    <Eye className="w-4 h-4 mr-2" />
+                    搜索测试
+                  </h4>
+                  
+                  {/* 搜索输入区域 */}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="输入搜索查询，例如：用户表、订单金额、航班信息..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !searchLoading) {
+                              handleSearchMetadata();
+                            }
+                          }}
+                        />
+                      </div>
+                      <Button
+                        onClick={handleSearchMetadata}
+                        disabled={!selectedDataSource || !searchQuery.trim() || searchLoading}
+                        size="sm"
+                      >
+                        {searchLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <Eye className="w-4 h-4 mr-2" />
+                        )}
+                        搜索
+                      </Button>
+                    </div>
+                    
+                    <div className="text-xs text-slate-500">
+                      在当前数据源的向量化元数据中进行语义搜索，测试元数据检索效果
+                    </div>
+                  </div>
+
+                  {/* 搜索结果 */}
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                    {searchLoading ? (
+                      <div className="text-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                        <div className="text-sm text-slate-500">搜索中...</div>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((result, index) => (
+                        <div key={index} className="p-3 bg-slate-50 dark:bg-slate-800 rounded border">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">
+                                {result.item_type}
+                              </Badge>
+                              <span className="text-sm font-medium">{result.item_name}</span>
+                              {result.table_name && (
+                                <span className="text-xs text-slate-500">
+                                  表: {result.table_name}
+                                </span>
+                              )}
+                              {result.column_name && (
+                                <span className="text-xs text-slate-500">
+                                  列: {result.column_name}
+                                </span>
+                              )}
+                            </div>
+                            <Badge variant="secondary" className="text-xs">
+                              相似度: {(result.score * 100).toFixed(1)}%
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {result.content}
+                          </div>
+                        </div>
+                      ))
+                    ) : searchQuery && !searchLoading ? (
+                      <div className="text-center py-8 text-slate-500">
+                        <Eye className="w-8 h-8 mx-auto mb-2" />
+                        <p>没有找到相关结果</p>
+                        <p className="text-xs mt-1">尝试使用不同的关键词或确保已完成向量化</p>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <Eye className="w-8 h-8 mx-auto mb-2" />
+                        <p>输入查询开始测试搜索功能</p>
+                        <p className="text-xs mt-1">可以搜索表名、列名、注释等元数据信息</p>
                       </div>
                     )}
                   </div>

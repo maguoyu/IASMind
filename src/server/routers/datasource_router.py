@@ -111,6 +111,46 @@ class MetadataResponse(BaseModel):
     version: Optional[str] = Field(None, description="版本号")
     message: str = Field(..., description="响应消息")
 
+# 向量化相关模型
+class VectorizeRequest(BaseModel):
+    include_tables: bool = Field(True, description="是否包含表信息")
+    include_relationships: bool = Field(True, description="是否包含关系信息")
+    include_indexes: bool = Field(False, description="是否包含索引信息")
+    include_constraints: bool = Field(False, description="是否包含约束信息")
+    enhance_descriptions: bool = Field(True, description="是否增强表描述信息")
+
+class VectorizeResponse(BaseModel):
+    success: bool = Field(..., description="操作是否成功")
+    vectors_count: int = Field(..., description="生成的向量数量")
+    collection_name: str = Field(..., description="Milvus集合名称")
+    processing_time: float = Field(..., description="处理时间（秒）")
+    message: str = Field(..., description="响应消息")
+
+class VectorizeStatusResponse(BaseModel):
+    success: bool = Field(..., description="操作是否成功")
+    status: str = Field(..., description="向量化状态: idle, processing, completed, error")
+    progress: float = Field(0.0, description="进度百分比 0-100")
+    vectors_count: int = Field(0, description="已生成向量数量")
+    total_items: int = Field(0, description="总处理项目数")
+    started_at: Optional[str] = Field(None, description="开始时间")
+    completed_at: Optional[str] = Field(None, description="完成时间")
+    error_message: Optional[str] = Field(None, description="错误信息")
+    message: str = Field(..., description="响应消息")
+
+class MetadataSearchRequest(BaseModel):
+    query: str = Field(..., description="搜索查询")
+    datasource_ids: Optional[List[str]] = Field(None, description="数据源ID列表，为空则搜索所有")
+    limit: int = Field(10, ge=1, le=100, description="返回结果数量")
+    use_smart_search: bool = Field(True, description="是否使用智能多表检索")
+    filter_business_domain: Optional[str] = Field(None, description="按业务领域筛选")
+
+class MetadataSearchResponse(BaseModel):
+    success: bool = Field(..., description="操作是否成功")
+    query: str = Field(..., description="搜索查询")
+    results: List[Dict[str, Any]] = Field(..., description="搜索结果")
+    count: int = Field(..., description="结果数量")
+    message: str = Field(..., description="响应消息")
+
 
 @router.post("", response_model=DataSourceResponse, status_code=201)
 async def create_datasource(
@@ -746,4 +786,305 @@ async def stop_sync(
         raise
     except Exception as e:
         logger.exception(f"停止同步失败: {e}")
-        raise HTTPException(status_code=500, detail=f"停止同步失败: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"停止同步失败: {str(e)}")
+
+
+# 元数据向量化相关API（基于现有Milvus集成）
+@router.post("/{datasource_id}/metadata/vectorize", response_model=VectorizeResponse)
+async def vectorize_metadata(
+    datasource_id: str,
+    request: VectorizeRequest,
+    user=Depends(GetCurrentUser)
+):
+    """向量化数据源元数据"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        # 导入向量化服务
+        from src.server.services.metadata_vectorize_service import MetadataVectorizeService
+        
+        # 开始向量化处理
+        result = await MetadataVectorizeService.vectorize_datasource_metadata(
+            datasource_id=datasource_id,
+            include_tables=request.include_tables,
+            include_relationships=request.include_relationships,
+            include_indexes=request.include_indexes,
+            include_constraints=request.include_constraints,
+            enhance_descriptions=request.enhance_descriptions
+        )
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"向量化元数据失败: {e}")
+        raise HTTPException(status_code=500, detail=f"向量化元数据失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/vectorize/status", response_model=VectorizeStatusResponse)
+async def get_vectorize_status(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """获取元数据向量化状态"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        from src.server.services.metadata_vectorize_service import MetadataVectorizeService
+        
+        result = MetadataVectorizeService.get_vectorize_status(datasource_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取向量化状态失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取向量化状态失败: {str(e)}")
+
+
+@router.delete("/{datasource_id}/metadata/vectors")
+async def delete_metadata_vectors(
+    datasource_id: str,
+    user=Depends(GetCurrentAdminUser)
+):
+    """删除数据源的元数据向量"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        from src.server.services.metadata_vectorize_service import MetadataVectorizeService
+        
+        result = await MetadataVectorizeService.delete_datasource_vectors(datasource_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"删除元数据向量失败: {e}")
+        raise HTTPException(status_code=500, detail=f"删除元数据向量失败: {str(e)}")
+
+
+@router.post("/metadata/search", response_model=MetadataSearchResponse)
+async def search_metadata_vectors(
+    request: MetadataSearchRequest,
+    user=Depends(GetCurrentUser)
+):
+    """搜索元数据向量（为text2sql提供支撑）"""
+    try:
+        from src.server.services.metadata_vectorize_service import MetadataVectorizeService
+        
+        result = await MetadataVectorizeService.search_metadata_vectors(
+            query=request.query,
+            datasource_ids=request.datasource_ids,
+            limit=request.limit,
+            use_smart_search=request.use_smart_search
+        )
+        return result
+    except Exception as e:
+        logger.exception(f"搜索元数据向量失败: {e}")
+        raise HTTPException(status_code=500, detail=f"搜索元数据向量失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/vectorize/stats")
+async def get_vectorize_stats(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """获取元数据向量统计信息"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        from src.server.services.metadata_vectorize_service import MetadataVectorizeService
+        
+        result = MetadataVectorizeService.get_vectorize_stats(datasource_id)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取向量统计信息失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取向量统计信息失败: {str(e)}")
+
+
+# 新增业务领域相关API
+@router.get("/{datasource_id}/metadata/business-domains")
+async def get_business_domains(
+    datasource_id: str,
+    user=Depends(GetCurrentUser)
+):
+    """获取数据源的业务领域分布"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        from src.rag.metadata_milvus import MetadataVectorStore
+        
+        vector_store = MetadataVectorStore()
+        stats = vector_store.get_stats(datasource_id)
+        
+        return {
+            "success": True,
+            "datasource_id": datasource_id,
+            "domain_distribution": stats.get("domain_distribution", {}),
+            "total_tables": stats.get("table_count", 0),
+            "message": "获取业务领域分布成功"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取业务领域分布失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取业务领域分布失败: {str(e)}")
+
+
+@router.get("/{datasource_id}/metadata/tables/{table_name}/relationships")
+async def get_table_relationships(
+    datasource_id: str,
+    table_name: str,
+    user=Depends(GetCurrentUser)
+):
+    """获取指定表的关联关系"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        from src.rag.metadata_milvus import MetadataVectorStore
+        
+        vector_store = MetadataVectorStore()
+        related_tables = vector_store.get_related_tables(table_name, datasource_id)
+        
+        return {
+            "success": True,
+            "table_name": table_name,
+            "related_tables": related_tables,
+            "count": len(related_tables),
+            "message": f"找到 {len(related_tables)} 个关联表"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"获取表关系失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取表关系失败: {str(e)}")
+
+
+# 智能查询推荐API
+@router.post("/metadata/query-suggestions")
+async def get_query_suggestions(
+    request: MetadataSearchRequest,
+    user=Depends(GetCurrentUser)
+):
+    """获取查询建议和意图分析"""
+    try:
+        from src.server.services.metadata_vectorize_service import BusinessEntityRecognizer
+        
+        recognizer = BusinessEntityRecognizer()
+        intent = recognizer.analyze_query_intent(request.query)
+        
+        # 生成查询建议
+        suggestions = []
+        
+        # 基于识别的实体提供建议
+        for entity in intent["entities"]:
+            entity_info = recognizer.domain_keywords.get(entity, {})
+            for keyword in entity_info.get("keywords", [])[:3]:
+                if keyword not in request.query:
+                    suggestions.append(f"{request.query} {keyword}")
+        
+        # 基于意图类型提供建议
+        if "统计分析" in intent["intent_types"]:
+            suggestions.extend([
+                f"{request.query} 统计",
+                f"{request.query} 汇总",
+                f"{request.query} 趋势分析"
+            ])
+        
+        return {
+            "success": True,
+            "query": request.query,
+            "intent_analysis": intent,
+            "query_suggestions": suggestions[:5],
+            "complexity_level": intent["complexity_level"],
+            "requires_relations": intent["requires_relations"],
+            "message": "查询意图分析完成"
+        }
+    except Exception as e:
+        logger.exception(f"查询意图分析失败: {e}")
+        raise HTTPException(status_code=500, detail=f"查询意图分析失败: {str(e)}")
+
+
+# 表级搜索API
+@router.get("/{datasource_id}/metadata/tables/search")
+async def search_tables_by_name(
+    datasource_id: str,
+    table_name: str = Query(..., description="表名（支持模糊匹配）"),
+    user=Depends(GetCurrentUser)
+):
+    """根据表名搜索表信息"""
+    try:
+        datasource = DataSource.GetById(datasource_id)
+        if not datasource:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
+        
+        from src.rag.metadata_milvus import MetadataVectorStore
+        
+        vector_store = MetadataVectorStore()
+        
+        # 尝试精确匹配
+        exact_result = vector_store.search_by_table_name(table_name, datasource_id)
+        
+        results = []
+        if exact_result:
+            results.append(exact_result)
+        else:
+            # 模糊搜索
+            fuzzy_results = vector_store.search_metadata(
+                query=f"table {table_name}",
+                datasource_ids=[datasource_id],
+                limit=5
+            )
+            results.extend(fuzzy_results)
+        
+        return {
+            "success": True,
+            "query": table_name,
+            "results": results,
+            "count": len(results),
+            "message": f"找到 {len(results)} 个匹配的表"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"搜索表失败: {e}")
+        raise HTTPException(status_code=500, detail=f"搜索表失败: {str(e)}")
+
+
+# 业务领域搜索API
+@router.post("/metadata/search-by-domain")
+async def search_by_business_domain(
+    domain: str = Body(..., description="业务领域"),
+    datasource_ids: Optional[List[str]] = Body(None, description="数据源ID列表"),
+    limit: int = Body(10, description="返回结果数量"),
+    user=Depends(GetCurrentUser)
+):
+    """按业务领域搜索元数据"""
+    try:
+        from src.rag.metadata_milvus import MetadataVectorStore
+        
+        vector_store = MetadataVectorStore()
+        results = vector_store.search_by_business_domain(domain, datasource_ids, limit)
+        
+        return {
+            "success": True,
+            "domain": domain,
+            "results": results,
+            "count": len(results),
+            "message": f"在业务领域 '{domain}' 中找到 {len(results)} 个结果"
+        }
+    except Exception as e:
+        logger.exception(f"按业务领域搜索失败: {e}")
+        raise HTTPException(status_code=500, detail=f"按业务领域搜索失败: {str(e)}")

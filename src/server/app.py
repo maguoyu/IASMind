@@ -24,6 +24,7 @@ from src.server.routers.llm_proxy_router import router as llm_proxy_router
 from src.server.routers.data_exploration_router import router as data_exploration_router
 from src.server.routers.vmind_router import router as vmind_router
 from src.server.routers.datasource_router import router as datasource_router
+from src.server.routers.database_analysis_router import router as database_analysis_router
 
 logger = logging.getLogger(__name__)
 
@@ -61,3 +62,4 @@ app.include_router(llm_proxy_router)
 app.include_router(data_exploration_router)
 app.include_router(vmind_router)
 app.include_router(datasource_router)
+app.include_router(database_analysis_router)

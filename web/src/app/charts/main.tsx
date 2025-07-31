@@ -536,7 +536,7 @@ export function ChartsMain() {
   const [dataSourcesLoading, setDataSourcesLoading] = useState(false);
   
   // 表选择相关状态
-  const [selectedTable, setSelectedTable] = useState<string>('');
+  const [selectedTable, setSelectedTable] = useState<string>('__no_table__');
   const [tablesList, setTablesList] = useState<Array<{name: string; description?: string}>>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
   
@@ -818,18 +818,17 @@ export function ChartsMain() {
     
 
     
-    // 检查是否选择了系统数据源但没选择表
+    // 检查是否选择了系统数据源（表选择为可选）
     const isSystemDataSource = systemDataSources.some(ds => ds.id === selectedDataSource);
-    if (isSystemDataSource && !selectedTable) {
-      toast.error('请先选择要分析的数据表');
-      return;
-    }
     
     // 构建用户消息内容
     let userMessageContent = question;
-    if (isSystemDataSource && selectedTable) {
+    if (isSystemDataSource) {
       const dataSourceName = systemDataSources.find(ds => ds.id === selectedDataSource)?.name || '数据源';
-      userMessageContent += `\n\n📊 数据源: ${dataSourceName}\n📋 数据表: ${selectedTable}`;
+      userMessageContent += `\n\n📊 数据源: ${dataSourceName}`;
+      if (selectedTable && selectedTable !== "__no_table__") {
+        userMessageContent += `\n📋 数据表: ${selectedTable}`;
+      }
     } else if (selectedDataSource === 'uploaded_file' && uploadedFiles.length > 0 && uploadedFiles[0]) {
       userMessageContent += `\n\n📁 文件: ${uploadedFiles[0].name}`;
 
@@ -1049,17 +1048,97 @@ export function ChartsMain() {
         let insights: string[] = [];
         
         if (currentDataSource.type === 'system') {
-          // 系统数据源的响应
+          // 调用数据库分析接口
           responseContent += `\n正在从 ${currentDataSource.name} 的 ${selectedTable} 表查询相关数据...`;
-          charts = generateMockChart(question);
           
-          if (enableInsights) {
-            insights = [
-              `基于 ${currentDataSource.name}.${selectedTable} 的数据分析结果`,
-              "数据连接状态良好，查询性能正常",
-              `当前分析表 ${selectedTable} 包含丰富的业务数据`,
-              "建议定期更新数据源以获得最新分析结果"
-            ];
+          try {
+            const requestBody: any = {
+              user_query: question,
+              datasource_id: selectedDataSource
+            };
+            
+            // 只有选择了表时才传递 table_name（排除特殊值）
+            if (selectedTable && selectedTable !== "__no_table__") {
+              requestBody.table_name = selectedTable;
+            }
+
+            const analysisResponse = await fetch('/api/database_analysis/analyze', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestBody)
+            });
+
+            if (!analysisResponse.ok) {
+              throw new Error(`分析请求失败: ${analysisResponse.status}`);
+            }
+
+            const analysisResult = await analysisResponse.json();
+            
+            if (analysisResult.success) {
+              // 根据结果类型处理数据
+              const titlePrefix = (selectedTable && selectedTable !== "__no_table__") 
+                ? `${currentDataSource.name}.${selectedTable}` 
+                : currentDataSource.name;
+                
+              if (analysisResult.result_type === 'chart' && analysisResult.chart_config) {
+                charts = [{
+                  type: analysisResult.chart_config.type || 'bar',
+                  title: `${titlePrefix} 分析结果`,
+                  data: analysisResult.data || [],
+                  config: analysisResult.chart_config
+                }];
+              } else if (analysisResult.result_type === 'table') {
+                // 如果是表格数据，生成简单的表格图表
+                charts = [{
+                  type: 'custom',
+                  title: `${titlePrefix} 查询结果`,
+                  data: analysisResult.data?.data || [],
+                  config: {
+                    type: 'table',
+                    columns: analysisResult.data?.columns || []
+                  }
+                }];
+              }
+              
+              if (enableInsights) {
+                insights = [
+                  `分析完成: ${analysisResult.metadata?.row_count || 0} 条记录`,
+                  `执行时间: ${(analysisResult.metadata?.execution_time || 0).toFixed(3)}秒`,
+                  `使用表: ${analysisResult.metadata?.tables?.join(', ') || selectedTable}`,
+                  `SQL查询: ${analysisResult.metadata?.sql_query || '已优化'}`
+                ];
+              }
+              
+              // 更新响应内容
+              const sourceDescription = (selectedTable && selectedTable !== "__no_table__") 
+                ? `${currentDataSource.name}.${selectedTable}` 
+                : currentDataSource.name;
+              responseContent = `${sourceDescription} 数据分析完成\n\n查询结果：${analysisResult.metadata?.row_count || 0} 条记录\n执行时间：${(analysisResult.metadata?.execution_time || 0).toFixed(3)}秒`;
+              
+            } else {
+              throw new Error(analysisResult.error || '分析失败');
+            }
+            
+                     } catch (error) {
+             console.error('数据库分析失败:', error);
+             const errorMessage = error instanceof Error ? error.message : '未知错误';
+             responseContent += `\n数据分析遇到问题: ${errorMessage}`;
+            
+            // 降级到模拟数据
+            charts = generateMockChart(question);
+            if (enableInsights) {
+              const sourceDescription = (selectedTable && selectedTable !== "__no_table__") 
+                ? `${currentDataSource.name}.${selectedTable}` 
+                : currentDataSource.name;
+              insights = [
+                `尝试分析 ${sourceDescription} 时遇到问题`,
+                "已降级显示模拟数据",
+                "请检查数据源连接状态",
+                "建议联系管理员确认数据源配置"
+              ];
+            }
           }
         } else {
           // 临时文件的响应
@@ -1169,6 +1248,55 @@ export function ChartsMain() {
   }, []);
   
   const renderChart = (chart: ChartData) => {
+    if (!chart.data || chart.data.length === 0) {
+      return <div className="text-center text-muted-foreground">暂无数据</div>;
+    }
+
+    // 处理数据库分析结果的表格显示
+    if (chart.type === 'custom' && chart.config?.type === 'table') {
+      const columns = chart.config.columns || [];
+      return (
+        <div className="max-h-96 overflow-auto border rounded">
+          <table className="w-full table-fixed">
+            <thead className="bg-muted/50 border-b sticky top-0">
+              <tr>
+                {columns.map((col: string, index: number) => (
+                  <th
+                    key={index}
+                    className="px-2 py-1 font-medium text-left truncate border-r last:border-r-0"
+                    style={{ width: `${100 / columns.length}%` }}
+                    title={col}
+                  >
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {chart.data.slice(0, 100).map((row: any, rowIndex: number) => (
+                <tr key={rowIndex} className="hover:bg-muted/20">
+                  {columns.map((col: string, cellIndex: number) => (
+                    <td
+                      key={cellIndex}
+                      className="px-2 py-1 truncate border-r last:border-r-0"
+                      title={String(row[col] || '')}
+                    >
+                      {String(row[col] || '-')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {chart.data.length > 100 && (
+            <div className="text-xs text-muted-foreground p-2 text-center bg-muted/20">
+              还有 {chart.data.length - 100} 行数据未显示
+            </div>
+          )}
+        </div>
+      );
+    }
+
     const chartHeight = 500; // 增加图表高度以提升显示效果
     
     switch (chart.type) {
@@ -1364,33 +1492,45 @@ export function ChartsMain() {
             {/* 系统数据源的表选择 */}
             {currentDataSource && currentDataSource.type === 'system' && (
               <>
-                <span className="text-sm font-medium">数据表:</span>
+                <span className="text-sm font-medium">数据表 (可选):</span>
                 <Select value={selectedTable} onValueChange={setSelectedTable}>
                   <SelectTrigger className="w-48">
-                    <SelectValue placeholder="请选择数据表" />
+                    <SelectValue placeholder="选择数据表 (可留空分析整个数据库)" />
                   </SelectTrigger>
                   <SelectContent>
                     {tablesLoading ? (
                       <div className="px-2 py-1.5 text-xs text-muted-foreground">
                         正在加载表列表...
                       </div>
-                    ) : tablesList.length > 0 ? (
-                      tablesList.map((table) => (
-                        <SelectItem key={table.name} value={table.name}>
+                    ) : (
+                      <>
+                        <SelectItem value="__no_table__">
                           <div className="flex flex-col">
-                            <span className="font-medium text-sm">{table.name}</span>
-                            {table.description && (
-                              <span className="text-xs text-muted-foreground truncate max-w-60">
-                                {table.description}
-                              </span>
-                            )}
+                            <span className="font-medium text-sm text-muted-foreground">不选择表</span>
+                            <span className="text-xs text-muted-foreground">
+                              分析整个数据库
+                            </span>
                           </div>
                         </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                        暂无可用数据表
-                      </div>
+                        {tablesList.length > 0 ? (
+                          tablesList.map((table) => (
+                            <SelectItem key={table.name} value={table.name}>
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm">{table.name}</span>
+                                {table.description && (
+                                  <span className="text-xs text-muted-foreground truncate max-w-60">
+                                    {table.description}
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            暂无可用数据表
+                          </div>
+                        )}
+                      </>
                     )}
                   </SelectContent>
                 </Select>

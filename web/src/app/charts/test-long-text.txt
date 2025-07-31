@@ -1,0 +1,25 @@
+这是一个测试纯文本预览功能的文档
+本文档包含多行文本内容
+
+第一段：介绍
+这是一个用于测试Chat BI文件预览功能的文档。
+当文件被识别为纯文本格式时，系统会以文本形式展示内容。
+
+第二段：功能说明
+- 支持多行文本显示
+- 保持原有的格式和换行
+- 显示前10行内容
+- 超过10行时显示省略号
+
+第三段：测试内容
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco.
+
+第四段：更多内容
+这是第四段内容，用于测试文本预览的截断功能。
+如果文本超过10行，应该会显示省略号。
+这样用户就能知道还有更多内容。
+
+第五段：结尾
+这是文档的结尾部分。 

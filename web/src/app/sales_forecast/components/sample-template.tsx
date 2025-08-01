@@ -6,11 +6,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { DownloadIcon, FileTextIcon } from "lucide-react";
+import { salesForecastApi } from "~/core/api";
 
 export function SampleTemplate() {
   const downloadTemplate = async () => {
     try {
-      const response = await fetch('/api/sales_forecast/download_template');
+      const response = await salesForecastApi.downloadTemplate();
       
       if (response.ok) {
         const blob = await response.blob();

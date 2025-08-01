@@ -20,6 +20,7 @@ import { cn } from "~/lib/utils";
 
 import { VmindAPI } from "~/core/api/vmind";
 import { dataSourceApi, type DataSource as SystemDataSource } from "~/core/api/datasource";
+import { databaseAnalysisApi } from "~/core/api";
 
 import { InputBox } from "./components/input-box";
 import type { UploadedFile } from "./components/input-box";
@@ -1056,29 +1057,20 @@ export function ChartsMain() {
           responseContent += `\n正在从 ${currentDataSource.name} 的 ${selectedTable} 表查询相关数据...`;
           
           try {
-            const requestBody: any = {
-              user_query: question,
-              datasource_id: selectedDataSource
+            const requestData = {
+              dataSourceId: selectedDataSource,
+              selectedTable: (selectedTable && selectedTable !== "__no_table__") ? selectedTable : undefined,
+              question: question,
+              language: 'zh'
             };
-            
-            // 只有选择了表时才传递 table_name（排除特殊值）
-            if (selectedTable && selectedTable !== "__no_table__") {
-              requestBody.table_name = selectedTable;
+
+            const analysisResponse = await databaseAnalysisApi.analyzeDatabase(requestData);
+
+            if (!analysisResponse.data) {
+              throw new Error(analysisResponse.error || '分析请求失败');
             }
 
-            const analysisResponse = await fetch('/api/database_analysis/analyze', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(requestBody)
-            });
-
-            if (!analysisResponse.ok) {
-              throw new Error(`分析请求失败: ${analysisResponse.status}`);
-            }
-
-            const analysisResult = await analysisResponse.json();
+            const analysisResult = analysisResponse.data;
             
             if (analysisResult.success) {
               // 根据结果类型处理数据

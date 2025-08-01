@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { TrendingUpIcon, BarChart3Icon, CloudIcon } from "lucide-react";
+import { salesForecastApi } from "~/core/api";
 
 interface MarketFactor {
   name: string;
@@ -30,10 +31,11 @@ export function MarketFactors() {
 
   const fetchMarketFactors = async () => {
     try {
-      const response = await fetch('/api/sales_forecast/market_factors');
-      if (response.ok) {
-        const data = await response.json();
-        setFactors(data);
+      const response = await salesForecastApi.getMarketFactors();
+      if (response.data) {
+        setFactors(response.data);
+      } else {
+        console.error('获取市场因素失败:', response.error);
       }
     } catch (error) {
       console.error('获取市场因素失败:', error);

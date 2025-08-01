@@ -21,7 +21,7 @@ export interface FileExploration {
   last_accessed_at?: string;
 }
 
-export interface FileListResponse {
+export interface DataExplorationFileListResponse {
   total: number;
   files: FileExploration[];
 }
@@ -76,7 +76,7 @@ export const DataExplorationAPI = {
       sort_by?: string;
       sort_order?: 'asc' | 'desc';
     } = {}
-  ): Promise<ApiResponse<FileListResponse>> => {
+  ): Promise<ApiResponse<DataExplorationFileListResponse>> => {
     return apiClient.get('/api/data-exploration/files', { params });
   },
 
@@ -97,7 +97,7 @@ export const DataExplorationAPI = {
   
   // 分析数据
   analyzeData: async (request: AnalyzeDataRequest): Promise<ApiResponse<AnalyzeDataResponse>> => {
-    return apiClient.post('/api/data-exploration/analyze', request);
+    return apiClient.post(`/api/data-exploration/analyze`, request);
   }
 };
 

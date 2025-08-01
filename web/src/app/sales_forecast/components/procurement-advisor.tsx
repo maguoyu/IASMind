@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { ShoppingCartIcon, AlertTriangleIcon, TrendingUpIcon, CalendarIcon } from "lucide-react";
+import { salesForecastApi } from "~/core/api";
 
 interface ForecastData {
   month: string;
@@ -44,20 +45,20 @@ export function ProcurementAdvisor({ forecastData }: ProcurementAdvisorProps) {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/sales_forecast/optimize_procurement', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(forecastData),
+      const response = await salesForecastApi.optimizeProcurement({
+        current_inventory: {},
+        forecast_demand: forecastData.reduce((acc, item) => {
+          acc[item.month] = item.predicted;
+          return acc;
+        }, {} as Record<string, number>),
+        optimization_type: 'balanced'
       });
 
-      if (!response.ok) {
-        throw new Error('采购建议生成失败');
+      if (response.data) {
+        setAdvice(response.data);
+      } else {
+        throw new Error(response.error || '采购建议生成失败');
       }
-
-      const result = await response.json();
-      setAdvice(result);
     } catch (error) {
       console.error('采购建议生成错误:', error);
       alert('采购建议生成失败，请检查网络连接或稍后重试');

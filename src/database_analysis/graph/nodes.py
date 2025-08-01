@@ -8,18 +8,16 @@ from typing import Dict, List, Any, Optional
 
 from src.llms.llm import get_llm_by_type
 from src.database.models import DataSource
-from src.server.services.metadata_vectorize_service import MetadataVectorizeService, BusinessEntityRecognizer
 from .state import DatabaseAnalysisState, AnalysisEntity, TableMetadata, QueryResult
-
+from src.server.services.intent_recognized_service import IntentRecognized
 
 class DatabaseAnalysisNodes:
     """数据库分析节点实现"""
     
     def __init__(self):
         self.llm = get_llm_by_type("basic")
-        self.metadata_service = MetadataVectorizeService()
-        self.entity_recognizer = BusinessEntityRecognizer()
-    
+        self.intent_recognizer = IntentRecognized()
+
     def get_connection(self, datasource_id: str):
         """获取数据源连接"""
         import pymysql
@@ -45,112 +43,55 @@ class DatabaseAnalysisNodes:
         else:
             raise Exception(f"暂不支持的数据源类型: {datasource.type}")
     
-    def preprocess_query(self, state: DatabaseAnalysisState) -> DatabaseAnalysisState:
+    def intent_recognized(self, state: DatabaseAnalysisState) -> DatabaseAnalysisState:
         """预处理用户查询"""
         try:
-            user_query = state["user_query"]
-            
             # 基本清理
-            preprocessed = user_query.strip()
+            user_query = state["user_query"].strip()
+            table_name = state["table_name"]
+            intent = self.intent_recognizer.analyze_query_intent(user_query, table_name)
+            if intent.valid:
+                state.intent= intent
+                return state
+
             
             # 使用LLM进行查询意图理解和标准化
             prompt = f"""
-请分析并标准化以下用户查询，使其更适合数据库分析：
+请识别用户意图，使其更适合数据库分析：
 
 用户查询: {user_query}
+表名: {table_name}
 
 要求:
-1. 识别查询意图（统计分析、详细查询、趋势分析等）
-2. 提取关键业务实体
-3. 标准化查询表达方式
-4. 保持原始语义不变
+1. 识别查询意图（intent_types），统计分析、详细查询、趋势分析等
+2. 提取关键业务实体（entities）,如果指定了表名,则将表名作为实体
+3. 如果识别成功,valid为True,否则为False
+4. 意图复杂程度complexity_level为simple、medium或complex
+5. 意图类型intent_types为统计分析、详细查询、关联查询、时间查询、趋势分析等
+6. 是否需要关联查询requires_relations为True或False
 
-返回标准化后的查询:
+返回JSON格式:
+{{
+    "entities": ["实体1", "实体2"],
+    "intent_types": ["意图类型1", "意图类型2"],
+    "valid": True/False,
+    "complexity_level": "simple/medium/complex",
+    "confidence_score": 0.0-1.0
+    "requires_relations": True/False
+}}
 """
             
             response = self.llm.invoke(prompt)
-            preprocessed_query = response.content.strip()
-            
-            state["preprocessed_query"] = preprocessed_query
+            content = response.content.strip()
+            intent = json.loads(content)
+            state.intent = intent
             return state
             
         except Exception as e:
             state["error"] = f"查询预处理失败: {str(e)}"
             return state
     
-    def entity_recognition(self, state: DatabaseAnalysisState) -> DatabaseAnalysisState:
-        """实体识别"""
-        try:
-            query = state["preprocessed_query"]
-            
-            # 使用业务实体识别器
-            entities = []
-            
-            # 识别业务领域实体
-            for domain, config in self.entity_recognizer.domain_keywords.items():
-                for keyword in config["keywords"]:
-                    if keyword.lower() in query.lower():
-                        entities.append({
-                            "name": keyword,
-                            "type": "domain_keyword",
-                            "domain": domain,
-                            "confidence": 0.8
-                        })
-                
-                for concept in config["related_concepts"]:
-                    if concept.lower() in query.lower():
-                        entities.append({
-                            "name": concept,
-                            "type": "related_concept",
-                            "domain": domain,
-                            "confidence": 0.6
-                        })
-            
-            # 使用LLM进行更精确的实体识别
-            prompt = f"""
-分析以下查询中的数据实体，识别可能的表名、字段名、数值等：
 
-查询: {query}
-数据源ID: {state["datasource_id"]}
-
-请识别:
-1. 可能的表名或业务对象
-2. 可能的字段名或属性
-3. 数值范围或条件
-4. 时间相关信息
-5. 聚合操作类型
-
-返回JSON格式:
-{{
-  "tables": ["表名1", "表名2"],
-  "columns": ["字段1", "字段2"],
-  "values": ["值1", "值2"],
-  "time_info": ["时间信息"],
-  "aggregations": ["聚合类型"]
-}}
-"""
-            
-            response = self.llm.invoke(prompt)
-            try:
-                llm_entities = json.loads(response.content)
-                
-                # 合并LLM识别的实体
-                for entity_type, entity_list in llm_entities.items():
-                    for entity in entity_list:
-                        entities.append({
-                            "name": entity,
-                            "type": entity_type,
-                            "confidence": 0.9
-                        })
-            except json.JSONDecodeError:
-                pass
-            
-            state["entities"] = entities
-            return state
-            
-        except Exception as e:
-            state["error"] = f"实体识别失败: {str(e)}"
-            return state
     
     def metadata_retrieval(self, state: DatabaseAnalysisState) -> DatabaseAnalysisState:
         """元数据检索"""

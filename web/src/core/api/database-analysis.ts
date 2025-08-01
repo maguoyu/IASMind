@@ -2,9 +2,9 @@ import { apiClient, type ApiResponse } from './config';
 
 // 数据库分析请求类型
 export interface DatabaseAnalysisRequest {
-  dataSourceId: string;
-  selectedTable?: string;
-  question: string;
+  user_query: string;
+  datasource_id: string;
+  table_name?: string | null;
   language?: string;
 }
 

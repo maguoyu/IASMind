@@ -3,7 +3,7 @@
 
 from typing import Dict, List, Optional, TypedDict, Any
 from dataclasses import dataclass
-
+from src.server.services.intent_recognized_service import Intent
 class DatabaseAnalysisState(TypedDict):
     """数据库分析状态"""
     
@@ -13,8 +13,7 @@ class DatabaseAnalysisState(TypedDict):
     table_name: Optional[str]  # 可选的表名
     
     # 处理过程状态
-    preprocessed_query: str  # 预处理后的查询
-    entities: List[Dict[str, Any]]  # 识别的实体
+    intent: Intent  # 意图
     metadata: Dict[str, Any]  # 检索的元数据
     sql_query: str  # 生成的SQL
     validation_result: Dict[str, Any]  # 验证结果

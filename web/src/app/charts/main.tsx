@@ -1058,9 +1058,9 @@ export function ChartsMain() {
           
           try {
             const requestData = {
-              dataSourceId: selectedDataSource,
-              selectedTable: (selectedTable && selectedTable !== "__no_table__") ? selectedTable : undefined,
-              question: question,
+              user_query: question,
+              datasource_id: selectedDataSource,
+              table_name: (selectedTable && selectedTable !== "__no_table__") ? selectedTable : null,
               language: 'zh'
             };
 
@@ -1228,7 +1228,7 @@ export function ChartsMain() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDataSource, uploadedFiles, enableInsights]);
+  }, [selectedDataSource, uploadedFiles, enableInsights, selectedTable]);
 
 
 

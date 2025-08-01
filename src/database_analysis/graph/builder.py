@@ -18,8 +18,7 @@ def create_database_analysis_graph():
     workflow = StateGraph(DatabaseAnalysisState)
     
     # 添加节点
-    workflow.add_node("preprocess", nodes.preprocess_query)
-    workflow.add_node("entity_recognition", nodes.entity_recognition)
+    workflow.add_node("intent_recognized", nodes.intent_recognized)
     workflow.add_node("metadata_retrieval", nodes.metadata_retrieval)
     workflow.add_node("sql_generation", nodes.sql_generation)
     workflow.add_node("sql_validation", nodes.sql_validation)
@@ -27,14 +26,20 @@ def create_database_analysis_graph():
     workflow.add_node("result_type_determination", nodes.result_type_determination)
     
     # 设置入口点
-    workflow.set_entry_point("preprocess")
+    workflow.set_entry_point("intent_recognized")
     
     # 添加边（定义流程）
-    workflow.add_edge("preprocess", "entity_recognition")
-    workflow.add_edge("entity_recognition", "metadata_retrieval")
     workflow.add_edge("metadata_retrieval", "sql_generation")
     workflow.add_edge("sql_generation", "sql_validation")
-    
+    # 添加条件边：意图识别成功则执行，失败则结束
+    workflow.add_conditional_edges(
+        "intent_recognized",
+        validate_intent,
+        {
+            "execute": "metadata_retrieval",
+            "end": END
+        }
+    )
     # 添加条件边：验证成功则执行，失败则结束
     workflow.add_conditional_edges(
         "sql_validation",
@@ -56,6 +61,12 @@ def create_database_analysis_graph():
     
     return graph
 
+def validate_intent(state: DatabaseAnalysisState) -> str:
+    """验证意图"""
+   
+    if state.intent and state.intent.valid:
+        return "execute"
+    return "end"
 
 def should_execute_sql(state: DatabaseAnalysisState) -> str:
     """判断是否应该执行SQL"""
@@ -85,21 +96,21 @@ async def run_database_analysis(
     graph = create_database_analysis_graph()
     
     # 初始状态
-    initial_state = {
-        "user_query": user_query,
-        "datasource_id": datasource_id,
-        "table_name": table_name,
-        "preprocessed_query": "",
-        "entities": [],
-        "metadata": {},
-        "sql_query": "",
-        "validation_result": {},
-        "query_result": None,
-        "result_type": "table",
-        "chart_config": None,
-        "error": None,
-        "retry_count": 0
-    }
+    initial_state = DatabaseAnalysisState(
+        user_query=user_query,
+        datasource_id=datasource_id,
+        table_name=table_name,
+        intent=None,
+        entities=[],
+        metadata={},
+        sql_query="",
+        validation_result={},
+        query_result=None,
+        result_type="table",
+        chart_config=None,
+        error=None,
+        retry_count=0
+    )
     
     # 配置
     config = {
@@ -109,9 +120,32 @@ async def run_database_analysis(
     }
     
     try:
-        # 执行图
-        result = await graph.ainvoke(initial_state, config)
-        return result
+        # 执行图并保存最终状态
+        final_state = initial_state
+        last_message_cnt = 0
+        
+        async for s in graph.astream(
+            input=initial_state, config=config, stream_mode="values"
+        ):
+            if isinstance(s, dict) and "messages" in s:
+                if len(s["messages"]) <= last_message_cnt:
+                    continue
+                last_message_cnt = len(s["messages"])
+                message = s["messages"][-1]
+                if isinstance(message, tuple):
+                    print(message)
+                else:
+                    message.pretty_print()
+            else:
+                # For any other output format
+                print(f"Output: {s}")
+                # 更新最终状态
+                if isinstance(s, dict):
+                    final_state.update(s)
+        
+        # 返回最终状态
+        return final_state
+        
     except Exception as e:
         return {
             **initial_state,

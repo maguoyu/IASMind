@@ -975,16 +975,20 @@ export function ChartsMain() {
             // 如果有spec，创建图表
             if (response.data.spec && typeof response.data.spec === 'object') {
               try {
+                console.log('检测到图表spec，正在创建图表:', response.data.spec);
                 // 尝试将spec转换为图表数据
                 chartData = [{
                   type: 'custom',
-                  title: '数据分析结果',
-                  data: [],
+                  title: response.data.spec.title || '数据分析结果',
+                  data: [], // 对于custom类型，data可以为空，因为数据包含在spec中
                   config: response.data.spec
                 }];
+                console.log('图表数据创建完成:', chartData);
               } catch (e) {
                 console.error('解析spec失败', e);
               }
+            } else {
+              console.log('API响应中没有找到有效的spec数据');
             }
             
             // 提取洞察
@@ -1248,6 +1252,18 @@ export function ChartsMain() {
   }, []);
   
   const renderChart = (chart: ChartData) => {
+    console.log('正在渲染图表:', chart);
+    
+    // 对于custom类型的图表，如果有config（spec），即使data为空也要渲染
+    if (chart.type === 'custom' && chart.config) {
+      console.log('渲染自定义图表，使用spec:', chart.config);
+      return (
+        <div style={{ width: '100%', height: 500, minWidth: '600px' }} className="w-full min-h-[500px]">
+          <VChart spec={chart.config} />
+        </div>
+      );
+    }
+    
     if (!chart.data || chart.data.length === 0) {
       return <div className="text-center text-muted-foreground">暂无数据</div>;
     }
@@ -1361,11 +1377,8 @@ export function ChartsMain() {
         );
       
       case 'custom':
-        return (
-          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
-            <VChart spec={chart.config} />
-          </div>
-        );
+        // custom类型的图表已在函数开头处理
+        return <div className="text-center text-muted-foreground">图表配置错误</div>;
       
       default:
         return <div>暂不支持此图表类型</div>;

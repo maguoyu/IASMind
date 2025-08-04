@@ -748,6 +748,9 @@ export function ChartsMain() {
   
   // 文件工作表选择相关状态（用于Excel等多工作表文件）
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 生成会话唯一标识符
+  const [threadId] = useState<string>(() => `thread_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
   // 消息变化时自动保存到本地存储
   useEffect(() => {
@@ -1265,6 +1268,7 @@ export function ChartsMain() {
             const requestData = {
               user_query: question,
               datasource_id: selectedDataSource,
+              thread_id: threadId,
               table_name: (selectedTable && selectedTable !== "__no_table__") ? selectedTable : null,
               language: 'zh'
             };

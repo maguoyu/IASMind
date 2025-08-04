@@ -4,6 +4,7 @@ import { apiClient, type ApiResponse } from './config';
 export interface DatabaseAnalysisRequest {
   user_query: string;
   datasource_id: string;
+  thread_id: string;
   table_name?: string | null;
   language?: string;
 }

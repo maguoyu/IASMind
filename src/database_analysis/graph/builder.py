@@ -6,7 +6,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from .state import DatabaseAnalysisState
 from .nodes import DatabaseAnalysisNodes
-
+from src.utils.memory import get_redis_memory
 
 def create_database_analysis_graph():
     """创建数据库分析图"""
@@ -54,7 +54,7 @@ def create_database_analysis_graph():
     workflow.add_edge("result_type_determination", END)
     
     # 添加内存检查点
-    memory = MemorySaver()
+    memory = get_redis_memory()
     
     # 编译图
     graph = workflow.compile(checkpointer=memory)

@@ -20,6 +20,7 @@ class DatabaseAnalysisRequest(BaseModel):
     """数据库分析请求"""
     user_query: str
     datasource_id: str
+    thread_id: str
     table_name: Optional[str] = None
 
 
@@ -158,7 +159,9 @@ async def analyze_database(
     """
     try:
         # 生成线程ID
-        thread_id = str(uuid4())
+        thread_id = request.thread_id
+        if thread_id == "__default__":
+            thread_id = str(uuid4())
         
         # 执行分析
         result = await run_database_analysis(

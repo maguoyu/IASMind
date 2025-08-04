@@ -161,7 +161,7 @@ class DatabaseAnalysisNodes:
     def sql_generation(self, state: DatabaseAnalysisState) -> DatabaseAnalysisState:
         """SQL生成"""
         try:
-            query = state["preprocessed_query"]
+            query = state.get("user_query", {})
             entities = state.get("entities", [])
             metadata = state.get("metadata", {})
             
@@ -368,11 +368,14 @@ class DatabaseAnalysisNodes:
     def _get_table_metadata(self, connection, table_name: str) -> Optional[Dict[str, Any]]:
         """获取表元数据"""
         try:
+            # 清理table_name中可能存在的引号
+            clean_table_name = table_name.strip().strip("'\"")
+            
             # 获取表结构
             columns_query = f"""
             SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
             FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = '{table_name}'
+            WHERE TABLE_NAME = '{clean_table_name}'
             ORDER BY ORDINAL_POSITION
             """
             
@@ -381,15 +384,25 @@ class DatabaseAnalysisNodes:
                 result = cursor.fetchall()
                 columns = []
                 for row in result:
-                    columns.append({
-                        "name": row[0],
-                        "type": row[1],
-                        "nullable": row[2] == "YES",
-                        "default": row[3]
-                    })
+                    # 处理DictCursor返回的字典格式
+                    if isinstance(row, dict):
+                        columns.append({
+                            "name": row.get("COLUMN_NAME"),
+                            "type": row.get("DATA_TYPE"),
+                            "nullable": row.get("IS_NULLABLE") == "YES",
+                            "default": row.get("COLUMN_DEFAULT")
+                        })
+                    else:
+                        # 处理普通cursor返回的元组格式
+                        columns.append({
+                            "name": row[0],
+                            "type": row[1],
+                            "nullable": row[2] == "YES",
+                            "default": row[3]
+                        })
             
             # 获取样本数据
-            sample_query = f"SELECT * FROM {table_name} LIMIT 5"
+            sample_query = f"SELECT * FROM {clean_table_name} LIMIT 5"
             with connection.cursor() as cursor:
                 cursor.execute(sample_query)
                 sample_result = cursor.fetchall()
@@ -404,12 +417,13 @@ class DatabaseAnalysisNodes:
                         sample_data.append(row_dict)
             
             return {
-                "name": table_name,
+                "name": clean_table_name,
                 "columns": columns,
                 "sample_data": sample_data
             }
             
-        except Exception:
+        except Exception as e:
+            print(f"获取表元数据失败: {str(e)}")
             return None
     
     def _recommend_tables(self, connection, entities: List[Dict[str, Any]]) -> List[str]:

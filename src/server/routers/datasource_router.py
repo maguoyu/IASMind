@@ -567,7 +567,9 @@ async def get_table_columns(
             )
             
             with connection.cursor() as cursor:
-                cursor.execute(f"DESCRIBE {table_name}")
+                # 清理table_name中可能存在的引号
+                clean_table_name = table_name.strip().strip("'\"")
+                cursor.execute(f"DESCRIBE {clean_table_name}")
                 columns = []
                 for row in cursor.fetchall():
                     columns.append({
@@ -612,10 +614,12 @@ async def get_table_columns(
             
             with connection.cursor() as cursor:
                 schema = datasource.schema or datasource.username.upper()
+                # 清理table_name中可能存在的引号
+                clean_table_name = table_name.strip().strip("'\"").upper()
                 sql = f"""
                 SELECT COLUMN_NAME, DATA_TYPE, NULLABLE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE
                 FROM ALL_TAB_COLUMNS 
-                WHERE OWNER = '{schema}' AND TABLE_NAME = '{table_name.upper()}'
+                WHERE OWNER = '{schema}' AND TABLE_NAME = '{clean_table_name}'
                 ORDER BY COLUMN_ID
                 """
                 cursor.execute(sql)

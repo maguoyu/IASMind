@@ -46,7 +46,7 @@ class IntentRecognized:
             },
             "航班运营": {
                 "keywords": ["航班", "flight", "班次", "航线", "route", "起飞", "降落"],
-                "related_concepts": ["时刻表", "延误", "取消", "准点率", "机型", "座位"]
+                "related_concepts": ["时刻表", "延误", "取消", "准点率", "机型", "座位", "客座率", "载重", "里程", "飞行时间"]
             },
             "航油管理": {
                 "keywords": ["航油", "fuel", "燃油", "油料", "加油", "航空煤油"],
@@ -58,7 +58,7 @@ class IntentRecognized:
             },
             "航空数据": {
                 "keywords": ["架次", "frequency", "passenger", "乘客", "载客", "货运"],
-                "related_concepts": ["客座率", "载重", "里程", "飞行时间", "统计", "分析"]
+                "related_concepts": ["客座率", "载重", "里程", "飞行时间"]
             }
         }
         
@@ -77,13 +77,14 @@ class IntentRecognized:
         if table_name:
             # 如果指定了表名，将表名作为实体
             recognized.append(table_name)
-        for domain, info in self.domain_keywords.items():
-            # 检查主关键词
-            if any(keyword in query for keyword in info["keywords"]):
-                recognized.append(domain)
-            # 检查相关概念
-            elif any(concept in query for concept in info["related_concepts"]):
-                recognized.append(domain)
+        else:
+            for domain, info in self.domain_keywords.items():
+                # 检查主关键词
+                if any(keyword in query for keyword in info["keywords"]):
+                    recognized.append(domain)
+                # 检查相关概念
+                elif any(concept in query for concept in info["related_concepts"]):
+                    recognized.append(domain)
         
         return recognized
     

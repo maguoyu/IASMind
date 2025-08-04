@@ -1251,7 +1251,13 @@ export function ChartsMain() {
       console.log('渲染自定义图表，使用spec:', chart.config);
       return (
         <div style={{ width: '100%', height: 500, minWidth: '600px' }} className="w-full min-h-[500px]">
-          <VChart spec={chart.config} />
+          <VChart 
+            spec={chart.config} 
+            onError={(error) => {
+              console.error('VChart 渲染错误:', error);
+              toast.error('图表渲染失败');
+            }}
+          />
         </div>
       );
     }
@@ -1319,6 +1325,10 @@ export function ChartsMain() {
                 yField: chart.data[0]?.efficiency ? 'efficiency' : (chart.data[0]?.sales ? 'sales' : 'value'),
                 padding: { top: 20, right: 40, bottom: 60, left: 80 }
               }} 
+              onError={(error) => {
+                console.error('VChart 渲染错误:', error);
+                toast.error('柱状图渲染失败');
+              }}
             />
           </div>
         );
@@ -1333,6 +1343,10 @@ export function ChartsMain() {
                 angleField: 'value',
                 categoryField: 'name',
                 padding: { top: 40, right: 80, bottom: 60, left: 80 }
+              }}
+              onError={(error) => {
+                console.error('VChart 渲染错误:', error);
+                toast.error('饼图渲染失败');
               }}
             />
           </div>
@@ -1349,6 +1363,10 @@ export function ChartsMain() {
                 yField: chart.data[0]?.consumption ? 'consumption' : (chart.data[0]?.volume ? 'volume' : 'sales'),
                 padding: { top: 20, right: 40, bottom: 60, left: 80 }
               }}
+              onError={(error) => {
+                console.error('VChart 渲染错误:', error);
+                toast.error('折线图渲染失败');
+              }}
             />
           </div>
         );
@@ -1363,6 +1381,10 @@ export function ChartsMain() {
                 xField: 'month',
                 yField: chart.data[0]?.A320 ? ['A320', 'B737', 'B777'] : 'revenue',
                 padding: { top: 60, right: 40, bottom: 60, left: 80 }
+              }}
+              onError={(error) => {
+                console.error('VChart 渲染错误:', error);
+                toast.error('面积图渲染失败');
               }}
             />
           </div>

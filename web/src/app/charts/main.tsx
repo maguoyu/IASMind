@@ -25,6 +25,28 @@ import { databaseAnalysisApi } from "~/core/api";
 import { InputBox } from "./components/input-box";
 import type { UploadedFile } from "./components/input-box";
 
+// 数据库分析响应类型定义
+interface DatabaseAnalysisResponse {
+  success: boolean;
+  result_type: 'chart' | 'table' | 'text';
+  data?: {
+    data: any[];
+    columns: string[];
+  } | {
+    summary: string;
+    details: any[];
+  };
+  chart_config?: any;
+  error?: string;
+  metadata?: {
+    sql_query: string;
+    execution_time: number;
+    row_count: number;
+    entities: any[];
+    tables: string[];
+  };
+}
+
 // 消息类型定义
 interface ChatMessage {
   id: string;
@@ -77,6 +99,189 @@ const temporaryFileDataSource: LocalDataSource = {
   lastUpdated: new Date(),
   status: 'connected',
   type: 'temporary'
+};
+
+// 数据库表格组件
+const DatabaseTable = ({ chart }: { chart: ChartData }) => {
+  console.log('DatabaseTable 接收到的数据:', chart);
+  
+  const columns = chart.config?.columns || [];
+  const data = chart.data || [];
+  
+  console.log('解析的列:', columns);
+  console.log('解析的数据:', data);
+  
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // 错误边界检查
+  if (!Array.isArray(columns) || columns.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground p-4 border rounded">
+        表格配置错误：缺少列定义
+      </div>
+    );
+  }
+  
+  if (!Array.isArray(data)) {
+    return (
+      <div className="text-center text-muted-foreground p-4 border rounded">
+        表格配置错误：数据格式不正确
+      </div>
+    );
+  }
+  
+  if (data.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground p-4 border rounded">
+        <div className="space-y-2">
+          <div>查询结果为空</div>
+          <div className="text-sm">没有找到匹配的数据记录</div>
+        </div>
+      </div>
+    );
+  }
+  
+  // 排序功能
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+  
+  // 过滤和排序数据
+  let processedData = [...data];
+  
+  // 搜索过滤
+  if (searchTerm) {
+    processedData = processedData.filter(row =>
+      columns.some(col => 
+        String(row[col] || '').toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    );
+  }
+  
+  // 排序
+  if (sortColumn) {
+    processedData.sort((a, b) => {
+      const aVal = a[sortColumn];
+      const bVal = b[sortColumn];
+      
+      // 数字排序
+      if (!isNaN(Number(aVal)) && !isNaN(Number(bVal))) {
+        return sortDirection === 'asc' 
+          ? Number(aVal) - Number(bVal)
+          : Number(bVal) - Number(aVal);
+      }
+      
+      // 字符串排序
+      const aStr = String(aVal || '');
+      const bStr = String(bVal || '');
+      return sortDirection === 'asc'
+        ? aStr.localeCompare(bStr)
+        : bStr.localeCompare(aStr);
+    });
+  }
+  
+  // 导出CSV功能
+  const exportToCSV = () => {
+    const csvContent = [
+      columns.join(','),
+      ...processedData.map(row => columns.map(col => `"${String(row[col] || '')}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${chart.title.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+    link.click();
+  };
+  
+  return (
+    <div className="space-y-3">
+      {/* 工具栏 */}
+      <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="搜索表格数据..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="px-3 py-1 border rounded text-sm"
+          />
+          <span className="text-xs text-muted-foreground">
+            共 {processedData.length} 条记录
+          </span>
+        </div>
+        <Button
+          onClick={exportToCSV}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-1"
+        >
+          <FileText className="w-4 h-4" />
+          导出CSV
+        </Button>
+      </div>
+      
+      {/* 表格 */}
+      <div className="max-h-96 overflow-auto border rounded">
+        <table className="w-full table-fixed">
+          <thead className="bg-muted/50 border-b sticky top-0">
+            <tr>
+              {columns.map((col: string, index: number) => (
+                <th
+                  key={index}
+                  className="px-2 py-1 font-medium text-left truncate border-r last:border-r-0 cursor-pointer hover:bg-muted/70 transition-colors"
+                  style={{ width: `${100 / columns.length}%` }}
+                  title={col}
+                  onClick={() => handleSort(col)}
+                >
+                  <div className="flex items-center gap-1">
+                    {col}
+                    {sortColumn === col && (
+                      <span className="text-xs">
+                        {sortDirection === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {processedData.slice(0, 100).map((row: any, rowIndex: number) => (
+              <tr key={rowIndex} className="hover:bg-muted/20">
+                {columns.map((col: string, cellIndex: number) => (
+                  <td
+                    key={cellIndex}
+                    className="px-2 py-1 truncate border-r last:border-r-0"
+                    title={String(row[col] || '')}
+                  >
+                    {String(row[col] || '-')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {processedData.length > 100 && (
+          <div className="text-xs text-muted-foreground p-2 text-center bg-muted/20">
+            还有 {processedData.length - 100} 行数据未显示（共 {processedData.length} 行）
+          </div>
+        )}
+        {processedData.length === 0 && (
+          <div className="text-center text-muted-foreground p-4">
+            没有找到匹配的数据
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 // 航空相关快速问题
@@ -1079,31 +1284,38 @@ export function ChartsMain() {
                 : currentDataSource.name;
                 
               if (analysisResult.result_type === 'chart' && analysisResult.chart_config) {
+                const chartData = analysisResult.data as { data: any[]; columns: string[] } | undefined;
+                
+                // 检查是否是VChart格式的配置
+                const isVChartFormat = analysisResult.chart_config.chart_type === 'custom';
+                
                 charts = [{
-                  type: analysisResult.chart_config.type || 'bar',
+                  type: isVChartFormat ? 'custom' : (analysisResult.chart_config.type || 'bar'),
                   title: `${titlePrefix} 分析结果`,
-                  data: analysisResult.data || [],
+                  data: chartData?.data || [],
                   config: analysisResult.chart_config
                 }];
               } else if (analysisResult.result_type === 'table') {
                 // 如果是表格数据，生成简单的表格图表
+                const tableData = analysisResult.data as { data: any[]; columns: string[] } | undefined;
                 charts = [{
                   type: 'custom',
                   title: `${titlePrefix} 查询结果`,
-                  data: analysisResult.data?.data || [],
+                  data: tableData?.data || [],
                   config: {
                     type: 'table',
-                    columns: analysisResult.data?.columns || []
+                    columns: tableData?.columns || []
                   }
                 }];
               }
               
               if (enableInsights) {
+                const analysis = analysisResult as DatabaseAnalysisResponse;
                 insights = [
-                  `分析完成: ${analysisResult.metadata?.row_count || 0} 条记录`,
-                  `执行时间: ${(analysisResult.metadata?.execution_time || 0).toFixed(3)}秒`,
-                  `使用表: ${analysisResult.metadata?.tables?.join(', ') || selectedTable}`,
-                  `SQL查询: ${analysisResult.metadata?.sql_query || '已优化'}`
+                  `分析完成: ${analysis.metadata?.row_count || 0} 条记录`,
+                  `执行时间: ${(analysis.metadata?.execution_time || 0).toFixed(3)}秒`,
+                  `使用表: ${analysis.metadata?.tables?.join(', ') || selectedTable}`,
+                  `SQL查询: ${analysis.metadata?.sql_query || '已优化'}`
                 ];
               }
               
@@ -1111,7 +1323,8 @@ export function ChartsMain() {
               const sourceDescription = (selectedTable && selectedTable !== "__no_table__") 
                 ? `${currentDataSource.name}.${selectedTable}` 
                 : currentDataSource.name;
-              responseContent = `${sourceDescription} 数据分析完成\n\n查询结果：${analysisResult.metadata?.row_count || 0} 条记录\n执行时间：${(analysisResult.metadata?.execution_time || 0).toFixed(3)}秒`;
+              const analysis = analysisResult as DatabaseAnalysisResponse;
+              responseContent = `${sourceDescription} 数据分析完成\n\n查询结果：${analysis.metadata?.row_count || 0} 条记录\n执行时间：${(analysis.metadata?.execution_time || 0).toFixed(3)}秒`;
               
             } else {
               throw new Error(analysisResult.error || '分析失败');
@@ -1246,6 +1459,12 @@ export function ChartsMain() {
   const renderChart = (chart: ChartData) => {
     console.log('正在渲染图表:', chart);
     
+    // 优先处理数据库分析结果的表格显示
+    if (chart.type === 'custom' && chart.config?.type === 'table') {
+      console.log('渲染数据库表格:', chart);
+      return <DatabaseTable chart={chart} />;
+    }
+    
     // 对于custom类型的图表，如果有config（spec），即使data为空也要渲染
     if (chart.type === 'custom' && chart.config) {
       console.log('渲染自定义图表，使用spec:', chart.config);
@@ -1264,51 +1483,6 @@ export function ChartsMain() {
     
     if (!chart.data || chart.data.length === 0) {
       return <div className="text-center text-muted-foreground">暂无数据</div>;
-    }
-
-    // 处理数据库分析结果的表格显示
-    if (chart.type === 'custom' && chart.config?.type === 'table') {
-      const columns = chart.config.columns || [];
-      return (
-        <div className="max-h-96 overflow-auto border rounded">
-          <table className="w-full table-fixed">
-            <thead className="bg-muted/50 border-b sticky top-0">
-              <tr>
-                {columns.map((col: string, index: number) => (
-                  <th
-                    key={index}
-                    className="px-2 py-1 font-medium text-left truncate border-r last:border-r-0"
-                    style={{ width: `${100 / columns.length}%` }}
-                    title={col}
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {chart.data.slice(0, 100).map((row: any, rowIndex: number) => (
-                <tr key={rowIndex} className="hover:bg-muted/20">
-                  {columns.map((col: string, cellIndex: number) => (
-                    <td
-                      key={cellIndex}
-                      className="px-2 py-1 truncate border-r last:border-r-0"
-                      title={String(row[col] || '')}
-                    >
-                      {String(row[col] || '-')}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {chart.data.length > 100 && (
-            <div className="text-xs text-muted-foreground p-2 text-center bg-muted/20">
-              还有 {chart.data.length - 100} 行数据未显示
-            </div>
-          )}
-        </div>
-      );
     }
 
     const chartHeight = 500; // 增加图表高度以提升显示效果

@@ -4,7 +4,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Union
 import json
 import asyncio
 from uuid import uuid4
@@ -23,14 +23,124 @@ class DatabaseAnalysisRequest(BaseModel):
     table_name: Optional[str] = None
 
 
+class TableData(BaseModel):
+    """表格数据结构"""
+    data: List[Dict[str, Any]]
+    columns: List[str]
+
+
+class TextData(BaseModel):
+    """文本数据结构"""
+    summary: str
+    details: List[Dict[str, Any]]
+
+
 class DatabaseAnalysisResponse(BaseModel):
     """数据库分析响应"""
     success: bool
     result_type: str  # chart, table, text
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[Union[TableData, TextData]] = None
     chart_config: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
+
+def generate_vchart_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]], columns: List[str]) -> Dict[str, Any]:
+    """
+    根据图表配置生成VChart格式的spec
+    
+    Args:
+        chart_config: 图表配置
+        data: 数据列表
+        columns: 列名列表
+        
+    Returns:
+        VChart格式的spec配置
+    """
+    if not data or not chart_config:
+        return {}
+    
+    chart_type = chart_config.get("type", "table")
+    
+    # 如果是表格类型，返回表格配置
+    if chart_type == "table":
+        return {
+            "type": "table",
+            "columns": columns
+        }
+    
+    # 基础VChart配置
+    base_spec = {
+        "data": [{"id": "chartData", "values": data}],
+        "padding": {"top": 20, "right": 40, "bottom": 60, "left": 80}
+    }
+    
+    # 根据图表类型生成对应的spec
+    if chart_type == "bar":
+        x_field = chart_config.get("x", columns[0] if columns else "category")
+        y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
+        
+        return {
+            **base_spec,
+            "type": "bar",
+            "xField": x_field,
+            "yField": y_field
+        }
+        
+    elif chart_type == "line":
+        x_field = chart_config.get("x", columns[0] if columns else "category")
+        y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
+        
+        return {
+            **base_spec,
+            "type": "line", 
+            "xField": x_field,
+            "yField": y_field
+        }
+        
+    elif chart_type == "pie":
+        # 饼图需要 categoryField 和 angleField
+        category_field = chart_config.get("x", columns[0] if columns else "category")
+        value_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
+        
+        return {
+            **base_spec,
+            "type": "pie",
+            "categoryField": category_field,
+            "angleField": value_field,
+            "padding": {"top": 40, "right": 80, "bottom": 60, "left": 80}
+        }
+        
+    elif chart_type == "scatter":
+        x_field = chart_config.get("x", columns[0] if columns else "x")
+        y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "y")
+        
+        return {
+            **base_spec,
+            "type": "scatter",
+            "xField": x_field,
+            "yField": y_field
+        }
+        
+    elif chart_type == "area":
+        x_field = chart_config.get("x", columns[0] if columns else "category")
+        y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
+        
+        return {
+            **base_spec,
+            "type": "area",
+            "xField": x_field,
+            "yField": y_field,
+            "padding": {"top": 60, "right": 40, "bottom": 60, "left": 80}
+        }
+    
+    # 默认返回柱状图
+    return {
+        **base_spec,
+        "type": "bar",
+        "xField": columns[0] if columns else "category",
+        "yField": columns[1] if len(columns) > 1 else "value"
+    }
 
 
 @router.post("/analyze", response_model=DatabaseAnalysisResponse)
@@ -84,13 +194,34 @@ async def analyze_database(
         query_result = result.get("query_result", {})
         
         if result_type == "chart":
-            response_data["chart_config"] = result.get("chart_config", {})
-            response_data["data"] = query_result.get("data", [])
+            # 生成VChart格式的spec
+            original_chart_config = result.get("chart_config", {})
+            data = query_result.get("data", [])
+            columns = query_result.get("columns", [])
+            
+            # 根据原始配置生成VChart格式的spec
+            vchart_spec = generate_vchart_spec(original_chart_config, data, columns)
+            
+            # 如果是表格类型，使用特殊处理
+            if vchart_spec.get("type") == "table":
+                response_data["chart_config"] = {
+                    "type": "table",
+                    "columns": columns
+                }
+            else:
+                # 图表类型，返回完整的VChart spec作为config，type设置为custom让前端使用我们的spec
+                vchart_spec["chart_type"] = "custom"  # 添加chart_type字段标识这是VChart格式
+                response_data["chart_config"] = vchart_spec
+            
+            response_data["data"] = TableData(
+                data=data,
+                columns=columns
+            )
         elif result_type == "table":
-            response_data["data"] = {
-                "data": query_result.get("data", []),
-                "columns": query_result.get("columns", [])
-            }
+            response_data["data"] = TableData(
+                data=query_result.get("data", []),
+                columns=query_result.get("columns", [])
+            )
         else:  # text
             # 生成文本摘要
             data = query_result.get("data", [])
@@ -101,10 +232,10 @@ async def analyze_database(
             if row_count > 0:
                 summary += f"，包含字段：{', '.join(columns)}"
             
-            response_data["data"] = {
-                "summary": summary,
-                "details": data[:5] if data else []  # 最多显示5条详细记录
-            }
+            response_data["data"] = TextData(
+                summary=summary,
+                details=data[:5] if data else []  # 最多显示5条详细记录
+            )
         
         return DatabaseAnalysisResponse(**response_data)
         

@@ -51,7 +51,7 @@ class DatabaseAnalysisNodes:
             table_name = state["table_name"]
             intent = self.intent_recognizer.analyze_query_intent(user_query, table_name)
             if intent.valid:
-                state.intent= intent
+                state["intent"] = intent
                 return state
 
             
@@ -74,20 +74,43 @@ class DatabaseAnalysisNodes:
 {{
     "entities": ["实体1", "实体2"],
     "intent_types": ["意图类型1", "意图类型2"],
-    "valid": True/False,
-    "complexity_level": "simple/medium/complex",
-    "confidence_score": 0.0-1.0
-    "requires_relations": True/False
+    "valid": true,
+    "complexity_level": "simple",
+    "confidence_score": 0.8,
+    "requires_relations": false
 }}
 """
             
             response = self.llm.invoke(prompt)
             content = response.content.strip()
-            intent = json.loads(content)
-            state.intent = intent
+            intent_dict = json.loads(content)
+            
+            # 将字典转换为Intent对象
+            from src.server.services.intent_recognized_service import Intent
+            intent = Intent(
+                entities=intent_dict.get("entities", []),
+                intent_types=intent_dict.get("intent_types", []),
+                requires_relations=intent_dict.get("requires_relations", False),
+                complexity_level=intent_dict.get("complexity_level", "simple"),
+                valid=intent_dict.get("valid", True),
+                confidence_score=intent_dict.get("confidence_score", 0.8)
+            )
+            
+            state["intent"] = intent
             return state
             
         except Exception as e:
+            # 创建一个失败的Intent对象
+            from src.server.services.intent_recognized_service import Intent
+            failed_intent = Intent(
+                entities=[],
+                intent_types=[],
+                requires_relations=False,
+                complexity_level="simple",
+                valid=False,
+                confidence_score=0.0
+            )
+            state["intent"] = failed_intent
             state["error"] = f"查询预处理失败: {str(e)}"
             return state
     

@@ -63,8 +63,8 @@ def create_database_analysis_graph():
 
 def validate_intent(state: DatabaseAnalysisState) -> str:
     """验证意图"""
-   
-    if state.intent and state.intent.valid:
+    intent = state.get("intent")
+    if intent and intent.valid:
         return "execute"
     return "end"
 

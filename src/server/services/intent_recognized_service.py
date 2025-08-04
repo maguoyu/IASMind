@@ -89,26 +89,40 @@ class IntentRecognized:
     
     def analyze_query_intent(self, query: str, table_name: str) -> Intent:
         """分析查询意图"""
-        intent = Intent()
-        intent.entities = self.recognize_entities(query, table_name)
+        # 识别实体
+        entities = self.recognize_entities(query, table_name)
+        
         # 分析意图类型
+        intent_types = []
         for intent_type, patterns in self.intent_patterns.items():
             if any(pattern in query for pattern in patterns):
-                intent.intent_types.append(intent_type)
+                intent_types.append(intent_type)
         
         # 判断是否需要关联查询
         relation_indicators = ["关联", "相关", "统计", "分析", "明细", "对应"]
-        intent.requires_relations = any(indicator in query for indicator in relation_indicators)
+        requires_relations = any(indicator in query for indicator in relation_indicators)
         
         # 判断复杂度
-        if len(intent.entities) > 1 or intent.requires_relations:
-            intent.complexity_level = "complex"
-        elif intent.intent_types:
-            intent.complexity_level = "medium"
-        if intent.entities and intent.intent_types:
-            intent.valid = True
+        if len(entities) > 1 or requires_relations:
+            complexity_level = "complex"
+        elif intent_types:
+            complexity_level = "medium"
         else:
-            intent.valid = False  
+            complexity_level = "simple"
+            
+        # 判断是否有效
+        valid = bool(entities and intent_types)
+        
+        # 创建Intent对象
+        intent = Intent(
+            entities=entities,
+            intent_types=intent_types,
+            requires_relations=requires_relations,
+            complexity_level=complexity_level,
+            valid=valid,
+            confidence_score=0.8 if valid else 0.2
+        )
+        
         return intent
 
     

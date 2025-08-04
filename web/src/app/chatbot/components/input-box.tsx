@@ -3,7 +3,7 @@
  
 import { MagicWandIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Search, BookOpen, X, Globe, Loader2, Upload, FileText } from "lucide-react";
+import { ArrowUp, Search, BookOpen, X, Globe, Loader2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -26,14 +26,7 @@ import {
 } from "~/core/store";
 import { cn } from "~/lib/utils";
 
-// 上传文件类型定义
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  content: string;
-}
+
 
 export function InputBox({
   className,
@@ -54,7 +47,6 @@ export function InputBox({
       resources?: Array<Resource>;
       enableOnlineSearch?: boolean;
       enableKnowledgeRetrieval?: boolean;
-      files?: Array<UploadedFile>;
     },
   ) => void;
   onCancel?: () => void;
@@ -80,10 +72,7 @@ export function InputBox({
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [loadingKnowledgeBases, setLoadingKnowledgeBases] = useState(false);
 
-  // 文件上传状态
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [isProcessingFile, setIsProcessingFile] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // 加载知识库数据
   const LoadKnowledgeBases = useCallback(async () => {
@@ -104,69 +93,7 @@ export function InputBox({
     void LoadKnowledgeBases();
   }, [LoadKnowledgeBases]);
 
-  // 处理文件上传
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    setIsProcessingFile(true);
-    
-    try {
-      // 只处理第一个文件，忽略其他文件
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      // 读取文件内容
-      const content = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
-        
-        // 根据文件类型选择不同的读取方式
-        if (file.type.startsWith('text/') || 
-            file.name.endsWith('.json') || 
-            file.name.endsWith('.csv') || 
-            file.name.endsWith('.txt')) {
-          reader.readAsText(file);
-        } else {
-          reader.readAsDataURL(file); // 二进制文件采用 base64 编码  
-        }
-      });
-      
-      // 创建新的文件
-      const newFile: UploadedFile = {
-        id: `file-${Date.now()}`,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        content: content
-      };
-      
-      // 替换原有文件（只允许一个文件）
-      setUploadedFiles([newFile]);
-      toast.success(`已选择文件: ${file.name}`);
-      
-    } catch (error) {
-      console.error(`读取文件失败:`, error);
-      toast.error('文件读取失败，请重试');
-    } finally {
-      setIsProcessingFile(false);
-      
-      // 清空文件输入，以便能够重新上传相同的文件
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, []);
 
-  // 触发文件选择
-  const triggerFileUpload = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  // 移除已上传的文件
-  const handleRemoveFile = useCallback((fileId: string) => {
-    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
-    toast.info('已移除文件');
-  }, []);
 
   const handleSendMessage = useCallback(
     (message: string, resources: Array<Resource>) => {
@@ -196,7 +123,6 @@ export function InputBox({
             resources: allResources,
             enableOnlineSearch: enableOnlineSearch,
             enableKnowledgeRetrieval: selectedKnowledgeBases.length > 0,
-            files: uploadedFiles,
           });
           onRemoveFeedback?.();
           // Clear enhancement animation after sending
@@ -204,7 +130,7 @@ export function InputBox({
         }
       }
     },
-    [responding, onCancel, onSend, feedback, onRemoveFeedback, selectedKnowledgeBases, knowledgeBases, enableOnlineSearch, uploadedFiles],
+    [responding, onCancel, onSend, feedback, onRemoveFeedback, selectedKnowledgeBases, knowledgeBases, enableOnlineSearch],
   );
 
   const handleEnhanceQuery = useCallback(async () => {
@@ -329,31 +255,12 @@ export function InputBox({
             </motion.div>
           )}
         </AnimatePresence>
-        {/* 已上传文件显示区域 */}
-        {uploadedFiles.length > 0 && (
-          <div className="px-4 pt-2 pb-1">
-            <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
-              <FileText className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground flex-1 truncate">
-                {uploadedFiles[0]?.name}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-destructive/10"
-                onClick={() => uploadedFiles[0] && handleRemoveFile(uploadedFiles[0].id)}
-              >
-                <X size={12} className="text-muted-foreground hover:text-destructive" />
-              </Button>
-            </div>
-          </div>
-        )}
+
 
         <MessageInput
           className={cn(
             "h-24 px-4 pt-5",
             feedback && "pt-9",
-            uploadedFiles.length > 0 && "pt-2",
             isEnhanceAnimating && "transition-all duration-500",
           )}
           ref={inputRef}
@@ -364,35 +271,7 @@ export function InputBox({
       </div>
       <div className="flex items-center px-4 py-2">
         <div className="flex grow gap-2">
-          {/* 文件上传按钮 */}
-          <Tooltip
-            title={
-              <div>
-                <h3 className="mb-2 font-bold">文件上传</h3>
-                <p>
-                  上传文档、图片或数据文件，AI将基于文件内容为您提供分析和回答。
-                  支持 .txt、.csv、.json、.xlsx、.docx、.pdf 等格式。
-                </p>
-              </div>
-            }
-          >
-            <Button
-              className={cn(
-                "rounded-2xl",
-                uploadedFiles.length > 0 && "!border-brand !text-brand bg-brand/5",
-              )}
-              variant="outline"
-              onClick={triggerFileUpload}
-              disabled={isProcessingFile}
-            >
-              {isProcessingFile ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Upload size={16} />
-              )}
-              {isProcessingFile ? "处理中..." : "上传文件"}
-            </Button>
-          </Tooltip>
+
 
           <Tooltip
             className="max-w-60"
@@ -530,15 +409,7 @@ export function InputBox({
           />
         </>
       )}
-      
-      {/* 隐藏的文件输入元素 */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept=".txt,.csv,.json,.xlsx,.xls,.docx,.pdf,.md,.py,.js,.ts,.html,.css"
-        onChange={handleFileUpload}
-      />
+
     </div>
   );
 }

@@ -50,6 +50,9 @@ export interface AnalyzeDataResponse {
     };
   }>;
   error?: string;
+  llm_generated?: boolean;
+  chart_type?: string;
+  insight_md?: string;
 }
 
 // API Client

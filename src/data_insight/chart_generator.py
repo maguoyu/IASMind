@@ -13,6 +13,8 @@ import numpy as np
 from typing import Any, Dict, List, Optional, Tuple, Union
 from datetime import datetime
 
+from src.llms.llm import get_llm_by_type
+
 logger = logging.getLogger(__name__)
 
 class LocalChartGenerator:
@@ -48,30 +50,82 @@ class LocalChartGenerator:
             if df is None or df.empty:
                 return {"error": "无法解析数据或数据为空"}
             
-            # 2. 数据分析和洞察
-            insights = []
-            if enable_insights:
-                insights = self._generate_insights(df)
+            # 2. 如果有用户提示，使用LLM生成图表配置
+            if user_prompt and user_prompt.strip():
+                logger.info("使用LLM模式生成图表配置")
+                return await self._generate_chart_with_llm(df, user_prompt, enable_insights)
             
-            # 3. 推荐图表类型
-            chart_type = self._recommend_chart_type(df, user_prompt)
-            
-            # 4. 生成ECharts配置
-            chart_spec = self._generate_echarts_spec(df, chart_type)
-            
-            # 5. 生成洞察文档
-            insight_md = self._generate_insight_markdown(df, insights, chart_type)
-            
-            return {
-                "spec": json.dumps(chart_spec),
-                "insight_md": insight_md,
-                "insights": insights,
-                "chart_type": chart_type
-            }
+            # 3. 使用传统方式生成图表
+            logger.info("使用传统模式生成图表配置")
+            return self._generate_chart_traditional(df, enable_insights)
             
         except Exception as e:
             logger.exception(f"生成图表时发生错误: {str(e)}")
             return {"error": f"生成图表失败: {str(e)}"}
+    
+    def _generate_chart_traditional(self, df: pd.DataFrame, enable_insights: bool = True) -> Dict[str, Any]:
+        """传统方式生成图表"""
+        # 数据分析和洞察
+        insights = []
+        if enable_insights:
+            insights = self._generate_insights(df)
+        
+        # 推荐图表类型
+        chart_type = self._recommend_chart_type(df, None)
+        
+        # 生成ECharts配置
+        chart_spec = self._generate_echarts_spec(df, chart_type)
+        
+        # 生成洞察文档
+        insight_md = self._generate_insight_markdown(df, insights, chart_type)
+        
+        return {
+            "spec": chart_spec,
+            "insight_md": insight_md,
+            "insights": insights,
+            "chart_type": chart_type
+        }
+    
+    async def _generate_chart_with_llm(self, df: pd.DataFrame, user_prompt: str, enable_insights: bool = True) -> Dict[str, Any]:
+        """使用LLM生成图表配置"""
+        try:
+            # 获取LLM实例
+            llm = get_llm_by_type("basic")
+            
+            # 准备数据摘要
+            data_summary = self._prepare_data_summary(df)
+            
+            # 构建LLM提示
+            prompt = self._build_llm_prompt(data_summary, user_prompt)
+            
+            # 调用LLM
+            logger.info(f"发送LLM请求，提示长度: {len(prompt)}")
+            response = await llm.ainvoke(prompt)
+            
+            # 解析LLM响应
+            chart_config = self._parse_llm_response(response.content)
+            
+            # 生成洞察（如果需要）
+            insights = []
+            if enable_insights:
+                insights = self._generate_insights(df)
+            
+            # 生成洞察文档
+            insight_md = self._generate_insight_markdown(df, insights, chart_config.get("chart_type", "unknown"))
+            
+            return {
+                "spec": chart_config.get("spec", {}),
+                "insight_md": insight_md,
+                "insights": insights,
+                "chart_type": chart_config.get("chart_type", "unknown"),
+                "llm_generated": True
+            }
+            
+        except Exception as e:
+            logger.error(f"LLM生成图表配置失败: {str(e)}")
+            # 回退到传统模式
+            logger.info("回退到传统模式")
+            return self._generate_chart_traditional(df, enable_insights)
     
     def _parse_data(self, data: Any, data_type: str) -> Optional[pd.DataFrame]:
         """解析各种格式的数据为DataFrame"""
@@ -212,6 +266,19 @@ class LocalChartGenerator:
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         categorical_cols = df.select_dtypes(include=['object']).columns
         
+        # 检查是否有时间序列数据
+        for col in numeric_cols:
+            if self._is_date_column(df[col]):
+                logger.info(f"检测到时间序列列: {col}")
+                return 'line'  # 时间序列数据推荐折线图
+        
+        # 检查列名是否包含时间相关关键词
+        for col in df.columns:
+            col_lower = col.lower()
+            if any(keyword in col_lower for keyword in ['日期', '时间', '年', '月', '日', 'date', 'time', '航班日']):
+                logger.info(f"根据列名检测到时间相关数据: {col}")
+                return 'line'
+        
         if len(numeric_cols) >= 2 and len(categorical_cols) == 0:
             return 'scatter'  # 两个数值列，推荐散点图
         elif len(numeric_cols) == 1 and len(categorical_cols) == 1:
@@ -227,6 +294,136 @@ class LocalChartGenerator:
                 return 'bar'  # 分类较多，推荐柱状图
         
         return 'bar'  # 默认柱状图
+    
+    def _is_date_column(self, series: pd.Series) -> bool:
+        """检查数据列是否为日期格式"""
+        try:
+            # 检查是否为YYYYMMDD格式的整数
+            if series.dtype in ['int64', 'int32']:
+                sample_values = series.dropna().head(5)
+                for val in sample_values:
+                    if 19000000 <= val <= 21000000:  # 大致的日期范围
+                        date_str = str(val)
+                        if len(date_str) == 8:
+                            year = int(date_str[:4])
+                            month = int(date_str[4:6])
+                            day = int(date_str[6:8])
+                            if 1900 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31:
+                                return True
+            return False
+        except:
+            return False
+    
+    def _prepare_data_summary(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """准备数据摘要用于LLM"""
+        try:
+            summary = {
+                "shape": df.shape,
+                "columns": df.columns.tolist(),
+                "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+                "sample_data": df.head(5).to_dict('records'),
+                "numeric_columns": df.select_dtypes(include=[np.number]).columns.tolist(),
+                "categorical_columns": df.select_dtypes(include=['object']).columns.tolist(),
+                "null_counts": df.isnull().sum().to_dict()
+            }
+            
+            # 添加数值列的统计信息
+            numeric_stats = {}
+            for col in summary["numeric_columns"]:
+                try:
+                    numeric_stats[col] = {
+                        "min": float(df[col].min()),
+                        "max": float(df[col].max()),
+                        "mean": float(df[col].mean()),
+                        "std": float(df[col].std())
+                    }
+                except:
+                    numeric_stats[col] = {"error": "统计计算失败"}
+            summary["numeric_stats"] = numeric_stats
+            
+            return summary
+        except Exception as e:
+            logger.error(f"准备数据摘要失败: {str(e)}")
+            return {"error": str(e)}
+    
+    def _build_llm_prompt(self, data_summary: Dict[str, Any], user_prompt: str) -> str:
+        """构建LLM提示"""
+        prompt = f"""你是一个专业的数据可视化专家。请根据以下数据特征和用户需求，生成最合适的ECharts配置。
+
+数据概况:
+- 数据行数: {data_summary.get('shape', [0, 0])[0]}
+- 数据列数: {data_summary.get('shape', [0, 0])[1]}
+- 列名: {data_summary.get('columns', [])}
+- 数值列: {data_summary.get('numeric_columns', [])}
+- 分类列: {data_summary.get('categorical_columns', [])}
+
+数据样本:
+{json.dumps(data_summary.get('sample_data', []), ensure_ascii=False, indent=2)}
+
+数值列统计:
+{json.dumps(data_summary.get('numeric_stats', {}), ensure_ascii=False, indent=2)}
+
+用户需求: {user_prompt}
+
+请生成一个完整的ECharts配置对象，要求:
+1. 根据数据特征选择最合适的图表类型（柱状图、折线图、饼图、散点图等）
+2. 配置必须是有效的ECharts option对象
+3. 包含合适的标题、图例、坐标轴标签
+4. 颜色搭配要美观
+5. 如果是时间序列数据，要正确处理时间轴
+6. 响应式设计，适应不同屏幕尺寸
+
+请严格按照以下JSON格式返回:
+{{
+    "chart_type": "图表类型（如bar、line、pie、scatter等）",
+    "spec": {{
+        "title": {{"text": "图表标题"}},
+        "tooltip": {{}},
+        "legend": {{}},
+        "xAxis": {{}},
+        "yAxis": {{}},
+        "series": [{{}}]
+    }}
+}}
+
+注意：
+- 只返回JSON格式的配置，不要包含任何其他文字说明
+- 确保所有数据引用都使用实际的列名
+- 如果检测到时间格式数据（如YYYYMMDD），要进行适当的格式转换
+"""
+        return prompt
+    
+    def _parse_llm_response(self, response_content: str) -> Dict[str, Any]:
+        """解析LLM响应"""
+        try:
+            # 清理响应内容，移除可能的markdown标记
+            content = response_content.strip()
+            if content.startswith('```json'):
+                content = content[7:]
+            if content.startswith('```'):
+                content = content[3:]
+            if content.endswith('```'):
+                content = content[:-3]
+            
+            # 解析JSON
+            chart_config = json.loads(content.strip())
+            
+            # 验证必需的字段
+            if not isinstance(chart_config, dict):
+                raise ValueError("响应不是有效的字典格式")
+            
+            if "spec" not in chart_config:
+                raise ValueError("响应中缺少spec字段")
+            
+            return chart_config
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"解析LLM响应JSON失败: {str(e)}")
+            logger.error(f"原始响应: {response_content}")
+            raise ValueError(f"LLM响应不是有效的JSON格式: {str(e)}")
+        except Exception as e:
+            logger.error(f"解析LLM响应失败: {str(e)}")
+            raise ValueError(f"解析LLM响应失败: {str(e)}")
     
     def _generate_echarts_spec(self, df: pd.DataFrame, chart_type: str) -> Dict[str, Any]:
         """生成ECharts配置"""
@@ -307,7 +504,96 @@ class LocalChartGenerator:
         """生成折线图配置"""
         config = base_config.copy()
         
-        if len(categorical_cols) > 0 and len(numeric_cols) > 0:
+        # 检查是否有时间列
+        time_col = None
+        value_col = None
+        
+        # 优先查找时间列
+        for col in numeric_cols:
+            if self._is_date_column(df[col]):
+                time_col = col
+                break
+        
+        # 如果没找到数值时间列，检查列名
+        if not time_col:
+            for col in df.columns:
+                col_lower = col.lower()
+                if any(keyword in col_lower for keyword in ['日期', '时间', '年', '月', '日', 'date', 'time', '航班日']):
+                    time_col = col
+                    break
+        
+        # 找到值列（非时间列的数值列）
+        for col in numeric_cols:
+            if col != time_col:
+                value_col = col
+                break
+        
+        if time_col and value_col:
+            # 处理时间序列数据
+            if self._is_date_column(df[time_col]):
+                # 转换YYYYMMDD格式到可读日期
+                categories = []
+                for val in df[time_col]:
+                    date_str = str(val)
+                    if len(date_str) == 8:
+                        year = date_str[:4]
+                        month = date_str[4:6]
+                        day = date_str[6:8]
+                        categories.append(f"{year}-{month}-{day}")
+                    else:
+                        categories.append(str(val))
+            else:
+                categories = df[time_col].astype(str).tolist()
+            
+            values = df[value_col].tolist()
+            
+            config.update({
+                "xAxis": {
+                    "type": "category", 
+                    "data": categories,
+                    "name": time_col,
+                    "axisLabel": {
+                        "rotate": 45,
+                        "fontSize": 10
+                    }
+                },
+                "yAxis": {
+                    "type": "value",
+                    "name": value_col
+                },
+                "series": [{
+                    "name": value_col,
+                    "type": "line",
+                    "data": values,
+                    "smooth": True,
+                    "lineStyle": {"color": "#5470c6", "width": 2},
+                    "symbol": "circle",
+                    "symbolSize": 6
+                }],
+                "grid": {
+                    "left": "10%",
+                    "right": "10%",
+                    "bottom": "20%",
+                    "top": "15%",
+                    "containLabel": True
+                },
+                "dataZoom": [
+                    {
+                        "type": "slider",
+                        "show": True,
+                        "xAxisIndex": [0],
+                        "start": 0,
+                        "end": 100
+                    },
+                    {
+                        "type": "inside",
+                        "xAxisIndex": [0],
+                        "start": 0,
+                        "end": 100
+                    }
+                ]
+            })
+        elif len(categorical_cols) > 0 and len(numeric_cols) > 0:
             category_col = categorical_cols[0]
             value_col = numeric_cols[0]
             

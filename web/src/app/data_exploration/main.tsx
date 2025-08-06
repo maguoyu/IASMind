@@ -3,6 +3,7 @@
 import { BarChartOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined, UploadOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import EChartsWrapper from "~/components/charts/echarts-wrapper";
 import { toast } from "sonner";
 
@@ -24,11 +25,15 @@ export function DataExplorationMain() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'preview' | 'visualization'>('preview');
-  const [insightsData, setInsightsData] = useState<Record<string, any> | null>(null);
+
+  const [insightMarkdown, setInsightMarkdown] = useState<string | null>(null);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [visualizationSpec, setVisualizationSpec] = useState<Record<string, any> | null>(null);
   const [userPrompt, setUserPrompt] = useState<string>("");
+  const [useAIMode, setUseAIMode] = useState<boolean>(false);
+  const [isInsightExpanded, setIsInsightExpanded] = useState<boolean>(true);
+  const [isFullscreenInsight, setIsFullscreenInsight] = useState<boolean>(false);
   const router = useRouter();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
@@ -284,9 +289,7 @@ export function DataExplorationMain() {
         
         // 如果有洞察数据，设置到状态
         if (response.data.data_insights) {
-          setInsightsData(response.data.data_insights);
-        } else {
-          setInsightsData(null);
+                  // 不再处理 data_insights
           // 自动生成洞察数据
           handleGenerateInsights(file.id);
         }
@@ -343,7 +346,7 @@ export function DataExplorationMain() {
       
       if (response.data && response.data.insights) {
         toast.success("数据洞察已生成");
-        setInsightsData(response.data.insights);
+        // 不再处理 insights 数据
       }
     } catch (error) {
       console.error("生成数据洞察失败:", error);
@@ -360,14 +363,15 @@ export function DataExplorationMain() {
     // 重置旧的数据和状态
     setIsAnalyzing(true);
     setVisualizationSpec(null);
-    setInsightsData(null); // 清除旧的洞察数据
+    // 不再使用 insightsData
+    setInsightMarkdown(null); // 清除旧的Markdown洞察数据
     
     try {
       const request = {
         file_id: fileId,
         output_type: "html",
         task_type: "visualization",
-        user_prompt: prompt || "分析数据并生成最合适的可视化图表",
+        user_prompt: useAIMode && prompt ? prompt : undefined, // 只有在AI模式且有提示时才发送
         language: "zh"
       };
       
@@ -385,48 +389,76 @@ export function DataExplorationMain() {
         return;
       }
       
-      // 处理数据洞察 - 处理多种可能的格式
-      const extractInsights = () => {
-        // 检查insights字段
-        if (response.data.insights && Array.isArray(response.data.insights)) {
-          console.log("从insights提取洞察:", response.data.insights);
-          const recommendations = response.data.insights.map(insight => ({
-            type: "visualization",
-            chart_type: insight.type || "general",
-            description: insight.textContent?.plainText || insight.name || "无描述"
-          }));
-          return {
-            recommendations
-          };
-        }
-        
-        return null;
-      };
+      // 不再处理 insights 数据，只处理 insight_md
       
-      const insightsData = extractInsights();
-      if (insightsData) {
-        console.log("处理后的数据洞察:", insightsData);
-        setInsightsData(insightsData);
+      // 处理 insight_md 数据
+      if (response.data.insight_md) {
+        console.log("收到洞察Markdown数据:", response.data.insight_md);
+        setInsightMarkdown(response.data.insight_md);
       } else {
-        console.log("未找到任何数据洞察");
+        console.log("未收到洞察Markdown数据");
+        setInsightMarkdown(null);
       }
       
-      // 处理可视化规格
-      if (response.data.spec) {
-        console.log("收到新的可视化规格:", response.data.spec);
-        setVisualizationSpec(response.data.spec);
-        toast.success("数据分析完成，已生成可视化结果");
-        // 自动切换到可视化标签
-        setActiveTab('visualization');
-      } else {
-        toast.warning("未能生成可视化结果");
-        setVisualizationSpec(null);
-      }
+                // 处理可视化规格
+          if (response.data.spec) {
+            console.log("收到新的可视化规格:", response.data.spec);
+            console.log("可视化规格类型:", typeof response.data.spec);
+            console.log("是否为LLM生成:", response.data.llm_generated);
+            
+            let chartSpec;
+            try {
+              // 如果spec是字符串，尝试解析为对象
+              if (typeof response.data.spec === 'string') {
+                chartSpec = JSON.parse(response.data.spec);
+                console.log("解析JSON字符串后的规格:", chartSpec);
+              } else if (typeof response.data.spec === 'object' && response.data.spec !== null) {
+                chartSpec = response.data.spec;
+                console.log("直接使用对象规格:", chartSpec);
+              } else {
+                throw new Error("无效的规格类型");
+              }
+              
+              // 验证chartSpec是否为有效的ECharts配置
+              if (chartSpec && typeof chartSpec === 'object') {
+                console.log("原始图表配置:", JSON.stringify(chartSpec, null, 2));
+                
+                // 只有在非LLM模式下才进行优化
+                const finalSpec = response.data.llm_generated ? chartSpec : optimizeChartSpec(chartSpec);
+                console.log("最终图表配置:", JSON.stringify(finalSpec, null, 2));
+                
+                setVisualizationSpec(finalSpec);
+                
+                // 根据生成模式显示不同的成功消息
+                if (response.data.llm_generated) {
+                  toast.success("🤖 AI智能分析完成，已生成定制化可视化结果");
+                } else {
+                  toast.success("数据分析完成，已生成可视化结果");
+                }
+                
+                // 自动切换到可视化标签
+                setActiveTab('visualization');
+              } else {
+                throw new Error("解析后的配置无效");
+              }
+            } catch (error) {
+              console.error("处理可视化规格时出错:", error);
+              console.error("原始规格数据:", response.data.spec);
+              const errorMessage = error instanceof Error ? error.message : '未知错误';
+              toast.error(`处理可视化配置失败: ${errorMessage}`);
+              setVisualizationSpec(null);
+            }
+          } else {
+            console.log("API响应中没有spec字段，完整响应:", response.data);
+            toast.warning("未能生成可视化结果");
+            setVisualizationSpec(null);
+          }
     } catch (error) {
       console.error("数据分析失败:", error);
       toast.error("数据分析请求失败，请稍后重试");
       // 确保错误情况下也清除数据
-      setInsightsData(null);
+      // 不再使用 insightsData
+      setInsightMarkdown(null);
       setVisualizationSpec(null);
     } finally {
       setIsAnalyzing(false);
@@ -441,15 +473,117 @@ export function DataExplorationMain() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 修复类型错误 - 在JSX外添加类型声明
-  const handleRecommendation = (r: {chart_type: string, description: string}) => { 
-    return r.description; 
+
+
+  // 优化图表配置的函数
+  const optimizeChartSpec = (spec: any) => {
+    const optimized = { ...spec };
+    
+    // 如果是散点图且X轴是日期格式的数值
+    if (spec.series && spec.series[0] && spec.series[0].type === 'scatter') {
+      const seriesData = spec.series[0].data;
+      
+      if (seriesData && seriesData.length > 0) {
+        // 检查是否是日期格式（YYYYMMDD）
+        const firstXValue = seriesData[0][0];
+        if (typeof firstXValue === 'number' && firstXValue > 20000000) {
+          console.log("检测到日期格式的X轴数据，进行优化");
+          
+          // 转换日期格式并优化坐标轴
+          const processedData = seriesData.map((point: any[], index: number) => {
+            const dateStr = point[0].toString();
+            const year = dateStr.slice(0, 4);
+            const month = dateStr.slice(4, 6);
+            const day = dateStr.slice(6, 8);
+            return [`${year}-${month}-${day}`, point[1]];
+          });
+          
+          // 更新图表配置
+          optimized.xAxis = {
+            ...spec.xAxis,
+            type: 'category',
+            name: spec.xAxis.name || 'X轴',
+            axisLabel: {
+              rotate: 45,
+              fontSize: 10
+            }
+          };
+          
+          optimized.series[0] = {
+            ...spec.series[0],
+            data: processedData,
+            symbolSize: 8,
+            itemStyle: {
+              color: '#3b82f6'
+            }
+          };
+          
+          // 优化网格布局
+          optimized.grid = {
+            left: '10%',
+            right: '10%',
+            bottom: '20%',
+            top: '15%',
+            containLabel: true
+          };
+          
+          // 添加数据缩放组件
+          optimized.dataZoom = [
+            {
+              type: 'slider',
+              show: true,
+              xAxisIndex: [0],
+              start: 0,
+              end: 100
+            },
+            {
+              type: 'inside',
+              xAxisIndex: [0],
+              start: 0,
+              end: 100
+            }
+          ];
+        }
+      }
+    }
+    
+    // 优化tooltip
+    if (!optimized.tooltip) {
+      optimized.tooltip = {};
+    }
+    optimized.tooltip = {
+      ...optimized.tooltip,
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross'
+      },
+      formatter: function(params: any) {
+        if (Array.isArray(params) && params.length > 0) {
+          const param = params[0];
+          return `${param.axisValue}<br/>${param.seriesName}: ${param.value[1]}`;
+        }
+        return '';
+      }
+    };
+    
+    // 优化标题
+    if (optimized.title) {
+      optimized.title = {
+        ...optimized.title,
+        textStyle: {
+          fontSize: 16,
+          fontWeight: 'bold'
+        }
+      };
+    }
+    
+    return optimized;
   };
 
   return (
-    <div className="flex h-full w-full pt-12">
+    <div className="flex h-full w-full">
       {/* 左侧文件列表 */}
-      <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+      <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 flex flex-col overflow-hidden">
         <div className="mb-4">
           <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">数据文件</h2>
           <div className="space-y-2">
@@ -475,7 +609,8 @@ export function DataExplorationMain() {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-2">
           {isLoading ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">加载中...</div>
           ) : uploadedFiles.length === 0 ? (
@@ -513,14 +648,15 @@ export function DataExplorationMain() {
               </div>
             ))
           )}
+          </div>
         </div>
       </div>
 
       {/* 右侧内容区 */}
-      <div className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900">
         {/* 如果没有选中文件，显示欢迎信息 */}
         {!selectedFile ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex-1 flex items-center justify-center p-4">
             <div className="text-center">
               <UploadOutlined className="text-6xl text-gray-400 mb-4" />
               <h3 className="text-xl font-medium mb-2 text-gray-900 dark:text-gray-100">开始数据探索</h3>
@@ -535,9 +671,9 @@ export function DataExplorationMain() {
             </div>
           </div>
         ) : (
-          <>
+          <div className="flex-1 flex flex-col p-4 overflow-hidden">
             {/* 文件详情头部 */}
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 数据文件 - {selectedFile.name}
               </h2>
@@ -580,8 +716,9 @@ export function DataExplorationMain() {
             </div>
 
             {/* 内容区域 */}
+            <div className="flex-1 overflow-hidden">
             {activeTab === 'preview' ? (
-              <div className="p-6">
+              <div className="h-full p-6 overflow-y-auto">
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <EyeOutlined />
@@ -628,41 +765,120 @@ export function DataExplorationMain() {
               </div>
             ) : (
               /* 数据可视化标签 */
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div className="h-full bg-white dark:bg-gray-800 rounded-lg shadow p-4 overflow-y-auto">
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">数据可视化</h3>
                   
+                  {/* AI模式开关 */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="ai-mode"
+                            checked={useAIMode}
+                            onChange={(e) => setUseAIMode(e.target.checked)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="ai-mode" className="ml-2 text-sm font-medium text-blue-800 dark:text-blue-200">
+                            🤖 AI智能模式
+                          </label>
+                        </div>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                          ✨ 大模型驱动
+                        </span>
+                      </div>
+                      <div className="text-xs text-blue-600 dark:text-blue-300">
+                        {useAIMode ? "已启用大模型智能分析" : "使用传统分析模式"}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* 用户提示输入 */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      用户提示
+                      {useAIMode ? "🎯 AI分析需求" : "用户提示"}
                     </label>
                     <div className="flex flex-col gap-2">
                       <textarea
-                        className="w-full p-3 min-h-[100px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-base resize-y"
+                        className={`w-full p-3 min-h-[100px] border rounded-md text-gray-900 dark:text-gray-100 text-base resize-y transition-all ${
+                          useAIMode 
+                            ? "border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        }`}
                         value={userPrompt}
                         onChange={(e) => setUserPrompt(e.target.value)}
-                        placeholder="描述你想要生成的图表类型和需求，例如：按类别展示销售额的饼图，并分析增长最快的类别"
-                        rows={4}
+                        placeholder={useAIMode 
+                          ? "请详细描述您的数据分析需求，AI将根据您的要求生成最合适的图表。例如：'生成时间序列折线图显示航班数量的月度变化趋势，突出显示峰值和低谷，并添加趋势线分析'" 
+                          : "描述你想要生成的图表类型和需求，例如：按类别展示销售额的饼图，并分析增长最快的类别"
+                        }
+                        rows={useAIMode ? 5 : 4}
+                        disabled={isAnalyzing}
                       />
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        提示：尝试指定图表类型、数据关系、分析需求等，描述越具体生成的结果越精确
+                        {useAIMode 
+                          ? "💡 AI模式提示：详细的需求描述将帮助大模型生成更精确、更符合您期望的图表配置和样式" 
+                          : "提示：尝试指定图表类型、数据关系、分析需求等，描述越具体生成的结果越精确"
+                        }
                       </p>
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
                         <button
-                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 flex items-center"
-                          onClick={() => handleAnalyzeData(selectedFile.id, userPrompt)}
+                          className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-300 flex items-center text-sm"
+                          onClick={() => {
+                            // 生成一个简单的测试图表
+                            const testSpec = {
+                              title: { text: '测试图表', left: 'center' },
+                              tooltip: { trigger: 'axis' },
+                              xAxis: { 
+                                type: 'category', 
+                                data: ['1月', '2月', '3月', '4月', '5月', '6月'] 
+                              },
+                              yAxis: { type: 'value' },
+                              series: [{
+                                name: '测试数据',
+                                data: [120, 200, 150, 80, 70, 110],
+                                type: 'bar',
+                                itemStyle: { color: '#3b82f6' }
+                              }]
+                            };
+                            setVisualizationSpec(testSpec);
+                            setActiveTab('visualization');
+                            toast.success("测试图表已生成");
+                          }}
                           disabled={isAnalyzing}
+                        >
+                          <BarChartOutlined className="h-4 w-4 inline-block mr-1" />
+                          测试图表
+                        </button>
+
+                        <button
+                          className={`px-4 py-2 text-white rounded-md flex items-center font-medium transition-all ${
+                            useAIMode 
+                              ? "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-blue-300 disabled:to-purple-300 shadow-md" 
+                              : "bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300"
+                          }`}
+                          onClick={() => handleAnalyzeData(selectedFile.id, userPrompt)}
+                          disabled={isAnalyzing || (useAIMode && !userPrompt.trim())}
                         >
                           {isAnalyzing ? (
                             <>
-                              <EyeOutlined className="h-5 w-5 inline-block mr-1 animate-spin" />
-                              分析中...
+                              <EyeOutlined className="h-5 w-5 inline-block mr-2 animate-spin" />
+                              {useAIMode ? "AI分析中..." : "分析中..."}
                             </>
                           ) : (
                             <>
-                              <BarChartOutlined className="h-5 w-5 inline-block mr-1" />
-                              生成图表
+                              {useAIMode ? (
+                                <>
+                                  <span className="mr-2">🤖</span>
+                                  AI智能生成图表
+                                </>
+                              ) : (
+                                <>
+                                  <BarChartOutlined className="h-5 w-5 inline-block mr-2" />
+                                  生成图表
+                                </>
+                              )}
                             </>
                           )}
                         </button>
@@ -672,8 +888,48 @@ export function DataExplorationMain() {
                   
                   {/* 图表显示区域 */}
                   {visualizationSpec ? (
-                    <div className="h-[500px] w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700">
-                      <EChartsWrapper spec={visualizationSpec as any} />
+                    <div className="relative">
+                      {/* 生成模式标识 */}
+                      <div className="absolute top-2 right-2 z-10">
+                        {useAIMode ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border border-blue-200">
+                            🤖 AI生成
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                            📊 传统模式
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="h-[500px] w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700">
+                        <EChartsWrapper 
+                          spec={visualizationSpec as any} 
+                          onError={(error) => {
+                            console.error("ECharts渲染错误:", error);
+                            toast.error(`图表渲染失败: ${error.message}`);
+                            // 可以在这里设置一个简单的回退图表
+                            setVisualizationSpec({
+                              title: { text: '图表渲染失败', left: 'center' },
+                              xAxis: { type: 'category', data: ['无数据'] },
+                              yAxis: { type: 'value' },
+                              series: [{ data: [0], type: 'bar' }]
+                            });
+                          }}
+                          onReady={(chart) => {
+                            console.log("ECharts图表实例已创建:", chart);
+                          }}
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                      </div>
+                    </div>
+                  ) : isAnalyzing ? (
+                    <div className="h-[500px] w-full border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center bg-white dark:bg-gray-700">
+                      <div className="text-center text-gray-500 dark:text-gray-400">
+                        <div className="animate-spin h-12 w-12 border-4 border-blue-500 rounded-full border-t-transparent mx-auto mb-4"></div>
+                        <p className="text-lg">正在分析数据并生成图表...</p>
+                        <p className="text-sm">这可能需要几秒钟时间</p>
+                      </div>
                     </div>
                   ) : (
                     <div className="h-[500px] w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
@@ -686,21 +942,105 @@ export function DataExplorationMain() {
                   )}
                   
                   {/* 数据洞察部分 */}
-                  {insightsData && insightsData.recommendations && insightsData.recommendations.length > 0 ? (
+                  {insightMarkdown ? (
                     <div className="mt-4">
-                      <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-2">数据洞察</h4>
-                      <div className="space-y-2">
-                        {insightsData.recommendations.map((recommendation: any, index: number) => (
-                          <div 
-                            key={index}
-                            className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border-l-4 border-blue-400"
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                          📊 数据洞察报告
+                          {useAIMode && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800">
+                              🤖 AI分析
+                            </span>
+                          )}
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          {insightMarkdown && (
+                            <button
+                              onClick={() => setIsFullscreenInsight(true)}
+                              className="text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 flex items-center gap-1 transition-colors"
+                            >
+                              🔍 全屏查看
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setIsInsightExpanded(!isInsightExpanded)}
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
                           >
-                            <p className="text-gray-700 dark:text-gray-200">
-                              {handleRecommendation(recommendation)}
-                            </p>
-                          </div>
-                        ))}
+                            {isInsightExpanded ? "收起" : "展开"}
+                            <span className={`transform transition-transform ${isInsightExpanded ? "rotate-180" : ""}`}>
+                              ▼
+                            </span>
+                          </button>
+                        </div>
                       </div>
+                      
+                      {isInsightExpanded && (
+                        <>
+                          {/* 显示 Markdown 洞察内容 */}
+                          {insightMarkdown ? (
+                            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                              {/* 添加内容长度指示 */}
+                              <div className="px-6 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+                                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                  <span>📄 数据分析报告</span>
+                                  <span>{insightMarkdown.length} 字符 · 预计阅读时间 {Math.ceil(insightMarkdown.length / 500)} 分钟</span>
+                                </div>
+                              </div>
+                              
+                              <div className="p-6">
+                                {/* 可滚动的内容区域 */}
+                                <div className="max-h-[600px] overflow-y-auto overflow-x-hidden">
+                                  <div className="prose prose-sm max-w-none dark:prose-invert
+                                    prose-headings:text-gray-900 dark:prose-headings:text-gray-100
+                                    prose-p:text-gray-700 dark:prose-p:text-gray-300
+                                    prose-strong:text-gray-900 dark:prose-strong:text-gray-100
+                                    prose-ul:text-gray-700 dark:prose-ul:text-gray-300
+                                    prose-ol:text-gray-700 dark:prose-ol:text-gray-300
+                                    prose-li:text-gray-700 dark:prose-li:text-gray-300
+                                    prose-code:text-blue-600 dark:prose-code:text-blue-400
+                                    prose-code:bg-gray-100 dark:prose-code:bg-gray-800
+                                    prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                                    prose-h1:text-xl prose-h1:font-bold prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-2
+                                    prose-h2:text-lg prose-h2:font-semibold prose-h2:mt-6
+                                    prose-h3:text-base prose-h3:font-medium prose-h3:mt-4
+                                    prose-h1:mb-4 prose-h2:mb-3 prose-h3:mb-2
+                                    prose-p:mb-3 prose-p:leading-relaxed
+                                    prose-ul:mb-4 prose-ol:mb-4
+                                    prose-li:mb-1
+                                    prose-table:text-sm prose-table:border-collapse prose-table:my-4
+                                    prose-th:border prose-th:border-gray-300 prose-th:px-3 prose-th:py-2 prose-th:bg-gray-50 prose-th:font-semibold
+                                    prose-td:border prose-td:border-gray-300 prose-td:px-3 prose-td:py-2
+                                    prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:my-4">
+                                    <ReactMarkdown>
+                                      {insightMarkdown}
+                                    </ReactMarkdown>
+                                  </div>
+                                </div>
+                                
+                                {/* 如果内容很长，显示滚动提示 */}
+                                {insightMarkdown.length > 2000 && (
+                                  <div className="mt-4 text-center">
+                                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                      💡 内容较长，可以滚动查看完整报告
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
+                          
+
+                        </>
+                      )}
+                      
+                      {/* 折叠状态下的简要预览 */}
+                      {!isInsightExpanded && insightMarkdown && (
+                        <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+{`📊 包含详细的数据分析报告 (${Math.ceil(insightMarkdown.length / 100)} 段内容)`}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : isAnalyzing ? (
                     <div className="mt-4">
@@ -723,9 +1063,69 @@ export function DataExplorationMain() {
                 </div>
               </div>
             )}
-          </>
+            </div>
+          </div>
         )}
       </div>
+      
+      {/* 全屏洞察查看模态框 */}
+      {isFullscreenInsight && insightMarkdown && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full h-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl">
+            {/* 模态框头部 */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">📊 完整数据洞察报告</h2>
+                {useAIMode && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800">
+                    🤖 AI分析
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {insightMarkdown.length} 字符 · {Math.ceil(insightMarkdown.length / 500)} 分钟阅读
+                </div>
+                <button
+                  onClick={() => setIsFullscreenInsight(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                >
+                  <span className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">✕</span>
+                </button>
+              </div>
+            </div>
+            
+            {/* 模态框内容 */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="prose prose-base max-w-none dark:prose-invert
+                prose-headings:text-gray-900 dark:prose-headings:text-gray-100
+                prose-p:text-gray-700 dark:prose-p:text-gray-300
+                prose-strong:text-gray-900 dark:prose-strong:text-gray-100
+                prose-ul:text-gray-700 dark:prose-ul:text-gray-300
+                prose-ol:text-gray-700 dark:prose-ol:text-gray-300
+                prose-li:text-gray-700 dark:prose-li:text-gray-300
+                prose-code:text-blue-600 dark:prose-code:text-blue-400
+                prose-code:bg-gray-100 dark:prose-code:bg-gray-800
+                prose-code:px-2 prose-code:py-1 prose-code:rounded
+                prose-h1:text-2xl prose-h1:font-bold prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-3
+                prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-8
+                prose-h3:text-lg prose-h3:font-medium prose-h3:mt-6
+                prose-h1:mb-6 prose-h2:mb-4 prose-h3:mb-3
+                prose-p:mb-4 prose-p:leading-relaxed prose-p:text-base
+                prose-ul:mb-6 prose-ol:mb-6
+                prose-li:mb-2
+                prose-table:text-base prose-table:border-collapse prose-table:my-6
+                prose-th:border prose-th:border-gray-300 prose-th:px-4 prose-th:py-3 prose-th:bg-gray-50 prose-th:font-semibold
+                prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-3
+                prose-blockquote:border-l-4 prose-blockquote:border-blue-400 prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:my-6">
+                <ReactMarkdown>
+                  {insightMarkdown}
+                </ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

@@ -3,7 +3,7 @@
 import { BarChartOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined, UploadOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { VChart } from '@visactor/react-vchart';
+import EChartsWrapper from "~/components/charts/echarts-wrapper";
 import { toast } from "sonner";
 
 import { DataExplorationAPI } from "~/core/api/data-exploration";
@@ -673,7 +673,7 @@ export function DataExplorationMain() {
                   {/* 图表显示区域 */}
                   {visualizationSpec ? (
                     <div className="h-[500px] w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700">
-                      <VChart spec={visualizationSpec as any} />
+                      <EChartsWrapper spec={visualizationSpec as any} />
                     </div>
                   ) : (
                     <div className="h-[500px] w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">

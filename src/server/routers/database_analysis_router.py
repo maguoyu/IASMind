@@ -46,9 +46,9 @@ class DatabaseAnalysisResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-def generate_vchart_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]], columns: List[str]) -> Dict[str, Any]:
+def generate_echarts_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]], columns: List[str]) -> Dict[str, Any]:
     """
-    根据图表配置生成VChart格式的spec
+    根据图表配置生成ECharts格式的spec
     
     Args:
         chart_config: 图表配置
@@ -56,7 +56,7 @@ def generate_vchart_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]
         columns: 列名列表
         
     Returns:
-        VChart格式的spec配置
+        ECharts格式的spec配置
     """
     if not data or not chart_config:
         return {}
@@ -70,22 +70,37 @@ def generate_vchart_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]
             "columns": columns
         }
     
-    # 基础VChart配置
-    base_spec = {
-        "data": [{"id": "chartData", "values": data}],
-        "padding": {"top": 20, "right": 40, "bottom": 60, "left": 80}
+    # 基础ECharts配置
+    base_config = {
+        "title": {"text": "数据分析图表", "left": "center"},
+        "tooltip": {"trigger": "axis" if chart_type in ['line', 'bar'] else "item"},
+        "legend": {"orient": "horizontal", "left": "center", "bottom": "10%"},
+        "toolbox": {
+            "show": True,
+            "feature": {
+                "dataView": {"show": True, "readOnly": False},
+                "magicType": {"show": True, "type": ["line", "bar"]},
+                "restore": {"show": True},
+                "saveAsImage": {"show": True}
+            }
+        }
     }
     
-    # 根据图表类型生成对应的spec
+    # 根据图表类型生成对应的ECharts配置
     if chart_type == "bar":
         x_field = chart_config.get("x", columns[0] if columns else "category")
         y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
         
         return {
-            **base_spec,
-            "type": "bar",
-            "xField": x_field,
-            "yField": y_field
+            **base_config,
+            "xAxis": {"type": "category", "data": [item.get(x_field, '') for item in data]},
+            "yAxis": {"type": "value"},
+            "series": [{
+                "name": y_field,
+                "type": "bar",
+                "data": [item.get(y_field, 0) for item in data],
+                "itemStyle": {"color": "#5470c6"}
+            }]
         }
         
     elif chart_type == "line":
@@ -93,23 +108,37 @@ def generate_vchart_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]
         y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
         
         return {
-            **base_spec,
-            "type": "line", 
-            "xField": x_field,
-            "yField": y_field
+            **base_config,
+            "xAxis": {"type": "category", "data": [item.get(x_field, '') for item in data]},
+            "yAxis": {"type": "value"},
+            "series": [{
+                "name": y_field,
+                "type": "line",
+                "data": [item.get(y_field, 0) for item in data],
+                "smooth": True,
+                "lineStyle": {"color": "#5470c6"}
+            }]
         }
         
     elif chart_type == "pie":
-        # 饼图需要 categoryField 和 angleField
         category_field = chart_config.get("x", columns[0] if columns else "category")
         value_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
         
         return {
-            **base_spec,
-            "type": "pie",
-            "categoryField": category_field,
-            "angleField": value_field,
-            "padding": {"top": 40, "right": 80, "bottom": 60, "left": 80}
+            **base_config,
+            "series": [{
+                "name": "数据",
+                "type": "pie",
+                "radius": "50%",
+                "data": [{"name": item.get(category_field, ''), "value": item.get(value_field, 0)} for item in data],
+                "emphasis": {
+                    "itemStyle": {
+                        "shadowBlur": 10,
+                        "shadowOffsetX": 0,
+                        "shadowColor": "rgba(0, 0, 0, 0.5)"
+                    }
+                }
+            }]
         }
         
     elif chart_type == "scatter":
@@ -117,10 +146,16 @@ def generate_vchart_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]
         y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "y")
         
         return {
-            **base_spec,
-            "type": "scatter",
-            "xField": x_field,
-            "yField": y_field
+            **base_config,
+            "xAxis": {"type": "value", "name": x_field},
+            "yAxis": {"type": "value", "name": y_field},
+            "series": [{
+                "name": "数据点",
+                "type": "scatter",
+                "data": [[item.get(x_field, 0), item.get(y_field, 0)] for item in data],
+                "symbolSize": 8,
+                "itemStyle": {"color": "#5470c6"}
+            }]
         }
         
     elif chart_type == "area":
@@ -128,19 +163,32 @@ def generate_vchart_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]
         y_field = chart_config.get("y", columns[1] if len(columns) > 1 else "value")
         
         return {
-            **base_spec,
-            "type": "area",
-            "xField": x_field,
-            "yField": y_field,
-            "padding": {"top": 60, "right": 40, "bottom": 60, "left": 80}
+            **base_config,
+            "xAxis": {"type": "category", "data": [item.get(x_field, '') for item in data]},
+            "yAxis": {"type": "value"},
+            "series": [{
+                "name": y_field,
+                "type": "line",
+                "data": [item.get(y_field, 0) for item in data],
+                "areaStyle": {},  # 添加区域填充
+                "smooth": True,
+                "lineStyle": {"color": "#5470c6"}
+            }]
         }
     
     # 默认返回柱状图
+    x_field = columns[0] if columns else "category"
+    y_field = columns[1] if len(columns) > 1 else "value"
     return {
-        **base_spec,
-        "type": "bar",
-        "xField": columns[0] if columns else "category",
-        "yField": columns[1] if len(columns) > 1 else "value"
+        **base_config,
+        "xAxis": {"type": "category", "data": [item.get(x_field, '') for item in data]},
+        "yAxis": {"type": "value"},
+        "series": [{
+            "name": y_field,
+            "type": "bar",
+            "data": [item.get(y_field, 0) for item in data],
+            "itemStyle": {"color": "#5470c6"}
+        }]
     }
 
 
@@ -197,24 +245,24 @@ async def analyze_database(
         query_result = result.get("query_result", {})
         
         if result_type == "chart":
-            # 生成VChart格式的spec
+            # 生成ECharts格式的spec
             original_chart_config = result.get("chart_config", {})
             data = query_result.get("data", [])
             columns = query_result.get("columns", [])
             
-            # 根据原始配置生成VChart格式的spec
-            vchart_spec = generate_vchart_spec(original_chart_config, data, columns)
+            # 根据原始配置生成ECharts格式的spec
+            echarts_spec = generate_echarts_spec(original_chart_config, data, columns)
             
             # 如果是表格类型，使用特殊处理
-            if vchart_spec.get("type") == "table":
+            if echarts_spec.get("type") == "table":
                 response_data["chart_config"] = {
                     "type": "table",
                     "columns": columns
                 }
             else:
-                # 图表类型，返回完整的VChart spec作为config，type设置为custom让前端使用我们的spec
-                vchart_spec["chart_type"] = "custom"  # 添加chart_type字段标识这是VChart格式
-                response_data["chart_config"] = vchart_spec
+                # 图表类型，返回完整的ECharts spec作为config，type设置为custom让前端使用我们的spec
+                echarts_spec["chart_type"] = "custom"  # 添加chart_type字段标识这是ECharts格式
+                response_data["chart_config"] = echarts_spec
             
             response_data["data"] = TableData(
                 data=data,

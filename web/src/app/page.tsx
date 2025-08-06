@@ -53,8 +53,8 @@ export default function HomePage() {
       color: "bg-gradient-to-br from-cyan-500 to-blue-600"
     },
     {
-      title: "VMind 测试",
-      description: "测试VMind图表生成API，输入数据并生成各种图表",
+      title: "ECharts 测试",
+      description: "测试本地ECharts图表生成，输入数据并生成各种图表",
       icon: <PieChartOutlined className="text-2xl" />,
       href: "/vmind-test",
       color: "bg-gradient-to-br from-yellow-500 to-amber-600"

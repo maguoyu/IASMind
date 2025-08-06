@@ -23,8 +23,7 @@ from ..auth_middleware import GetCurrentUser
 from ...database.models import FileExploration
 from ...utils.crypto import GenerateSecureToken
 from ...config.configuration import get_config
-from ...vmind.charts import VmindClient
-from ...utils.llm_utils import get_llm_config
+from src.data_insight.chart_generator import LocalChartGenerator
 
 router = APIRouter(prefix="/api/data-exploration", tags=["数据探索"])
 
@@ -487,7 +486,7 @@ async def analyze_data(
         fieldInfo = None
         suffix = os.path.splitext(file.file_path)[1].lower()
         
-        # 读取文件内容并进行处理，与vmind_router.py中的逻辑类似
+        # 读取文件内容并进行处理
         try:
             if suffix == '.csv':
                 # 读取CSV文件
@@ -522,32 +521,31 @@ async def analyze_data(
             print(error_msg)
             raise HTTPException(status_code=500, detail=error_msg)
         
-        # 获取LLM客户端
-        llm_config = await get_llm_config("basic")
-
-        # 创建VMind客户端
-        vmind_client = VmindClient(llm_config)
+        # 创建本地图表生成器
+        chart_generator = LocalChartGenerator()
         
-        # 生成随机文件名
-        file_name = f"chart_{uuid.uuid4().hex[:8]}"
+        # 确定要使用的数据
+        data_to_use = None
+        if dataType == "dataset" and dataset:
+            data_to_use = dataset
+        elif dataType == "csv" and csvData:
+            data_to_use = csvData
+        elif dataType == "text" and textData:
+            data_to_use = textData
+        else:
+            raise HTTPException(status_code=400, detail="无有效数据进行图表生成")
         
-        # 调用VMind服务
-        result = await vmind_client.invoke_vmind(
-            file_name=file_name,
-            output_type=request.output_type,
-            task_type=request.task_type,
-            dataset=dataset,
-            csvData=csvData,
-            textData=textData,
-            fieldInfo=fieldInfo,
-            dataType=dataType,
+        # 调用本地图表生成服务
+        result = await chart_generator.generate_chart(
+            data=data_to_use,
+            data_type=dataType,
             user_prompt=request.user_prompt,
-            language=request.language
+            enable_insights=True
         )
         
         # 如果有错误，抛出异常
         if "error" in result:
-            print(f"VMind 处理错误: {result['error']}")
+            print(f"本地图表生成错误: {result['error']}")
             raise HTTPException(status_code=500, detail=result["error"])
         
         # 返回结果
@@ -563,7 +561,7 @@ async def analyze_data(
         raise HTTPException(status_code=500, detail=error_msg)
 
 
-# 从vmind_router.py中导入process_data函数
+# 数据处理函数（从charts_router.py中复制）
 def process_data(input_data: Any) -> tuple[str, list, Optional[str], Optional[str], Optional[Dict]]:
     """
     处理各种格式的输入数据，判断数据类型并进行相应处理

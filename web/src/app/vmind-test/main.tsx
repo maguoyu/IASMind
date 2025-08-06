@@ -3,8 +3,7 @@
 import { BarChartOutlined, FileTextOutlined, LineChartOutlined, PieChartOutlined, SendOutlined, BulbOutlined, UploadOutlined, FileExcelOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useRef } from "react";
-import { VChart } from '@visactor/react-vchart';
-import type { ISpec } from '@visactor/react-vchart';
+import EChartsWrapper from "~/components/charts/echarts-wrapper";
 
 import { toast } from "sonner";
 
@@ -28,7 +27,7 @@ export function VmindTestMain() {
     { name: "类别E", value: 100 }
   ]);
   const [userPrompt, setUserPrompt] = useState<string>("生成一个数据可视化图表");
-  const [spec, setSpec] = useState<ISpec | null>(null);
+  const [spec, setSpec] = useState<any | null>(null);
   const [insights, setInsights] = useState<ChartInsight[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [dataInput, setDataInput] = useState<string>(JSON.stringify(data, null, 2));
@@ -211,7 +210,7 @@ export function VmindTestMain() {
           console.log('服务端返回的spec:', result.spec);
           
           // 直接使用服务端返回的spec
-          setSpec(result.spec as ISpec);
+          setSpec(result.spec);
         } else {
           toast.warning('服务端未返回图表规格');
         }
@@ -231,7 +230,7 @@ export function VmindTestMain() {
       <div className="flex flex-col md:flex-row p-4 gap-4">
         {/* 左侧数据输入区 */}
         <div className="w-full md:w-1/2 bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">VMind 测试</h2>
+                          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">ECharts 测试</h2>
           
           {/* 数据源类型选择 */}
           <div className="mb-4">
@@ -360,7 +359,7 @@ export function VmindTestMain() {
             
             {spec ? (
               <div className="h-[400px] w-full">
-                <VChart spec={spec} />
+                <EChartsWrapper spec={spec} />
               </div>
             ) : (
               <div className="h-[400px] w-full flex items-center justify-center text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">

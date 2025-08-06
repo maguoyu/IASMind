@@ -6,7 +6,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X, Eye, ChevronDown, ChevronUp, Table, RotateCcw, Trash2, MessageSquareX } from "lucide-react";
-import { VChart } from '@visactor/react-vchart';
+import EChartsWrapper from "~/components/charts/echarts-wrapper";
+import { convertVChartToECharts, generateEChartsConfig } from "~/utils/chart-converter";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 
@@ -1290,11 +1291,11 @@ export function ChartsMain() {
               if (analysisResult.result_type === 'chart' && analysisResult.chart_config) {
                 const chartData = analysisResult.data as { data: any[]; columns: string[] } | undefined;
                 
-                // 检查是否是VChart格式的配置
-                const isVChartFormat = analysisResult.chart_config.chart_type === 'custom';
+                // 检查是否是ECharts格式的配置
+                const isEChartsFormat = analysisResult.chart_config.chart_type === 'custom';
                 
                 charts = [{
-                  type: isVChartFormat ? 'custom' : (analysisResult.chart_config.type || 'bar'),
+                  type: isEChartsFormat ? 'custom' : (analysisResult.chart_config.type || 'bar'),
                   title: `${titlePrefix} 分析结果`,
                   data: chartData?.data || [],
                   config: analysisResult.chart_config
@@ -1474,10 +1475,10 @@ export function ChartsMain() {
       console.log('渲染自定义图表，使用spec:', chart.config);
       return (
         <div style={{ width: '100%', height: 500, minWidth: '600px' }} className="w-full min-h-[500px]">
-          <VChart 
+          <EChartsWrapper 
             spec={chart.config} 
             onError={(error) => {
-              console.error('VChart 渲染错误:', error);
+              console.error('ECharts 渲染错误:', error);
               toast.error('图表渲染失败');
             }}
           />
@@ -1495,16 +1496,10 @@ export function ChartsMain() {
       case 'bar':
         return (
           <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
-            <VChart 
-              spec={{
-                type: 'bar',
-                data: [{ id: 'barData', values: chart.data }],
-                xField: chart.data[0]?.route ? 'route' : (chart.data[0]?.category ? 'category' : 'name'),
-                yField: chart.data[0]?.efficiency ? 'efficiency' : (chart.data[0]?.sales ? 'sales' : 'value'),
-                padding: { top: 20, right: 40, bottom: 60, left: 80 }
-              }} 
+            <EChartsWrapper 
+              spec={generateEChartsConfig(chart.data, 'bar')} 
               onError={(error) => {
-                console.error('VChart 渲染错误:', error);
+                console.error('ECharts 渲染错误:', error);
                 toast.error('柱状图渲染失败');
               }}
             />
@@ -1514,16 +1509,10 @@ export function ChartsMain() {
             case 'pie':
         return (
           <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
-            <VChart 
-              spec={{
-                type: 'pie',
-                data: [{ id: 'pieData', values: chart.data }],
-                angleField: 'value',
-                categoryField: 'name',
-                padding: { top: 40, right: 80, bottom: 60, left: 80 }
-              }}
+            <EChartsWrapper 
+              spec={generateEChartsConfig(chart.data, 'pie')}
               onError={(error) => {
-                console.error('VChart 渲染错误:', error);
+                console.error('ECharts 渲染错误:', error);
                 toast.error('饼图渲染失败');
               }}
             />
@@ -1533,16 +1522,10 @@ export function ChartsMain() {
             case 'line':
         return (
           <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
-            <VChart 
-              spec={{
-                type: 'line',
-                data: [{ id: 'lineData', values: chart.data }],
-                xField: chart.data[0]?.month ? 'month' : (chart.data[0]?.date ? 'date' : 'x'),
-                yField: chart.data[0]?.consumption ? 'consumption' : (chart.data[0]?.volume ? 'volume' : 'sales'),
-                padding: { top: 20, right: 40, bottom: 60, left: 80 }
-              }}
+            <EChartsWrapper 
+              spec={generateEChartsConfig(chart.data, 'line')}
               onError={(error) => {
-                console.error('VChart 渲染错误:', error);
+                console.error('ECharts 渲染错误:', error);
                 toast.error('折线图渲染失败');
               }}
             />
@@ -1552,16 +1535,10 @@ export function ChartsMain() {
             case 'area':
         return (
           <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
-            <VChart 
-              spec={{
-                type: 'area',
-                data: [{ id: 'areaData', values: chart.data }],
-                xField: 'month',
-                yField: chart.data[0]?.A320 ? ['A320', 'B737', 'B777'] : 'revenue',
-                padding: { top: 60, right: 40, bottom: 60, left: 80 }
-              }}
+            <EChartsWrapper 
+              spec={generateEChartsConfig(chart.data, 'line')} // area图使用line类型但填充区域
               onError={(error) => {
-                console.error('VChart 渲染错误:', error);
+                console.error('ECharts 渲染错误:', error);
                 toast.error('面积图渲染失败');
               }}
             />

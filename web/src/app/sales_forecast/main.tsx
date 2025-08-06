@@ -3,7 +3,7 @@
 import { UploadIcon, SearchIcon, FileTextIcon, BarChart3Icon, TrendingUpIcon, PieChartIcon, DownloadIcon, TrashIcon, Target as TargetIcon, ChevronDown, ChevronRight, Settings } from "lucide-react";
 import { ShoppingCartOutlined, DollarOutlined, UserOutlined, CalendarOutlined, FilterOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { VChart } from '@visactor/react-vchart';
+import EChartsWrapper from "~/components/charts/echarts-wrapper";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -2471,88 +2471,195 @@ export function SalesForecastMain() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
                   {/* 趋势对比图 */}
-                  <div className="mb-6 p-4 border rounded-lg">
-                    <h4 className="text-sm font-medium mb-4">实际与预测趋势对比图</h4>
-                    <div className="h-64">
+                  <div className="p-4 border rounded-lg bg-white">
+                    <h4 className="text-sm font-medium mb-4 text-gray-700">实际与预测趋势对比图</h4>
+                    <div className="w-full" style={{ height: '320px' }}>
                       {(() => {
-                        // 获取数据并转换为VChart支持的格式
+                        // 获取数据并转换为ECharts支持的格式
                         const tableData = getAnalysisTableData();
+                        
+                        // 构建标准的ECharts配置
                         const chartSpec = {
-                          type: 'line',
-                          data: [{ 
-                            id: 'analysisData',
-                            values: tableData
-                          }],
-                          xField: 'name',
-                          yField: ['actual', 'predicted'],
+                          title: {
+                            text: '实际与预测趋势对比',
+                            left: 'center',
+                            textStyle: {
+                              fontSize: 14,
+                              color: '#374151'
+                            }
+                          },
                           tooltip: {
-                            visible: true
+                            trigger: 'axis',
+                            axisPointer: {
+                              type: 'cross'
+                            },
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderColor: '#e5e7eb',
+                            textStyle: {
+                              color: '#374151'
+                            }
                           },
                           legend: {
-                            visible: true,
-                            position: 'top'
-                          }
+                            data: ['实际值', '预测值'],
+                            top: '35px',
+                            textStyle: {
+                              color: '#6b7280'
+                            }
+                          },
+                          grid: {
+                            left: '3%',
+                            right: '4%',
+                            bottom: '8%',
+                            top: '90px',
+                            containLabel: true
+                          },
+                          xAxis: {
+                            type: 'category',
+                            data: tableData.map(item => item.name),
+                            axisLabel: {
+                              rotate: 45,
+                              fontSize: 11,
+                              color: '#6b7280'
+                            },
+                            axisLine: {
+                              lineStyle: {
+                                color: '#e5e7eb'
+                              }
+                            }
+                          },
+                          yAxis: {
+                            type: 'value',
+                            name: '数值',
+                            nameTextStyle: {
+                              fontSize: 12,
+                              color: '#6b7280'
+                            },
+                            axisLabel: {
+                              color: '#6b7280'
+                            },
+                            axisLine: {
+                              lineStyle: {
+                                color: '#e5e7eb'
+                              }
+                            },
+                            splitLine: {
+                              lineStyle: {
+                                color: '#f3f4f6'
+                              }
+                            }
+                          },
+                          series: [
+                            {
+                              name: '实际值',
+                              type: 'line',
+                              data: tableData.map(item => item.actual || 0),
+                              smooth: true,
+                              symbol: 'circle',
+                              symbolSize: 6,
+                              lineStyle: {
+                                color: '#3b82f6',
+                                width: 3
+                              },
+                              itemStyle: {
+                                color: '#3b82f6'
+                              },
+                              areaStyle: {
+                                color: 'rgba(59, 130, 246, 0.1)'
+                              }
+                            },
+                            {
+                              name: '预测值',
+                              type: 'line',
+                              data: tableData.map(item => item.predicted || 0),
+                              smooth: true,
+                              symbol: 'circle',
+                              symbolSize: 6,
+                              lineStyle: {
+                                color: '#10b981',
+                                width: 3
+                              },
+                              itemStyle: {
+                                color: '#10b981'
+                              },
+                              areaStyle: {
+                                color: 'rgba(16, 185, 129, 0.1)'
+                              }
+                            }
+                          ]
                         };
                         
-                        return <VChart spec={chartSpec} />;
+                        return <EChartsWrapper spec={chartSpec} style={{ width: '100%', height: '100%' }} />;
                       })()}
                     </div>
                   </div>
                   
                   {/* 数据表格 */}
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-slate-50">
-                          <TableHead className="font-medium">
-                            {activeAnalysisTab === "region" ? "地区分公司" : 
-                             activeAnalysisTab === "company" ? "省公司" : "机场"}
-                          </TableHead>
-                          <TableHead className="font-medium">月份</TableHead>
-                          <TableHead className="font-medium">实际</TableHead>
-                          <TableHead className="font-medium">预测</TableHead>
-                          <TableHead className="font-medium">预测同比</TableHead>
-                          <TableHead className="font-medium">预测环比（日均）</TableHead>
-                          <TableHead className="font-medium">(T-1) 年同月</TableHead>
-                          <TableHead className="font-medium">预测偏差率(%)</TableHead>
-                          <TableHead className="font-medium">滚动预测</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {getAnalysisTableData().map((item: any, index: number) => (
-                          <TableRow key={index} className="hover:bg-slate-50">
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.month}</TableCell>
-                            <TableCell>{item.actual || "-"}</TableCell>
-                            <TableCell>{item.predicted || "-"}</TableCell>
-                            <TableCell className={
-                              item.predictedYoy > 0 ? "text-green-600" : 
-                              item.predictedYoy < 0 ? "text-red-600" : ""
-                            }>
-                              {item.predictedYoy ? `${(item.predictedYoy * 100).toFixed(1)}%` : "-"}
-                            </TableCell>
-                            <TableCell className={
-                              item.predictedMom > 0 ? "text-green-600" : 
-                              item.predictedMom < 0 ? "text-red-600" : ""
-                            }>
-                              {item.predictedMom ? `${(item.predictedMom * 100).toFixed(1)}%` : "-"}
-                            </TableCell>
-                            <TableCell>{item.lastYearSame || "-"}</TableCell>
-                            <TableCell className={
-                              item.deviationRate <= 5 ? "text-green-600" : 
-                              item.deviationRate <= 10 ? "text-yellow-600" : "text-red-600"
-                            }>
-                              {item.deviationRate ? `${item.deviationRate.toFixed(1)}%` : "-"}
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-xs text-slate-500">第6次</span>
-                            </TableCell>
+                  <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+                    <div className="px-4 py-3 border-b bg-gray-50">
+                      <h4 className="text-sm font-medium text-gray-700">详细数据表格</h4>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50/80">
+                            <TableHead className="font-semibold text-gray-700 min-w-[120px]">
+                              {activeAnalysisTab === "region" ? "地区分公司" : 
+                               activeAnalysisTab === "company" ? "省公司" : "机场"}
+                            </TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[80px]">月份</TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[80px] text-right">实际</TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[80px] text-right">预测</TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[100px] text-right">预测同比</TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[120px] text-right">预测环比（日均）</TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[100px] text-right">(T-1) 年同月</TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[100px] text-right">预测偏差率(%)</TableHead>
+                            <TableHead className="font-semibold text-gray-700 min-w-[80px]">滚动预测</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {getAnalysisTableData().map((item: any, index: number) => (
+                            <TableRow key={index} className="hover:bg-blue-50/30 transition-colors">
+                              <TableCell className="font-medium text-gray-900">{item.name}</TableCell>
+                              <TableCell className="text-gray-600">{item.month}</TableCell>
+                              <TableCell className="text-right font-medium text-gray-900">
+                                {item.actual ? item.actual.toLocaleString() : "-"}
+                              </TableCell>
+                              <TableCell className="text-right font-medium text-gray-900">
+                                {item.predicted ? item.predicted.toLocaleString() : "-"}
+                              </TableCell>
+                              <TableCell className={`text-right font-medium ${
+                                item.predictedYoy > 0 ? "text-emerald-600" : 
+                                item.predictedYoy < 0 ? "text-red-600" : "text-gray-600"
+                              }`}>
+                                {item.predictedYoy ? `${(item.predictedYoy * 100).toFixed(1)}%` : "-"}
+                              </TableCell>
+                              <TableCell className={`text-right font-medium ${
+                                item.predictedMom > 0 ? "text-emerald-600" : 
+                                item.predictedMom < 0 ? "text-red-600" : "text-gray-600"
+                              }`}>
+                                {item.predictedMom ? `${(item.predictedMom * 100).toFixed(1)}%` : "-"}
+                              </TableCell>
+                              <TableCell className="text-right font-medium text-gray-900">
+                                {item.lastYearSame ? item.lastYearSame.toLocaleString() : "-"}
+                              </TableCell>
+                              <TableCell className={`text-right font-semibold ${
+                                item.deviationRate <= 5 ? "text-emerald-600" : 
+                                item.deviationRate <= 10 ? "text-amber-600" : "text-red-600"
+                              }`}>
+                                {item.deviationRate ? `${item.deviationRate.toFixed(1)}%` : "-"}
+                              </TableCell>
+                              <TableCell>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  第6次
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                   
                   {/* 分页控件 */}
@@ -2604,16 +2711,16 @@ export function SalesForecastMain() {
                     };
                     
                     return (
-                      <div className="border-t bg-white px-4 py-3 flex items-center justify-between sm:px-6">
+                      <div className="mt-4 border-t bg-gray-50/50 px-4 py-4 flex items-center justify-between rounded-b-lg">
                         <div className="flex flex-1 justify-between items-center">
                           {/* 左侧：页面信息和每页显示 */}
                           <div className="flex items-center gap-4">
-                            <div className="text-sm text-slate-700">
-                              显示第 <span className="font-medium">{currentStart}</span> - <span className="font-medium">{currentEnd}</span> 条，
-                              共 <span className="font-medium">{fullData.length}</span> 条记录
+                            <div className="text-sm text-gray-600">
+                              显示第 <span className="font-semibold text-gray-900">{currentStart}</span> - <span className="font-semibold text-gray-900">{currentEnd}</span> 条，
+                              共 <span className="font-semibold text-gray-900">{fullData.length}</span> 条记录
                             </div>
                             <div className="flex items-center gap-2">
-                              <Label className="text-sm text-slate-700">每页:</Label>
+                              <Label className="text-sm text-gray-600">每页:</Label>
                               <Select 
                                 value={analysisPageSize.toString()} 
                                 onValueChange={(value) => {
@@ -2621,7 +2728,7 @@ export function SalesForecastMain() {
                                   setAnalysisCurrentPage(1);
                                 }}
                               >
-                                <SelectTrigger className="h-8 w-16">
+                                <SelectTrigger className="h-8 w-16 bg-white border-gray-200">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2713,13 +2820,31 @@ export function SalesForecastMain() {
                   })()}
                   
                   {/* 合计行 */}
-                  <div className="mt-4 p-3 bg-slate-50 rounded border">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">合计</span>
-                      <div className="flex gap-8 text-slate-600">
-                        <span>实际: {getFullAnalysisTableData().reduce((sum: number, item: any) => sum + (item.actual || 0), 0).toLocaleString()}</span>
-                        <span>预测: {getFullAnalysisTableData().reduce((sum: number, item: any) => sum + (item.predicted || 0), 0).toLocaleString()}</span>
-                        <span>去年同期: {getFullAnalysisTableData().reduce((sum: number, item: any) => sum + (item.lastYearSame || 0), 0).toLocaleString()}</span>
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="font-semibold text-gray-800 text-sm">数据合计</span>
+                      </div>
+                      <div className="flex gap-6 text-sm">
+                        <div className="text-center">
+                          <div className="text-xs text-gray-500 mb-1">实际总计</div>
+                          <div className="font-semibold text-blue-700">
+                            {getFullAnalysisTableData().reduce((sum: number, item: any) => sum + (item.actual || 0), 0).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-gray-500 mb-1">预测总计</div>
+                          <div className="font-semibold text-emerald-700">
+                            {getFullAnalysisTableData().reduce((sum: number, item: any) => sum + (item.predicted || 0), 0).toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-gray-500 mb-1">去年同期</div>
+                          <div className="font-semibold text-gray-700">
+                            {getFullAnalysisTableData().reduce((sum: number, item: any) => sum + (item.lastYearSame || 0), 0).toLocaleString()}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

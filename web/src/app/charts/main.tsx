@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 
 import { cn } from "~/lib/utils";
 
-import { VmindAPI } from "~/core/api/vmind";
+import { ChatbiAPI } from "~/core/api/chatbi";
 import { dataSourceApi, type DataSource as SystemDataSource } from "~/core/api/datasource";
 import { databaseAnalysisApi } from "~/core/api";
 
@@ -1199,7 +1199,7 @@ export function ChartsMain() {
           
           // 调用API
           console.log("调用API开始");
-          const response = await VmindAPI.generateChartWithFile(formData);
+          const response = await ChatbiAPI.generateChartWithFile(formData);
           console.log("API响应:", response);
           
           if (response && response.data) {

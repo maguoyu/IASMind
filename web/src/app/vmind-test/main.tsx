@@ -7,8 +7,8 @@ import EChartsWrapper from "~/components/charts/echarts-wrapper";
 
 import { toast } from "sonner";
 
-import type { GenerateChartRequest, GenerateChartResponse, ChartInsight } from '~/core/api/vmind';
-import { VmindAPI } from '~/core/api/vmind';
+import type { GenerateChartRequest, GenerateChartResponse, ChartInsight } from '~/core/api/chatbi';
+import { ChatbiAPI } from '~/core/api/chatbi';
 
 interface ChartData {
   name: string;
@@ -165,7 +165,7 @@ export function VmindTestMain() {
         }
         
         console.log("发送请求数据:", requestData);
-        response = await VmindAPI.generateChart(requestData);
+        response = await ChatbiAPI.generateChart(requestData);
       } else {
         // 使用文件方式
         if (!fileData) {
@@ -184,7 +184,7 @@ export function VmindTestMain() {
         });
         
         // 调用文件上传API
-        response = await VmindAPI.generateChartWithFile(formData);
+        response = await ChatbiAPI.generateChartWithFile(formData);
       }
       
       if (response.data) {

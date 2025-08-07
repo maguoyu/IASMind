@@ -18,7 +18,7 @@ from .charts_router import GenerateChartRequest
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/vmind",
+    prefix="/api/chatbi",
     tags=["VMind兼容性"],
     responses={404: {"message": "您所访问的资源不存在！"}},
 )

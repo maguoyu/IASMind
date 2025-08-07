@@ -56,7 +56,7 @@ export default function HomePage() {
       title: "ECharts 测试",
       description: "测试本地ECharts图表生成，输入数据并生成各种图表",
       icon: <PieChartOutlined className="text-2xl" />,
-      href: "/vmind-test",
+      href: "/chatbi-test",
       color: "bg-gradient-to-br from-yellow-500 to-amber-600"
     },
     {

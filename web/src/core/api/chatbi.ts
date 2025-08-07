@@ -52,29 +52,24 @@ export interface GenerateChartResponse {
 }
 
 // VMind API 客户端
-export const VmindAPI = {
+export const ChatbiAPI = {
   // 生成图表
   generateChart: async (
     request: GenerateChartRequest
   ): Promise<ApiResponse<GenerateChartResponse>> => {
-    return apiClient.post('/api/vmind/generate-chart', request);
+    return apiClient.post('/api/chatbi/generate-chart', request);
   },
 
   // 使用文件生成图表
   generateChartWithFile: async (
     formData: FormData
   ): Promise<ApiResponse<GenerateChartResponse>> => {
-    return apiClient.post('/api/vmind/generate-chart-with-file', formData, {
+    return apiClient.post('/api/chatbi/generate-chart-with-file', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
   
-  // 使用文件ID继续分析
-  analyzeWithFileId: async (
-    request: AnalyzeWithFileIdRequest
-  ): Promise<ApiResponse<GenerateChartResponse>> => {
-    return apiClient.post('/api/vmind/analyze-with-file-id', request);
-  }
+
 }; 

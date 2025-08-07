@@ -14,8 +14,28 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from datetime import datetime
 
 from src.llms.llm import get_llm_by_type
+from src.data_insight.data_insight_framework import DataInsightFramework
 
 logger = logging.getLogger(__name__)
+
+def clean_numpy_types(obj: Any) -> Any:
+    """递归清理numpy类型，转换为Python原生类型以便序列化"""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: clean_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_numpy_types(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(clean_numpy_types(item) for item in obj)
+    else:
+        return obj
 
 class LocalChartGenerator:
     """本地图表生成器，使用ECharts规范"""
@@ -30,7 +50,8 @@ class LocalChartGenerator:
         data: Any,
         data_type: str,
         user_prompt: Optional[str] = None,
-        enable_insights: bool = True
+        enable_insights: bool = True,
+        use_llm: bool = False
     ) -> Dict[str, Any]:
         """
         生成图表和数据洞察
@@ -40,6 +61,7 @@ class LocalChartGenerator:
             data_type: 数据类型（dataset、csv、text）
             user_prompt: 用户提示
             enable_insights: 是否启用数据洞察
+            use_llm: 是否使用大模型生成图表配置
             
         返回:
             包含图表规格和洞察的字典
@@ -50,25 +72,25 @@ class LocalChartGenerator:
             if df is None or df.empty:
                 return {"error": "无法解析数据或数据为空"}
             
-            # 2. 如果有用户提示，使用LLM生成图表配置
-            if user_prompt and user_prompt.strip():
+            # 2. 根据use_llm参数决定是否使用大模型
+            if use_llm and user_prompt and user_prompt.strip():
                 logger.info("使用LLM模式生成图表配置")
                 return await self._generate_chart_with_llm(df, user_prompt, enable_insights)
+            elif use_llm:
+                logger.info("启用LLM模式但无用户提示，使用基础提示生成图表配置")
+                default_prompt = "生成最适合这个数据集的图表类型，并提供数据洞察分析"
+                return await self._generate_chart_with_llm(df, default_prompt, enable_insights)
             
             # 3. 使用传统方式生成图表
             logger.info("使用传统模式生成图表配置")
-            return self._generate_chart_traditional(df, enable_insights)
+            return await self._generate_chart_traditional(df, enable_insights)
             
         except Exception as e:
             logger.exception(f"生成图表时发生错误: {str(e)}")
             return {"error": f"生成图表失败: {str(e)}"}
     
-    def _generate_chart_traditional(self, df: pd.DataFrame, enable_insights: bool = True) -> Dict[str, Any]:
+    async def _generate_chart_traditional(self, df: pd.DataFrame, enable_insights: bool = True) -> Dict[str, Any]:
         """传统方式生成图表"""
-        # 数据分析和洞察
-        insights = []
-        if enable_insights:
-            insights = self._generate_insights(df)
         
         # 推荐图表类型
         chart_type = self._recommend_chart_type(df, None)
@@ -76,8 +98,13 @@ class LocalChartGenerator:
         # 生成ECharts配置
         chart_spec = self._generate_echarts_spec(df, chart_type)
         
+        # 基于图表配置生成数据洞察
+        insights = []
+        if enable_insights:
+            insights = self._generate_insights_from_chart(chart_spec, chart_type, df)
+        
         # 生成洞察文档
-        insight_md = self._generate_insight_markdown(df, insights, chart_type)
+        insight_md = await self._generate_insight_markdown_from_chart(chart_spec, insights, chart_type, use_llm=False)
         
         return {
             "spec": chart_spec,
@@ -105,13 +132,17 @@ class LocalChartGenerator:
             # 解析LLM响应
             chart_config = self._parse_llm_response(response.content)
             
-            # 生成洞察（如果需要）
+            # 基于LLM生成的图表配置生成洞察
             insights = []
             if enable_insights:
-                insights = self._generate_insights(df)
+                chart_spec = chart_config.get("spec", {})
+                chart_type = chart_config.get("chart_type", "unknown")
+                insights = self._generate_insights_from_chart(chart_spec, chart_type, df)
             
             # 生成洞察文档
-            insight_md = self._generate_insight_markdown(df, insights, chart_config.get("chart_type", "unknown"))
+            chart_spec = chart_config.get("spec", {})
+            chart_type = chart_config.get("chart_type", "unknown")
+            insight_md = await self._generate_insight_markdown_from_chart(chart_spec, insights, chart_type, use_llm=True)
             
             return {
                 "spec": chart_config.get("spec", {}),
@@ -125,7 +156,7 @@ class LocalChartGenerator:
             logger.error(f"LLM生成图表配置失败: {str(e)}")
             # 回退到传统模式
             logger.info("回退到传统模式")
-            return self._generate_chart_traditional(df, enable_insights)
+            return await self._generate_chart_traditional(df, enable_insights)
     
     def _parse_data(self, data: Any, data_type: str) -> Optional[pd.DataFrame]:
         """解析各种格式的数据为DataFrame"""
@@ -184,67 +215,135 @@ class LocalChartGenerator:
             return None
     
     def _generate_insights(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
-        """生成数据洞察"""
+        """使用DataInsightFramework生成专业数据洞察"""
         insights = []
         
         try:
-            # 基本统计信息
-            insights.append({
-                "type": "basic_stats",
-                "name": "数据概览",
-                "description": f"数据包含 {len(df)} 行，{len(df.columns)} 列",
-                "data": {
-                    "rows": len(df),
-                    "columns": len(df.columns),
-                    "column_names": df.columns.tolist()
-                }
-            })
+            # 创建数据洞察框架实例
+            framework = DataInsightFramework()
             
             # 数值列分析
             numeric_cols = df.select_dtypes(include=[np.number]).columns
-            if len(numeric_cols) > 0:
-                for col in numeric_cols:
-                    col_stats = {
+            
+            for col in numeric_cols:
+                try:
+                    # 使用框架分析每个数值列
+                    framework_results = framework.analyze(df, column=col)
+                    
+                    # 转换框架结果为图表生成器的格式
+                    for result in framework_results:
+                        insight = {
+                            "type": result.insight_type,
+                            "name": f"{col} - {result.algorithm}",
+                            "description": result.description,
+                            "data": clean_numpy_types({
+                                "algorithm": result.algorithm,
+                                "severity": result.severity,
+                                "confidence": result.confidence,
+                                "details": result.details,
+                                "affected_data": result.affected_data,
+                                "recommendations": result.recommendations
+                            })
+                        }
+                        insights.append(insight)
+                        
+                except Exception as e:
+                    logger.error(f"分析列 {col} 时发生错误: {str(e)}")
+                    # 如果框架分析失败，提供基础统计作为备选
+                    col_stats = clean_numpy_types({
                         "mean": float(df[col].mean()),
                         "median": float(df[col].median()),
                         "std": float(df[col].std()),
                         "min": float(df[col].min()),
                         "max": float(df[col].max())
-                    }
+                    })
                     insights.append({
-                        "type": "numeric_analysis",
-                        "name": f"{col} 数值分析",
+                        "type": "basic_stats",
+                        "name": f"{col} 基础统计",
                         "description": f"{col} 的平均值为 {col_stats['mean']:.2f}，标准差为 {col_stats['std']:.2f}",
                         "data": col_stats
                     })
             
-            # 分类列分析
+            # 相关性分析（如果有多个数值列）
+            if len(numeric_cols) >= 2:
+                try:
+                    for i, col1 in enumerate(numeric_cols[:-1]):
+                        for col2 in numeric_cols[i+1:]:
+                            corr_results = framework.analyze_correlation_pair(df, col1, col2)
+                            for result in corr_results:
+                                insight = {
+                                    "type": "correlation",
+                                    "name": f"{col1} 与 {col2} 相关性分析",
+                                    "description": result.description,
+                                    "data": clean_numpy_types({
+                                        "algorithm": result.algorithm,
+                                        "severity": result.severity,
+                                        "confidence": result.confidence,
+                                        "details": result.details,
+                                        "recommendations": result.recommendations
+                                    })
+                                }
+                                insights.append(insight)
+                except Exception as e:
+                    logger.error(f"相关性分析失败: {str(e)}")
+            
+            # 分类列分析（保持原有逻辑，因为框架主要处理数值数据）
             categorical_cols = df.select_dtypes(include=['object']).columns
             for col in categorical_cols:
-                if df[col].nunique() <= 10:  # 只分析唯一值不超过10的分类列
-                    value_counts = df[col].value_counts()
-                    insights.append({
-                        "type": "categorical_analysis",
-                        "name": f"{col} 分布分析",
-                        "description": f"{col} 有 {len(value_counts)} 个不同值，最常见的是 '{value_counts.index[0]}'",
-                        "data": {
-                            "unique_count": len(value_counts),
-                            "top_values": value_counts.head(5).to_dict()
-                        }
-                    })
+                if df[col].nunique() <= 10:
+                    try:
+                        value_counts = df[col].value_counts()
+                        insights.append({
+                            "type": "categorical_analysis",
+                            "name": f"{col} 分布分析",
+                            "description": f"{col} 有 {len(value_counts)} 个不同值，最常见的是 '{value_counts.index[0]}'",
+                            "data": clean_numpy_types({
+                                "unique_count": len(value_counts),
+                                "top_values": value_counts.head(5).to_dict()
+                            })
+                        })
+                    except Exception as e:
+                        logger.error(f"分析分类列 {col} 时发生错误: {str(e)}")
             
             # 缺失值分析
-            missing_data = df.isnull().sum()
-            if missing_data.sum() > 0:
-                insights.append({
-                    "type": "missing_data",
-                    "name": "缺失值分析",
-                    "description": f"数据中有 {missing_data.sum()} 个缺失值",
-                    "data": missing_data[missing_data > 0].to_dict()
-                })
+            try:
+                missing_data = df.isnull().sum()
+                if missing_data.sum() > 0:
+                    insights.append({
+                        "type": "missing_data",
+                        "name": "缺失值分析",
+                        "description": f"数据中有 {missing_data.sum()} 个缺失值",
+                        "data": clean_numpy_types(missing_data[missing_data > 0].to_dict())
+                    })
+            except Exception as e:
+                logger.error(f"缺失值分析失败: {str(e)}")
             
+            # 如果没有生成任何洞察，添加基本概览
+            if not insights:
+                insights.append({
+                    "type": "basic_overview",
+                    "name": "数据概览", 
+                    "description": f"数据包含 {len(df)} 行，{len(df.columns)} 列",
+                    "data": {
+                        "rows": len(df),
+                        "columns": len(df.columns),
+                        "column_names": df.columns.tolist()
+                    }
+                })
+                
         except Exception as e:
-            logger.error(f"生成洞察时发生错误: {str(e)}")
+            logger.error(f"生成洞察时发生严重错误: {str(e)}")
+            # 回退到基本概览
+            insights = [{
+                "type": "error",
+                "name": "分析失败",
+                "description": f"数据洞察分析失败: {str(e)}，仅提供基本信息",
+                "data": {
+                    "rows": len(df),
+                    "columns": len(df.columns),
+                    "column_names": df.columns.tolist()
+                }
+            }]
         
         return insights
     
@@ -719,11 +818,82 @@ class LocalChartGenerator:
         md_content.append("")
         
         if insights:
-            md_content.append("## 数据洞察")
+            # 分类显示洞察
+            severity_order = {'critical': '🔴 关键问题', 'high': '🟠 重要发现', 'medium': '🟡 一般发现', 'low': '🟢 基础信息'}
+            
+            # 按严重程度分组
+            insights_by_severity = {}
+            basic_insights = []
+            
             for insight in insights:
-                md_content.append(f"### {insight['name']}")
-                md_content.append(insight['description'])
-                md_content.append("")
+                insight_data = insight.get('data', {})
+                severity = insight_data.get('severity', 'unknown')
+                
+                # 特殊处理非框架生成的洞察
+                if insight['type'] in ['categorical_analysis', 'missing_data', 'basic_overview', 'error']:
+                    basic_insights.append(insight)
+                else:
+                    if severity not in insights_by_severity:
+                        insights_by_severity[severity] = []
+                    insights_by_severity[severity].append(insight)
+            
+            # 显示框架分析结果
+            md_content.append("## 专业数据洞察")
+            if insights_by_severity:
+                for severity in ['critical', 'high', 'medium', 'low']:
+                    if severity in insights_by_severity:
+                        md_content.append(f"### {severity_order[severity]}")
+                        for insight in insights_by_severity[severity]:
+                            md_content.append(f"#### {insight['name']}")
+                            md_content.append(insight['description'])
+                            
+                            insight_data = insight.get('data', {})
+                            confidence = insight_data.get('confidence', 0)
+                            algorithm = insight_data.get('algorithm', '未知')
+                            
+                            md_content.append(f"- **算法**: {algorithm}")
+                            md_content.append(f"- **置信度**: {confidence:.2f}")
+                            
+                            # 显示建议
+                            recommendations = insight_data.get('recommendations', [])
+                            if recommendations:
+                                md_content.append("- **建议**:")
+                                for rec in recommendations[:3]:  # 最多显示3个建议
+                                    md_content.append(f"  - {rec}")
+                            
+                            # 显示详细信息（如果有异常数据）
+                            affected_data = insight_data.get('affected_data', [])
+                            if affected_data and len(affected_data) <= 10:  # 只显示少量异常数据
+                                md_content.append(f"- **受影响数据位置**: {affected_data}")
+                            elif len(affected_data) > 10:
+                                md_content.append(f"- **受影响数据**: {len(affected_data)} 个数据点")
+                            
+                            md_content.append("")
+            
+            # 显示基础分析结果
+            if basic_insights:
+                md_content.append("### 📊 基础数据分析")
+                for insight in basic_insights:
+                    md_content.append(f"#### {insight['name']}")
+                    md_content.append(insight['description'])
+                    
+                    # 显示分类分析的详细信息
+                    if insight['type'] == 'categorical_analysis':
+                        top_values = insight.get('data', {}).get('top_values', {})
+                        if top_values:
+                            md_content.append("- **分布详情**:")
+                            for value, count in list(top_values.items())[:5]:
+                                md_content.append(f"  - {value}: {count}")
+                    
+                    # 显示缺失值详情
+                    elif insight['type'] == 'missing_data':
+                        missing_details = insight.get('data', {})
+                        if missing_details:
+                            md_content.append("- **缺失值详情**:")
+                            for col, count in missing_details.items():
+                                md_content.append(f"  - {col}: {count} 个缺失值")
+                    
+                    md_content.append("")
         
         md_content.append("## 图表说明")
         chart_descriptions = {
@@ -733,5 +903,478 @@ class LocalChartGenerator:
             'scatter': "散点图适合探索两个数值变量之间的相关关系"
         }
         md_content.append(chart_descriptions.get(chart_type, "图表展示了数据的可视化结果"))
+        
+        # 添加分析说明
+        md_content.append("")
+        md_content.append("## 分析说明")
+        md_content.append("本报告使用了专业的数据洞察框架进行分析，包括：")
+        md_content.append("- **异常检测**: Z-Score、IQR、LOF等算法识别数据异常")
+        md_content.append("- **趋势分析**: Mann-Kendall检验识别数据趋势")
+        md_content.append("- **变化点检测**: Page-Hinkley和贝叶斯方法识别数据转折点")
+        md_content.append("- **相关性分析**: Pearson和Spearman相关系数分析变量关系")
+        md_content.append("- **聚类分析**: DBSCAN算法识别数据群组和异常点")
+        
+        return "\n".join(md_content) 
+    
+    async def _optimize_markdown_with_llm(self, original_md: str, chart_spec: Dict[str, Any], insights: List[Dict], chart_type: str) -> str:
+        """使用LLM优化markdown内容"""
+        try:
+            # 获取LLM实例
+            llm = get_llm_by_type("basic")
+            
+            # 准备数据摘要
+            chart_summary = self._prepare_chart_summary(chart_spec, insights, chart_type)
+            
+            # 构建优化提示
+            prompt = self._build_markdown_optimization_prompt(original_md, chart_summary)
+            
+            # 调用LLM
+            logger.info("使用LLM优化Markdown内容")
+            response = await llm.ainvoke(prompt)
+            
+            # 解析并验证LLM响应
+            optimized_md = self._parse_markdown_response(response.content)
+            
+            return optimized_md
+            
+        except Exception as e:
+            logger.error(f"LLM优化Markdown失败: {str(e)}")
+            raise e
+    
+    def _prepare_chart_summary(self, chart_spec: Dict[str, Any], insights: List[Dict], chart_type: str) -> Dict[str, Any]:
+        """准备图表摘要用于LLM优化"""
+        try:
+            summary = {
+                "chart_type": chart_type,
+                "series_count": len(chart_spec.get("series", [])),
+                "insights_count": len(insights),
+                "critical_insights": [],
+                "high_insights": [],
+                "chart_insights": []
+            }
+            
+            # 提取关键洞察
+            for insight in insights:
+                # 确保 insight 是字典类型
+                if not isinstance(insight, dict):
+                    logger.warning(f"跳过非字典类型的洞察: {type(insight)}")
+                    continue
+                
+                insight_data = insight.get('data', {})
+                # 确保 insight_data 是字典类型
+                if not isinstance(insight_data, dict):
+                    insight_data = {}
+                
+                severity = insight_data.get('severity', 'low')
+                data_source = insight_data.get('data_source', 'unknown')
+                
+                insight_summary = {
+                    "name": insight.get('name', '未知'),
+                    "description": insight.get('description', ''),
+                    "type": insight.get('type', 'unknown')
+                }
+                
+                if severity == 'critical':
+                    summary["critical_insights"].append(insight_summary)
+                elif severity == 'high':
+                    summary["high_insights"].append(insight_summary)
+                elif data_source == 'chart_data':
+                    summary["chart_insights"].append(insight_summary)
+            
+            # 提取图表数据信息
+            if chart_spec.get("series") and len(chart_spec["series"]) > 0:
+                first_series = chart_spec["series"][0]
+                
+                # 确保 first_series 是字典类型
+                if isinstance(first_series, dict):
+                    summary["data_count"] = len(first_series.get("data", []))
+                    summary["series_name"] = first_series.get("name", "未命名")
+                else:
+                    # 如果不是字典，设置默认值
+                    summary["data_count"] = 0
+                    summary["series_name"] = "未命名"
+                
+                # 提取X轴和Y轴信息
+                logger.info(f"chart_spec: {chart_spec}")
+                if "xAxis" in chart_spec and isinstance(chart_spec["xAxis"], dict):
+                    summary["x_axis_name"] = chart_spec["xAxis"].get("name", "")
+                if "yAxis" in chart_spec and isinstance(chart_spec["yAxis"], dict):
+                    summary["y_axis_name"] = chart_spec["yAxis"].get("name", "")
+            
+            return summary
+            
+        except Exception as e:
+            logger.error(f"准备图表摘要失败: {str(e)}")
+            return {"error": str(e)}
+    
+    def _build_markdown_optimization_prompt(self, original_md: str, chart_summary: Dict[str, Any]) -> str:
+        """构建Markdown优化提示"""
+        prompt = f"""你是一个专业的数据分析师和技术写作专家。请优化以下数据分析报告的Markdown内容，使其更加专业、易读和富有洞察力。
+
+原始报告内容:
+{original_md}
+
+图表摘要信息:
+- 图表类型: {chart_summary.get('chart_type', '未知')}
+- 数据系列数: {chart_summary.get('series_count', 0)}
+- 数据点数量: {chart_summary.get('data_count', 0)}
+- 洞察总数: {chart_summary.get('insights_count', 0)}
+- 关键发现数: {len(chart_summary.get('critical_insights', []))}
+- 重要发现数: {len(chart_summary.get('high_insights', []))}
+
+关键洞察信息:
+{json.dumps(chart_summary.get('critical_insights', []) + chart_summary.get('high_insights', []), ensure_ascii=False, indent=2)}
+
+优化要求:
+1. **保持结构**: 保持原有的Markdown章节结构，不要删除或重组主要章节
+2. **优化语言**: 使用更专业、准确的数据分析术语
+3. **增强可读性**: 改进表达方式，使内容更流畅易懂
+4. **突出重点**: 强调关键发现和重要洞察
+5. **添加总结**: 在每个主要章节后添加简要总结
+6. **保持数据**: 保留所有具体的数据、数字和算法名称
+7. **改进格式**: 优化表格、列表和强调标记的使用
+8. **专业术语**: 使用准确的统计学和数据分析专业术语
+9. **逻辑连贯**: 确保各部分内容逻辑连贯，过渡自然
+
+请返回优化后的完整Markdown内容，确保内容专业、准确且易于理解。不要添加原文中没有的信息，但可以改进表达方式和组织结构。"""
+
+        return prompt
+    
+    def _parse_markdown_response(self, response_content: str) -> str:
+        """解析LLM返回的Markdown内容"""
+        try:
+            # 清理响应内容
+            content = response_content.strip()
+            
+            # 移除可能的markdown代码块标记
+            if content.startswith('```markdown'):
+                content = content[11:]
+            elif content.startswith('```'):
+                content = content[3:]
+            if content.endswith('```'):
+                content = content[:-3]
+            
+            # 验证内容是否包含基本的Markdown结构
+            content = content.strip()
+            if not content or len(content) < 100:
+                raise ValueError("LLM返回的内容过短，可能不完整")
+            
+            # 检查是否包含必要的章节标题
+            required_sections = ["图表数据分析报告", "图表概览"]
+            for section in required_sections:
+                if section not in content:
+                    logger.warning(f"优化后的内容缺少必要章节: {section}")
+            
+            return content
+            
+        except Exception as e:
+            logger.error(f"解析LLM Markdown响应失败: {str(e)}")
+            raise ValueError(f"解析LLM响应失败: {str(e)}")
+
+    def _extract_data_from_chart_spec(self, chart_spec: Dict[str, Any], chart_type: str) -> Optional[pd.DataFrame]:
+        """从图表配置中提取实际使用的数据"""
+        logger.info(f"chart_spec: {chart_spec}")
+        try:
+            if "series" not in chart_spec or not chart_spec["series"]:
+                return None
+            
+            series_data = chart_spec["series"][0]  # 取第一个系列的数据
+            
+            if chart_type in ['bar', 'line']:
+                # 柱状图和折线图
+                x_data = chart_spec.get("xAxis", {}).get("data", [])
+                y_data = series_data.get("data", [])
+                
+                if x_data and y_data:
+                    df = pd.DataFrame({
+                        'category': x_data,
+                        'value': y_data
+                    })
+                    return df
+                    
+            elif chart_type == 'pie':
+                # 饼图
+                pie_data = series_data.get("data", [])
+                if pie_data and isinstance(pie_data, list):
+                    categories = []
+                    values = []
+                    for item in pie_data:
+                        if isinstance(item, dict):
+                            categories.append(item.get("name", ""))
+                            values.append(item.get("value", 0))
+                    
+                    if categories and values:
+                        df = pd.DataFrame({
+                            'category': categories,
+                            'value': values
+                        })
+                        return df
+                        
+            elif chart_type == 'scatter':
+                # 散点图
+                scatter_data = series_data.get("data", [])
+                if scatter_data and isinstance(scatter_data, list):
+                    x_values = []
+                    y_values = []
+                    for point in scatter_data:
+                        if isinstance(point, list) and len(point) >= 2:
+                            x_values.append(point[0])
+                            y_values.append(point[1])
+                    
+                    if x_values and y_values:
+                        df = pd.DataFrame({
+                            'x': x_values,
+                            'y': y_values
+                        })
+                        return df
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"从图表配置提取数据失败: {str(e)}")
+            return None
+
+    def _generate_insights_from_chart(self, chart_spec: Dict[str, Any], chart_type: str, original_df: pd.DataFrame) -> List[Dict[str, Any]]:
+        """基于图表配置生成数据洞察"""
+        insights = []
+        
+        try:
+            # 从图表配置中提取实际数据
+            chart_df = self._extract_data_from_chart_spec(chart_spec, chart_type)
+            logger.info(f"chart_df: {chart_df}")
+            
+            if chart_df is None or chart_df.empty:
+                logger.warning("无法从图表配置中提取数据，使用原始数据生成洞察")
+                return self._generate_insights(original_df)
+            
+            # 使用DataInsightFramework分析图表数据
+            framework = DataInsightFramework()
+            
+            # 分析数值列
+            numeric_cols = chart_df.select_dtypes(include=[np.number]).columns
+            
+            for col in numeric_cols:
+                try:
+                    # 使用框架分析每个数值列
+                    framework_results = framework.analyze(chart_df, column=col)
+                    
+                    # 转换框架结果为图表生成器的格式
+                    for result in framework_results:
+                        insight = {
+                            "type": result.insight_type,
+                            "name": f"图表数据 {col} - {result.algorithm}",
+                            "description": f"[图表数据分析] {result.description}",
+                            "data": clean_numpy_types({
+                                "algorithm": result.algorithm,
+                                "severity": result.severity,
+                                "confidence": result.confidence,
+                                "details": result.details,
+                                "affected_data": result.affected_data,
+                                "recommendations": result.recommendations,
+                                "chart_type": chart_type,
+                                "data_source": "chart_data"
+                            })
+                        }
+                        insights.append(insight)
+                        
+                except Exception as e:
+                    logger.error(f"分析图表数据列 {col} 时发生错误: {str(e)}")
+            
+            # 图表特定的洞察
+            chart_insights = self._generate_chart_specific_insights(chart_spec, chart_type, chart_df)
+            insights.extend(chart_insights)
+            
+            # 如果没有生成任何洞察，添加基本信息
+            if not insights:
+                insights.append({
+                    "type": "chart_overview",
+                    "name": f"{chart_type}图表概览",
+                    "description": f"图表包含 {len(chart_df)} 个数据点",
+                    "data": {
+                        "chart_type": chart_type,
+                        "data_points": len(chart_df),
+                        "data_source": "chart_data"
+                    }
+                })
+                
+        except Exception as e:
+            logger.error(f"基于图表配置生成洞察时发生错误: {str(e)}")
+            # 回退到原始数据分析
+            return self._generate_insights(original_df)
+        
+        return insights
+
+    def _generate_chart_specific_insights(self, chart_spec: Dict[str, Any], chart_type: str, chart_df: pd.DataFrame) -> List[Dict[str, Any]]:
+        """生成图表类型特定的洞察"""
+        insights = []
+        
+        try:
+            if chart_type in ['bar', 'line'] and 'value' in chart_df.columns:
+                values = chart_df['value'].values
+                
+                # 找出最高值和最低值
+                max_idx = np.argmax(values)
+                min_idx = np.argmin(values)
+                
+                max_category = chart_df.iloc[max_idx]['category'] if 'category' in chart_df.columns else f"位置{max_idx}"
+                min_category = chart_df.iloc[min_idx]['category'] if 'category' in chart_df.columns else f"位置{min_idx}"
+                
+                insights.append({
+                    "type": "chart_analysis",
+                    "name": f"{chart_type}图表数据分析",
+                    "description": f"最高值出现在 '{max_category}' ({values[max_idx]:.2f})，最低值出现在 '{min_category}' ({values[min_idx]:.2f})",
+                    "data": {
+                        "chart_type": chart_type,
+                        "max_value": float(values[max_idx]),
+                        "min_value": float(values[min_idx]),
+                        "max_category": str(max_category),
+                        "min_category": str(min_category),
+                        "data_source": "chart_data"
+                    }
+                })
+                
+                # 计算数据分布
+                mean_value = np.mean(values)
+                std_value = np.std(values)
+                cv = std_value / mean_value if mean_value != 0 else 0
+                
+                if cv > 0.5:
+                    insights.append({
+                        "type": "variability_analysis",
+                        "name": "数据波动性分析",
+                        "description": f"图表数据波动较大，变异系数为 {cv:.3f}，建议关注数据稳定性",
+                        "data": {
+                            "coefficient_of_variation": float(cv),
+                            "mean": float(mean_value),
+                            "std": float(std_value),
+                            "data_source": "chart_data"
+                        }
+                    })
+                    
+            elif chart_type == 'pie' and 'value' in chart_df.columns:
+                values = chart_df['value'].values
+                total = np.sum(values)
+                
+                # 找出占比最大的类别
+                max_idx = np.argmax(values)
+                max_category = chart_df.iloc[max_idx]['category'] if 'category' in chart_df.columns else f"类别{max_idx}"
+                max_percentage = (values[max_idx] / total) * 100
+                
+                insights.append({
+                    "type": "proportion_analysis", 
+                    "name": "饼图比例分析",
+                    "description": f"'{max_category}' 占据最大比例 ({max_percentage:.1f}%)，是主要组成部分",
+                    "data": {
+                        "dominant_category": str(max_category),
+                        "dominant_percentage": float(max_percentage),
+                        "total_categories": len(values),
+                        "data_source": "chart_data"
+                    }
+                })
+                
+        except Exception as e:
+            logger.error(f"生成图表特定洞察时发生错误: {str(e)}")
+        
+        return insights
+
+    async def _generate_insight_markdown_from_chart(self, chart_spec: Dict[str, Any], insights: List[Dict], chart_type: str, use_llm: bool = False) -> str:
+        """基于图表配置生成洞察文档（Markdown格式）"""
+        md_content = []
+        
+        md_content.append("# 图表数据分析报告")
+        md_content.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        md_content.append(f"**图表类型**: {chart_type}")
+        md_content.append("")
+        
+        # 图表概览
+        md_content.append("## 图表概览")
+        series_count = len(chart_spec.get("series", []))
+        md_content.append(f"- 图表系列数: {series_count}")
+        
+        if chart_spec.get("series"):
+            first_series = chart_spec["series"][0]
+            data_count = len(first_series.get("data", []))
+            md_content.append(f"- 数据点数量: {data_count}")
+            md_content.append(f"- 系列名称: {first_series.get('name', '未命名')}")
+        
+        md_content.append("")
+        
+        if insights:
+            # 按数据源和严重程度分组显示洞察
+            severity_order = {'critical': '🔴 关键发现', 'high': '🟠 重要发现', 'medium': '🟡 一般发现', 'low': '🟢 基础信息'}
+            
+            # 分组洞察
+            chart_insights = []
+            framework_insights = {}
+            
+            for insight in insights:
+                insight_data = insight.get('data', {})
+                data_source = insight_data.get('data_source', 'unknown')
+                
+                if data_source == 'chart_data' and insight['type'] in ['chart_analysis', 'proportion_analysis', 'variability_analysis']:
+                    chart_insights.append(insight)
+                else:
+                    severity = insight_data.get('severity', 'low')
+                    if severity not in framework_insights:
+                        framework_insights[severity] = []
+                    framework_insights[severity].append(insight)
+            
+            # 显示图表特定洞察
+            if chart_insights:
+                md_content.append("## 📊 图表数据洞察")
+                for insight in chart_insights:
+                    md_content.append(f"### {insight['name']}")
+                    md_content.append(insight['description'])
+                    md_content.append("")
+            
+            # 显示框架分析结果
+            if framework_insights:
+                md_content.append("## 🔍 专业数据分析")
+                for severity in ['critical', 'high', 'medium', 'low']:
+                    if severity in framework_insights:
+                        md_content.append(f"### {severity_order[severity]}")
+                        for insight in framework_insights[severity]:
+                            md_content.append(f"#### {insight['name']}")
+                            md_content.append(insight['description'])
+                            
+                            insight_data = insight.get('data', {})
+                            confidence = insight_data.get('confidence', 0)
+                            algorithm = insight_data.get('algorithm', '未知')
+                            
+                            md_content.append(f"- **分析算法**: {algorithm}")
+                            md_content.append(f"- **置信度**: {confidence:.2f}")
+                            
+                            # 显示建议
+                            recommendations = insight_data.get('recommendations', [])
+                            if recommendations:
+                                md_content.append("- **建议**:")
+                                for rec in recommendations[:3]:
+                                    md_content.append(f"  - {rec}")
+                            
+                            md_content.append("")
+        
+        # 图表说明
+        md_content.append("## 📈 图表说明")
+        chart_descriptions = {
+            'bar': "柱状图适合比较不同类别的数值大小，本分析基于图表中实际显示的数据",
+            'line': "折线图适合展示数据随时间或其他连续变量的变化趋势，本分析基于图表中实际显示的数据",
+            'pie': "饼图适合展示各部分占整体的比例关系，本分析基于图表中实际显示的数据",
+            'scatter': "散点图适合探索两个数值变量之间的相关关系，本分析基于图表中实际显示的数据"
+        }
+        md_content.append(chart_descriptions.get(chart_type, "图表展示了数据的可视化结果，本分析基于图表中实际显示的数据"))
+        
+        # 添加分析说明
+        md_content.append("")
+        md_content.append("## ℹ️ 分析说明")
+        md_content.append("本报告基于图表配置中的实际数据进行分析，确保洞察与可视化内容完全一致。")
+        md_content.append("使用了专业的数据洞察框架，包括异常检测、趋势分析、相关性分析等多种算法。")
+        
+        # 如果启用LLM，使用大模型优化markdown内容
+        if use_llm:
+            try:
+                return await self._optimize_markdown_with_llm("\n".join(md_content), chart_spec, insights, chart_type)
+            except Exception as e:
+                logger.error(f"使用LLM优化markdown失败: {str(e)}，返回原始内容")
+                return "\n".join(md_content)
         
         return "\n".join(md_content) 

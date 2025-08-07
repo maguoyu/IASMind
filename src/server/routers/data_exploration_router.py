@@ -447,6 +447,7 @@ class AnalyzeDataRequest(BaseModel):
     output_type: str = "html"
     task_type: str = "visualization"
     user_prompt: Optional[str] = None
+    use_llm: bool = False
     language: str = "zh"
 
 
@@ -540,7 +541,8 @@ async def analyze_data(
             data=data_to_use,
             data_type=dataType,
             user_prompt=request.user_prompt,
-            enable_insights=True
+            enable_insights=True,
+            use_llm=request.use_llm
         )
         
         # 如果有错误，抛出异常

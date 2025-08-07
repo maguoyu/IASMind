@@ -37,6 +37,7 @@ export interface AnalyzeDataRequest {
   output_type?: string;
   task_type?: string;
   user_prompt?: string;
+  use_llm?: boolean;
   language?: string;
 }
 

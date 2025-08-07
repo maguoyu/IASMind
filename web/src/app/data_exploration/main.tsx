@@ -371,7 +371,8 @@ export function DataExplorationMain() {
         file_id: fileId,
         output_type: "html",
         task_type: "visualization",
-        user_prompt: useAIMode && prompt ? prompt : undefined, // 只有在AI模式且有提示时才发送
+        user_prompt: prompt && prompt.trim() ? prompt.trim() : undefined, // 有提示内容时总是发送
+        use_llm: useAIMode, // AI智能模式开关
         language: "zh"
       };
       
@@ -463,7 +464,7 @@ export function DataExplorationMain() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, []);
+  }, [useAIMode]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';

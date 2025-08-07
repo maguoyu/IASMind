@@ -52,13 +52,7 @@ export default function HomePage() {
       href: "/data_exploration",
       color: "bg-gradient-to-br from-cyan-500 to-blue-600"
     },
-    {
-      title: "ECharts 测试",
-      description: "测试本地ECharts图表生成，输入数据并生成各种图表",
-      icon: <PieChartOutlined className="text-2xl" />,
-      href: "/chatbi-test",
-      color: "bg-gradient-to-br from-yellow-500 to-amber-600"
-    },
+
     {
       title: "分析报告",
       description: "生成和查看数据分析报告，支持多种图表展示",

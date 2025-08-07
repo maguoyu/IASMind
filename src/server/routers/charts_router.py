@@ -197,7 +197,8 @@ async def generate_chart(
             data=data_to_use,
             data_type=dataType,
             user_prompt=request.user_prompt,
-            enable_insights=request.enable_insights
+            enable_insights=request.enable_insights,
+            use_llm=True
         )
         
         # 如果有错误，抛出异常
@@ -297,7 +298,8 @@ async def generate_chart_with_file(
             data=data_to_use,
             data_type=dataType,
             user_prompt=user_prompt,
-            enable_insights=enable_insights
+            enable_insights=enable_insights,
+            use_llm=True
         )
         
         # 如果有错误，抛出异常

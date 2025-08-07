@@ -376,7 +376,12 @@ const isValidCSV = (text: string): boolean => {
   }
   
   // 检查分隔符一致性
-  const firstLineCommas = lines[0].split(',').length - 1;
+  const firstLine = lines[0];
+  if (!firstLine) {
+    return false;
+  }
+  
+  const firstLineCommas = firstLine.split(',').length - 1;
   if (firstLineCommas === 0) { // 必须有逗号分隔
     return false;
   }
@@ -384,7 +389,7 @@ const isValidCSV = (text: string): boolean => {
   // 检查每行字段数是否一致
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
-    if (line.trim() && (line.split(',').length - 1) !== firstLineCommas) {
+    if (line && line.trim() && (line.split(',').length - 1) !== firstLineCommas) {
       return false;
     }
   }
@@ -439,7 +444,32 @@ const processTextContent = (content: string, fileInfo: any): FilePreviewData => 
     console.log('检测到CSV格式数据');
     try {
       const lines = dataStr.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/['"]/g, ''));
+      if (lines.length === 0) {
+        return { 
+          headers: [], 
+          rows: [], 
+          totalRows: 0, 
+          fileInfo: {
+            ...fileInfo,
+            extension: `${fileInfo.extension} (空CSV)`
+          }
+        };
+      }
+      
+      const firstLine = lines[0];
+      if (!firstLine) {
+        return { 
+          headers: [], 
+          rows: [], 
+          totalRows: 0, 
+          fileInfo: {
+            ...fileInfo,
+            extension: `${fileInfo.extension} (无效CSV)`
+          }
+        };
+      }
+      
+      const headers = firstLine.split(',').map(h => h.trim().replace(/['"]/g, ''));
       const rows = lines.slice(1).map(line => 
         line.split(',').map(cell => cell.trim().replace(/['"]/g, ''))
       );
@@ -519,7 +549,10 @@ const parseFileContent = (file: UploadedFile): FilePreviewData | null => {
         const lines = file.content.split('\n').filter(line => line.trim());
         if (lines.length === 0) return null;
         
-        const headers = lines[0].split(',').map(h => h.trim().replace(/['"]/g, ''));
+        const firstLine = lines[0];
+        if (!firstLine) return null;
+        
+        const headers = firstLine.split(',').map(h => h.trim().replace(/['"]/g, ''));
         const rows = lines.slice(1).map(line => 
           line.split(',').map(cell => cell.trim().replace(/['"]/g, ''))
         );
@@ -611,7 +644,13 @@ const parseFileContent = (file: UploadedFile): FilePreviewData | null => {
           
           // 取第一个工作表
           const firstSheetName = workbook.SheetNames[0];
+          if (!firstSheetName) {
+            throw new Error('Excel文件中没有工作表');
+          }
           const worksheet = workbook.Sheets[firstSheetName];
+          if (!worksheet) {
+            throw new Error(`工作表 "${firstSheetName}" 不存在`);
+          }
           
           // 转换为JSON
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -1186,10 +1225,13 @@ export function ChartsMain() {
             if (response.data.spec && typeof response.data.spec === 'object') {
               try {
                 console.log('检测到图表spec，正在创建图表:', response.data.spec);
+                // 提取标题，确保是字符串格式
+                const specTitle = extractChartTitle(response.data.spec.title, '数据分析结果');
+                
                 // 尝试将spec转换为图表数据
                 chartData = [{
                   type: 'custom',
-                  title: response.data.spec.title || '数据分析结果',
+                  title: specTitle,
                   data: [], // 对于custom类型，data可以为空，因为数据包含在spec中
                   config: response.data.spec
                 }];
@@ -1294,9 +1336,14 @@ export function ChartsMain() {
                 // 检查是否是ECharts格式的配置
                 const isEChartsFormat = analysisResult.chart_config.chart_type === 'custom';
                 
+                // 提取标题，确保是字符串格式
+                const chartTitle = isEChartsFormat && analysisResult.chart_config.title
+                  ? extractChartTitle(analysisResult.chart_config.title, `${titlePrefix} 分析结果`)
+                  : `${titlePrefix} 分析结果`;
+                
                 charts = [{
                   type: isEChartsFormat ? 'custom' : (analysisResult.chart_config.type || 'bar'),
-                  title: `${titlePrefix} 分析结果`,
+                  title: chartTitle,
                   data: chartData?.data || [],
                   config: analysisResult.chart_config
                 }];
@@ -1460,6 +1507,14 @@ export function ChartsMain() {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }, []);
+
+  // 从ECharts title配置中提取字符串标题
+  const extractChartTitle = (title: any, fallback: string = '图表'): string => {
+    if (!title) return fallback;
+    if (typeof title === 'string') return title;
+    if (typeof title === 'object' && title.text) return title.text;
+    return fallback;
+  };
   
   const renderChart = (chart: ChartData) => {
     console.log('正在渲染图表:', chart);
@@ -1835,9 +1890,9 @@ export function ChartsMain() {
                               {message.filePreview.fileInfo.extension}
                             </Badge>
                             <Badge variant="secondary" className="text-xs">
-                              {message.filePreview.headers.length === 1 && message.filePreview.headers[0] === '文本内容' 
-                                ? `${message.filePreview.totalRows} 行文本`
-                                : `${message.filePreview.totalRows} 行`
+                              {message.filePreview?.headers.length === 1 && message.filePreview?.headers[0] === '文本内容' 
+                                ? `${message.filePreview?.totalRows} 行文本`
+                                : `${message.filePreview?.totalRows} 行`
                               }
                             </Badge>
                           </div>
@@ -1852,7 +1907,7 @@ export function ChartsMain() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         {/* 判断是否为纯文本内容 */}
-                        {message.filePreview.headers.length === 1 && message.filePreview.headers[0] === '文本内容' ? (
+                                                  {message.filePreview?.headers.length === 1 && message.filePreview?.headers[0] === '文本内容' ? (
                           /* 纯文本显示 */
                           <div className="max-h-40 overflow-auto border rounded bg-muted/20">
                             <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed break-words break-all overflow-wrap-anywhere">
@@ -1866,11 +1921,11 @@ export function ChartsMain() {
                               {/* 表头 */}
                               <thead className="bg-muted/50 border-b sticky top-0">
                                 <tr>
-                                  {message.filePreview.headers.map((header, index) => (
+                                  {message.filePreview?.headers.map((header, index) => (
                                     <th
                                       key={index}
                                       className="px-2 py-1 font-medium text-left truncate border-r last:border-r-0"
-                                      style={{ width: `${100 / message.filePreview.headers.length}%` }}
+                                      style={{ width: `${100 / (message.filePreview?.headers.length || 1)}%` }}
                                       title={header}
                                     >
                                       {header}

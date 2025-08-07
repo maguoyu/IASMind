@@ -96,11 +96,13 @@ export async function sendMessage(agentPath?: string,
     resources,
     enableOnlineSearch,
     enableKnowledgeRetrieval,
+    files, // 添加 files 属性
   }: {
     interruptFeedback?: string;
     resources?: Array<Resource>;
     enableOnlineSearch?: boolean;
     enableKnowledgeRetrieval?: boolean;
+    files?: Array<any>; // 添加 files 类型
   } = {},
   options: { abortSignal?: AbortSignal } = {},
 ) {
@@ -136,6 +138,7 @@ export async function sendMessage(agentPath?: string,
       mcp_settings: settings.mcpSettings,
       enable_online_search: enableOnlineSearch,
       enable_knowledge_retrieval: enableKnowledgeRetrieval,
+      files, // 传递 files
     },
     options,
   );

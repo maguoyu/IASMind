@@ -28,6 +28,7 @@ export async function* chatStream(
     enable_background_investigation: boolean;
     enable_online_search?: boolean;
     enable_knowledge_retrieval?: boolean;
+    files?: Array<any>; // 添加 files 属性
     report_style?: "academic" | "popular_science" | "news" | "social_media";
     mcp_settings?: {
       servers: Record<
@@ -53,6 +54,7 @@ export async function* chatStream(
       body: JSON.stringify({
         messages: [{ role: "user", content: userMessage }],
         ...params,
+        files: params.files, // 确保 files 被传递
       }),
       signal: options.abortSignal,
     });

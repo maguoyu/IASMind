@@ -12,7 +12,7 @@ export const debugApiTest = {
       return { success: response.ok, status: response.status };
     } catch (error) {
       console.error('❌ 基础连接失败:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   },
 
@@ -34,7 +34,7 @@ export const debugApiTest = {
       }
     } catch (error) {
       console.error('❌ 数据探索API连接失败:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   },
 
@@ -57,7 +57,7 @@ export const debugApiTest = {
       return { success: true, response };
     } catch (error) {
       console.error('❌ analyze端点测试失败:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   },
 
@@ -82,7 +82,7 @@ export const debugApiTest = {
       }
     } catch (error) {
       console.error('❌ 检查服务配置失败:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   },
 

@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, List, Union
 import json
 import asyncio
 from uuid import uuid4
+from datetime import datetime
 
 from src.database_analysis.graph.builder import run_database_analysis
 from ..auth_middleware import GetCurrentUser
@@ -22,6 +23,7 @@ class DatabaseAnalysisRequest(BaseModel):
     datasource_id: str
     thread_id: str
     table_name: Optional[str] = None
+    enable_insights: bool = False
 
 
 class TableData(BaseModel):
@@ -44,6 +46,8 @@ class DatabaseAnalysisResponse(BaseModel):
     chart_config: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+    insights: Optional[Dict[str, Any]] = None
+    insight_md: Optional[str] = None
 
 
 def generate_echarts_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any]], columns: List[str]) -> Dict[str, Any]:
@@ -192,6 +196,146 @@ def generate_echarts_spec(chart_config: Dict[str, Any], data: List[Dict[str, Any
     }
 
 
+def generate_database_insight_markdown(
+    data: List[Dict[str, Any]], 
+    columns: List[str], 
+    metadata: Dict[str, Any], 
+    insights_data: Optional[Dict[str, Any]] = None
+) -> str:
+    """生成数据库分析洞察的Markdown文档"""
+    md_content = []
+    
+    md_content.append("# 数据库查询分析报告")
+    md_content.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    md_content.append(f"**查询执行时间**: {metadata.get('execution_time', 0):.3f}秒")
+    md_content.append("")
+    
+    # 查询概览
+    md_content.append("## 查询概览")
+    md_content.append(f"- 查询结果: {metadata.get('row_count', 0)} 条记录")
+    md_content.append(f"- 字段数量: {len(columns)}")
+    md_content.append(f"- 涉及表: {', '.join(metadata.get('tables', []))}")
+    md_content.append(f"- 字段列表: {', '.join(columns)}")
+    md_content.append("")
+    
+    # SQL查询
+    if metadata.get('sql_query'):
+        md_content.append("## SQL查询语句")
+        md_content.append("```sql")
+        md_content.append(metadata['sql_query'])
+        md_content.append("```")
+        md_content.append("")
+    
+    # 数据洞察
+    if insights_data:
+        md_content.append("## 数据洞察分析")
+        
+        # 基础洞察
+        if insights_data.get('basic_insights'):
+            md_content.append("### 📊 基础统计分析")
+            for insight in insights_data['basic_insights']:
+                md_content.append(f"- {insight}")
+            md_content.append("")
+        
+        # 高级洞察
+        if insights_data.get('advanced_insights'):
+            md_content.append("### 🔍 专业数据洞察")
+            
+            # 按严重程度分组显示
+            severity_order = {'critical': '🔴 关键问题', 'high': '🟠 重要发现', 'medium': '🟡 一般发现', 'low': '🟢 基础信息'}
+            insights_by_severity = {}
+            
+            for insight in insights_data['advanced_insights']:
+                severity = insight.get('severity', 'low')
+                if severity not in insights_by_severity:
+                    insights_by_severity[severity] = []
+                insights_by_severity[severity].append(insight)
+            
+            for severity in ['critical', 'high', 'medium', 'low']:
+                if severity in insights_by_severity:
+                    md_content.append(f"#### {severity_order[severity]}")
+                    for insight in insights_by_severity[severity]:
+                        md_content.append(f"**{insight['column']}字段分析**")
+                        md_content.append(f"- {insight['description']}")
+                        md_content.append(f"- 置信度: {insight.get('confidence', 0):.2f}")
+                        md_content.append(f"- 分析类型: {insight.get('type', '未知')}")
+                        md_content.append("")
+    
+    # 数据样例（显示前5行）
+    if data and len(data) > 0:
+        md_content.append("## 数据样例")
+        md_content.append("以下是查询结果的前5行数据：")
+        md_content.append("")
+        
+        # 创建表格头
+        md_content.append("| " + " | ".join(columns) + " |")
+        md_content.append("| " + " | ".join(["---"] * len(columns)) + " |")
+        
+        # 添加数据行（最多5行）
+        for i, row in enumerate(data[:5]):
+            row_values = []
+            for col in columns:
+                value = row.get(col, "")
+                # 处理None值和长字符串
+                if value is None:
+                    value = "NULL"
+                elif isinstance(value, str) and len(value) > 20:
+                    value = value[:17] + "..."
+                row_values.append(str(value))
+            md_content.append("| " + " | ".join(row_values) + " |")
+            
+        if len(data) > 5:
+            md_content.append("")
+            md_content.append(f"*还有 {len(data) - 5} 行数据未显示*")
+        md_content.append("")
+    
+    # 数据质量评估
+    if data and insights_data:
+        md_content.append("## 数据质量评估")
+        
+        # 计算基础质量指标
+        total_records = len(data)
+        total_fields = len(columns)
+        
+        # 检查空值
+        null_counts = {}
+        for col in columns:
+            null_count = sum(1 for row in data if row.get(col) is None or row.get(col) == "")
+            if null_count > 0:
+                null_counts[col] = null_count
+        
+        if null_counts:
+            md_content.append("### 缺失值分析")
+            for col, count in null_counts.items():
+                percentage = (count / total_records) * 100
+                md_content.append(f"- **{col}**: {count} 个缺失值 ({percentage:.1f}%)")
+        else:
+            md_content.append("### ✅ 数据完整性良好")
+            md_content.append("- 未发现缺失值")
+        
+        md_content.append("")
+    
+    # 建议与总结
+    md_content.append("## 分析建议")
+    if insights_data and insights_data.get('advanced_insights'):
+        high_severity_count = len([i for i in insights_data['advanced_insights'] if i.get('severity') in ['high', 'critical']])
+        if high_severity_count > 0:
+            md_content.append(f"- 发现 {high_severity_count} 个需要关注的数据问题，建议进一步调查")
+        else:
+            md_content.append("- 数据质量整体良好，未发现明显异常")
+    else:
+        md_content.append("- 建议启用数据洞察功能以获得更详细的分析")
+    
+    md_content.append("- 定期监控数据变化，确保数据质量稳定")
+    md_content.append("- 考虑建立数据质量监控机制")
+    md_content.append("")
+    
+    md_content.append("---")
+    md_content.append("*本报告由IASMind数据分析系统自动生成*")
+    
+    return "\n".join(md_content)
+
+
 @router.post("/analyze", response_model=DatabaseAnalysisResponse)
 async def analyze_database(
     request: DatabaseAnalysisRequest,
@@ -243,6 +387,100 @@ async def analyze_database(
         # 根据结果类型返回不同数据
         result_type = result.get("result_type", "table")
         query_result = result.get("query_result", {})
+        
+        # 如果启用了数据洞察，生成洞察信息
+        insights_data = None
+        if request.enable_insights and query_result.get("data"):
+            try:
+                from src.data_insight.data_insight_framework import DataInsightFramework
+                import pandas as pd
+                
+                # 将查询结果转换为DataFrame
+                data = query_result.get("data", [])
+                columns = query_result.get("columns", [])
+                
+                if data and columns:
+                    df = pd.DataFrame(data, columns=columns)
+                    
+                    # 创建数据洞察框架实例
+                    framework = DataInsightFramework()
+                    
+                    # 分析数值列
+                    numeric_cols = df.select_dtypes(include=['number']).columns
+                    insights_results = []
+                    
+                    for col in numeric_cols:
+                        try:
+                            # 使用框架分析每个数值列
+                            framework_results = framework.analyze(df, column=col)
+                            
+                            # 转换框架结果为简化的洞察信息
+                            for insight_result in framework_results:
+                                if insight_result.severity in ['medium', 'high', 'critical']:  # 只包含重要洞察
+                                    insights_results.append({
+                                        "type": insight_result.insight_type,
+                                        "column": col,
+                                        "description": insight_result.description,
+                                        "severity": insight_result.severity,
+                                        "confidence": insight_result.confidence
+                                    })
+                        except Exception as e:
+                            print(f"分析列 {col} 时出错: {str(e)}")
+                    
+                    # 生成基础统计洞察
+                    basic_insights = []
+                    if len(data) > 0:
+                        basic_insights.append(f"查询返回 {len(data)} 条记录")
+                        basic_insights.append(f"包含 {len(numeric_cols)} 个数值字段: {', '.join(numeric_cols)}")
+                        
+                        # 添加数据分布洞察
+                        for col in numeric_cols:
+                            col_data = df[col].dropna()
+                            if len(col_data) > 0:
+                                mean_val = col_data.mean()
+                                std_val = col_data.std()
+                                if std_val > mean_val * 0.5:  # 如果标准差较大
+                                    basic_insights.append(f"{col} 字段数据分布较为分散，标准差为 {std_val:.2f}")
+                                
+                                # 检查是否有明显的异常值
+                                q75, q25 = col_data.quantile(0.75), col_data.quantile(0.25)
+                                iqr = q75 - q25
+                                outliers = col_data[(col_data < (q25 - 1.5 * iqr)) | (col_data > (q75 + 1.5 * iqr))]
+                                if len(outliers) > 0:
+                                    basic_insights.append(f"{col} 字段检测到 {len(outliers)} 个潜在异常值")
+                    
+                    insights_data = {
+                        "basic_insights": basic_insights,
+                        "advanced_insights": insights_results
+                    }
+                    
+            except ImportError:
+                print("警告: 数据洞察框架不可用，跳过洞察生成")
+            except Exception as e:
+                print(f"生成数据洞察时出错: {str(e)}")
+        
+        # 将洞察数据添加到响应中
+        if insights_data:
+            response_data["insights"] = insights_data
+            
+            # 生成Markdown格式的洞察报告
+            try:
+                insight_md = generate_database_insight_markdown(
+                    data=query_result.get("data", []),
+                    columns=query_result.get("columns", []),
+                    metadata={
+                        "sql_query": result.get("sql_query", ""),
+                        "execution_time": query_result.get("execution_time", 0),
+                        "row_count": query_result.get("row_count", 0),
+                        "entities": result.get("entities", []),
+                        "tables": [table.get("name", "") for table in result.get("metadata", {}).get("tables", [])]
+                    },
+                    insights_data=insights_data
+                )
+                response_data["insight_md"] = insight_md
+            except Exception as e:
+                print(f"生成Markdown洞察报告时出错: {str(e)}")
+                # 如果生成失败，不影响主要功能，只是不返回Markdown格式
         
         if result_type == "chart":
             # 生成ECharts格式的spec

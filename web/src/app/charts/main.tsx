@@ -5,7 +5,8 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X, Eye, ChevronDown, ChevronUp, Table, RotateCcw, Trash2, MessageSquareX } from "lucide-react";
+import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X, Eye, ChevronDown, ChevronUp, Table, RotateCcw, Trash2, MessageSquareX, FileBarChart } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
 import EChartsWrapper from "~/components/charts/echarts-wrapper";
 import { convertVChartToECharts, generateEChartsConfig } from "~/utils/chart-converter";
 import { toast } from "sonner";
@@ -46,6 +47,17 @@ interface DatabaseAnalysisResponse {
     entities: any[];
     tables: string[];
   };
+  insights?: {
+    basic_insights?: string[];
+    advanced_insights?: Array<{
+      type: string;
+      column: string;
+      description: string;
+      severity: string;
+      confidence: number;
+    }>;
+  };
+  insight_md?: string;
 }
 
 // 消息类型定义
@@ -58,6 +70,7 @@ interface ChatMessage {
   insights?: string[];
   files?: UploadedFile[];
   filePreview?: FilePreviewData; // 新增文件预览数据
+  insight_md?: string; // Markdown格式的洞察报告
 }
 
 interface ChartData {
@@ -1277,11 +1290,12 @@ export function ChartsMain() {
         }
       } else {
         // 没有文件，使用模拟API响应
-        // 模拟 API 延迟
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        let responseContent = `基于 ${currentDataSource?.name} 的分析结果：`;
-        const hasFiles = uploadedFiles && uploadedFiles.length > 0;
+            // 模拟 API 延迟
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    let responseContent = `基于 ${currentDataSource?.name} 的分析结果：`;
+    const hasFiles = uploadedFiles && uploadedFiles.length > 0;
+    let databaseInsightMd: string | undefined;
         
         if (hasFiles) {
           responseContent += `\n已分析您上传的 ${uploadedFiles!.length} 个文件`;
@@ -1313,6 +1327,7 @@ export function ChartsMain() {
               datasource_id: selectedDataSource,
               thread_id: threadId,
               table_name: (selectedTable && selectedTable !== "__no_table__") ? selectedTable : null,
+              enable_insights: enableInsights,
               language: 'zh'
             };
 
@@ -1369,6 +1384,21 @@ export function ChartsMain() {
                   `使用表: ${analysis.metadata?.tables?.join(', ') || selectedTable}`,
                   `SQL查询: ${analysis.metadata?.sql_query || '已优化'}`
                 ];
+                
+                // 添加数据洞察框架生成的洞察信息
+                if (analysis.insights) {
+                  // 添加基础洞察
+                  if (analysis.insights.basic_insights && Array.isArray(analysis.insights.basic_insights)) {
+                    insights.push(...analysis.insights.basic_insights);
+                  }
+                  
+                  // 添加高级洞察
+                  if (analysis.insights.advanced_insights && Array.isArray(analysis.insights.advanced_insights)) {
+                    analysis.insights.advanced_insights.forEach((insight: any) => {
+                      insights.push(`${insight.column}: ${insight.description} (${insight.severity})`);
+                    });
+                  }
+                }
               }
               
               // 更新响应内容
@@ -1377,6 +1407,9 @@ export function ChartsMain() {
                 : currentDataSource.name;
               const analysis = analysisResult as DatabaseAnalysisResponse;
               responseContent = `${sourceDescription} 数据分析完成\n\n查询结果：${analysis.metadata?.row_count || 0} 条记录\n执行时间：${(analysis.metadata?.execution_time || 0).toFixed(3)}秒`;
+              
+              // 存储insight_md用于后续创建assistant消息
+              databaseInsightMd = analysis.insight_md;
               
             } else {
               throw new Error(analysisResult.error || '分析失败');
@@ -1472,7 +1505,8 @@ export function ChartsMain() {
           content: responseContent,
           timestamp: new Date(),
           charts,
-          insights: insights.length > 0 ? insights : undefined
+          insights: insights.length > 0 ? insights : undefined,
+          insight_md: databaseInsightMd
         };
 
         setMessages(prev => [...prev, assistantMessage]);
@@ -1964,26 +1998,25 @@ export function ChartsMain() {
                     </Card>
                   )}
 
-                  {/* 洞察信息 */}
-                  {message.insights && message.insights.length > 0 && (
+
+                  {/* Markdown洞察报告 */}
+                  {message.insight_md && (
                     <Card className="mt-3">
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
-                          <Activity className="w-4 h-4" />
-                          智能洞察
+                          <FileBarChart className="w-4 h-4" />
+                          数据洞察报告
                         </CardTitle>
+                        <CardDescription>
+                          详细的数据洞察分析报告 · {Math.ceil(message.insight_md.length / 500)} 分钟阅读
+                        </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <ul className="space-y-2">
-                          {message.insights.map((insight, index) => (
-                            <li key={index} className="flex items-start gap-2">
-                              <Badge variant="outline" className="text-xs mt-0.5">
-                                {index + 1}
-                              </Badge>
-                              <span className="text-sm text-muted-foreground">{insight}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="prose prose-sm max-w-none text-muted-foreground">
+                          <ReactMarkdown>
+                            {message.insight_md}
+                          </ReactMarkdown>
+                        </div>
                       </CardContent>
                     </Card>
                   )}

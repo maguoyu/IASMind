@@ -6,6 +6,7 @@ export interface DatabaseAnalysisRequest {
   datasource_id: string;
   thread_id: string;
   table_name?: string | null;
+  enable_insights?: boolean;
   language?: string;
 }
 

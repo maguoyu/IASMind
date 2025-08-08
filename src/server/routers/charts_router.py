@@ -53,6 +53,7 @@ class GenerateChartRequest(BaseModel):
     user_prompt: Optional[str] = Field(None, description="用户提示")
     language: str = Field("zh", description="语言代码，默认为中文")
     enable_insights: bool = Field(True, description="是否启用数据洞察功能")
+    use_llm: bool = Field(True, description="是否使用LLM")
 
 
 class GenerateChartResponse(BaseModel):
@@ -170,7 +171,8 @@ def process_data(input_data: Any) -> Tuple[str, List, Optional[str], Optional[st
 @router.post("/generate-chart", response_model=Any)
 async def generate_chart(
     request: GenerateChartRequest,
-    user=Depends(GetCurrentUser)
+    user=Depends(GetCurrentUser),
+
 ):
     """生成数据可视化图表，支持多种数据格式（使用本地ECharts实现）"""
 
@@ -198,7 +200,7 @@ async def generate_chart(
             data_type=dataType,
             user_prompt=request.user_prompt,
             enable_insights=request.enable_insights,
-            use_llm=True
+            use_llm=request.use_llm
         )
         
         # 如果有错误，抛出异常
@@ -226,7 +228,8 @@ async def generate_chart_with_file(
     user_prompt: Optional[str] = Form(None),
     language: str = Form("zh"),
     enable_insights: bool = Form(True),
-    user=Depends(GetCurrentUser)
+    user=Depends(GetCurrentUser),
+    use_llm: bool = Form(True)
 ):
     """通过上传文件生成数据可视化图表"""
     
@@ -299,7 +302,7 @@ async def generate_chart_with_file(
             data_type=dataType,
             user_prompt=user_prompt,
             enable_insights=enable_insights,
-            use_llm=True
+            use_llm=use_llm
         )
         
         # 如果有错误，抛出异常
@@ -318,16 +321,3 @@ async def generate_chart_with_file(
         logger.exception(f"通过文件生成图表时发生错误: {str(e)}")
         raise HTTPException(status_code=500, detail=f"{INTERNAL_SERVER_ERROR_DETAIL}: {str(e)}")
 
-@router.post("/analyze-with-file-id", response_model=Any)
-async def analyze_with_file_id(
-    request: AnalyzeWithFileIdRequest,
-    user=Depends(GetCurrentUser)
-):
-    """处理基于文件ID的请求（为兼容API保留，但返回说明性错误）"""
-    
-    # 返回提示用户重新上传文件的响应
-    return {
-        "error": "临时文件已过期，请重新上传文件",
-        "message": "该接口不再保存文件数据，每次分析需重新上传文件",
-        "insight_md": "## 请重新上传文件\n\n本系统不保存临时文件，请重新上传您的数据文件进行分析。"
-    } 

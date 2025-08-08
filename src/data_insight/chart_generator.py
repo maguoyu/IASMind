@@ -100,11 +100,12 @@ class LocalChartGenerator:
         
         # 基于图表配置生成数据洞察
         insights = []
+        insight_md = None
         if enable_insights:
             insights = self._generate_insights_from_chart(chart_spec, chart_type, df)
         
-        # 生成洞察文档
-        insight_md = await self._generate_insight_markdown_from_chart(chart_spec, insights, chart_type, use_llm=False)
+            # 生成洞察文档
+            insight_md = await self._generate_insight_markdown_from_chart(chart_spec, insights, chart_type, use_llm=False)
         
         return {
             "spec": chart_spec,

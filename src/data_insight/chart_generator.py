@@ -1081,10 +1081,22 @@ class LocalChartGenerator:
             
             series_data = chart_spec["series"][0]  # 取第一个系列的数据
             
+            # 统一提取系列数据，兼容 list 和 dict 两种结构
+            if isinstance(series_data, dict):
+                series_values = series_data.get("data", [])
+            elif isinstance(series_data, list):
+                # 当 series_data 本身就是数据数组
+                series_values = series_data
+            else:
+                series_values = []
+            
             if chart_type in ['bar', 'line']:
                 # 柱状图和折线图
-                x_data = chart_spec.get("xAxis", {}).get("data", [])
-                y_data = series_data.get("data", [])
+                x_axis = chart_spec.get("xAxis", {})
+                if isinstance(x_axis, list) and len(x_axis) > 0:
+                    x_axis = x_axis[0]
+                x_data = x_axis.get("data", []) if isinstance(x_axis, dict) else []
+                y_data = series_values
                 
                 if x_data and y_data:
                     df = pd.DataFrame({
@@ -1095,7 +1107,7 @@ class LocalChartGenerator:
                     
             elif chart_type == 'pie':
                 # 饼图
-                pie_data = series_data.get("data", [])
+                pie_data = series_values
                 if pie_data and isinstance(pie_data, list):
                     categories = []
                     values = []
@@ -1113,7 +1125,7 @@ class LocalChartGenerator:
                         
             elif chart_type == 'scatter':
                 # 散点图
-                scatter_data = series_data.get("data", [])
+                scatter_data = series_values
                 if scatter_data and isinstance(scatter_data, list):
                     x_values = []
                     y_values = []

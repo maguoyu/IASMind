@@ -12,9 +12,10 @@ import pandas as pd
 import numpy as np
 from typing import Any, Dict, List, Optional, Tuple, Union
 from datetime import datetime
-
+import time
 from src.llms.llm import get_llm_by_type
 from src.data_insight.data_insight_framework import DataInsightFramework
+from json_repair import repair_json
 
 logger = logging.getLogger(__name__)
 
@@ -128,22 +129,34 @@ class LocalChartGenerator:
             
             # 调用LLM
             logger.info(f"发送LLM请求，提示长度: {len(prompt)}")
+            logger.info(f"提示: {prompt}")
+            start_time = time.time()
             response = await llm.ainvoke(prompt)
+            end_time = time.time()
+            logger.info(f"LLM请求时间: {end_time - start_time}秒")
             
             # 解析LLM响应
             chart_config = self._parse_llm_response(response.content)
+            # 基于原始数据回填空的series.data
+            try:
+                filled_spec = self._populate_series_data_from_df(chart_config.get("spec", {}), df)
+                if filled_spec is not None:
+                    chart_config["spec"] = filled_spec
+            except Exception as e:
+                logger.warning(f"回填series数据失败: {e}")
             
             # 基于LLM生成的图表配置生成洞察
             insights = []
+            insight_md = None
             if enable_insights:
                 chart_spec = chart_config.get("spec", {})
                 chart_type = chart_config.get("chart_type", "unknown")
                 insights = self._generate_insights_from_chart(chart_spec, chart_type, df)
+                 # 生成洞察文档
+                chart_spec = chart_config.get("spec", {})
+                chart_type = chart_config.get("chart_type", "unknown")
+                insight_md = await self._generate_insight_markdown_from_chart(chart_spec, insights, chart_type, use_llm=True)
             
-            # 生成洞察文档
-            chart_spec = chart_config.get("spec", {})
-            chart_type = chart_config.get("chart_type", "unknown")
-            insight_md = await self._generate_insight_markdown_from_chart(chart_spec, insights, chart_type, use_llm=True)
             
             return {
                 "spec": chart_config.get("spec", {}),
@@ -159,6 +172,192 @@ class LocalChartGenerator:
             logger.info("回退到传统模式")
             return await self._generate_chart_traditional(df, enable_insights)
     
+    def _normalize_name(self, name: str) -> str:
+        """标准化系列/列名，去除全角/半角括号内容与空白，用于匹配。"""
+        if not isinstance(name, str):
+            return ""
+        s = name.strip()
+        # 去除全角中文括号内容
+        for l, r in [("（", "）"), ("(", ")")]:
+            while l in s and r in s and s.find(l) < s.find(r):
+                start = s.find(l)
+                end = s.find(r, start + 1)
+                if end != -1:
+                    s = (s[:start] + s[end+1:]).strip()
+                else:
+                    break
+        # 统一空白
+        return "".join(s.split())
+
+    def _detect_time_column(self, df: pd.DataFrame) -> Optional[str]:
+        """检测时间列，优先datetime类型或常见命名。"""
+        # 1) 已是datetime64
+        for col in df.columns:
+            if np.issubdtype(df[col].dtype, np.datetime64):
+                return col
+        # 2) 常见命名
+        candidates = [
+            "date", "时间", "日期", "航班日", "day", "dt", "timestamp", "time"
+        ]
+        lower_map = {c.lower(): c for c in df.columns}
+        for key in candidates:
+            if key.lower() in lower_map:
+                return lower_map[key.lower()]
+        # 3) 尝试能否被解析为日期的object列
+        for col in df.select_dtypes(include=["object"]).columns:
+            try:
+                parsed = pd.to_datetime(df[col], errors="raise", utc=False, infer_datetime_format=True)
+                if parsed.notna().mean() > 0.9:
+                    return col
+            except Exception:
+                continue
+        return None
+
+    def _find_y_column_for_series(self, df: pd.DataFrame, series_name: str) -> Optional[str]:
+        """根据系列名查找最匹配的数值列。"""
+        if not isinstance(series_name, str):
+            return None
+        normalized = self._normalize_name(series_name)
+        # 先精确匹配
+        for col in df.columns:
+            if self._normalize_name(col) == normalized and np.issubdtype(df[col].dtype, np.number):
+                return col
+        # 次优：包含关系匹配
+        for col in df.columns:
+            if normalized and normalized in self._normalize_name(col) and np.issubdtype(df[col].dtype, np.number):
+                return col
+        return None
+
+    def _populate_series_data_from_df(self, spec: Dict[str, Any], df: pd.DataFrame) -> Optional[Dict[str, Any]]:
+        """将DataFrame中的实际数据填充到ECharts spec的series.data。
+        - 仅在series存在且data为空时进行
+        - 支持xAxis为time或category
+        """
+        try:
+            if not isinstance(spec, dict):
+                return spec
+            series_list = spec.get("series")
+            if not isinstance(series_list, list) or len(series_list) == 0:
+                return spec
+            # 判断是否需要填充
+            needs_fill = False
+            for s in series_list:
+                if isinstance(s, dict) and ("data" not in s or not s.get("data")):
+                    needs_fill = True
+                    break
+            if not needs_fill:
+                return spec
+
+            # x轴
+            x_axis = spec.get("xAxis", {})
+            if isinstance(x_axis, list) and x_axis:
+                x_axis = x_axis[0]
+            x_type = (x_axis.get("type") if isinstance(x_axis, dict) else None) or "category"
+
+            # 选择x列
+            x_col = None
+            if x_type == "time":
+                x_col = self._detect_time_column(df)
+            else:
+                # 类别x轴：选取一个非数值列
+                non_numeric_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
+                if non_numeric_cols:
+                    x_col = non_numeric_cols[0]
+            if x_col is None:
+                return spec
+
+            # 智能时间列解析：若解析成功率低或年份异常（如集中在1970），则回退为类别轴
+            df_sorted = df
+            if x_type == "time":
+                try:
+                    parsed = pd.to_datetime(df[x_col], errors="coerce", infer_datetime_format=True)
+                    success_ratio = float(parsed.notna().mean()) if len(parsed) > 0 else 0.0
+                    valid_years = parsed.dropna().dt.year
+                    median_year = valid_years.median() if not valid_years.empty else None
+                    accept_as_time = success_ratio >= 0.8 and (median_year is None or median_year >= 1972)
+                    if accept_as_time:
+                        df = df.copy()
+                        with pd.option_context('mode.chained_assignment', None):
+                            df[x_col] = parsed
+                        df_sorted = df.sort_values(by=x_col)
+                    else:
+                        # 回退为类别轴，保留原始字符串展示
+                        x_type = "category"
+                        if isinstance(spec.get("xAxis"), dict):
+                            spec["xAxis"]["type"] = "category"
+                        elif isinstance(spec.get("xAxis"), list) and spec["xAxis"]:
+                            if isinstance(spec["xAxis"][0], dict):
+                                spec["xAxis"][0]["type"] = "category"
+                        df_sorted = df
+                except Exception:
+                    # 解析异常，回退为类别轴
+                    x_type = "category"
+                    if isinstance(spec.get("xAxis"), dict):
+                        spec["xAxis"]["type"] = "category"
+                    elif isinstance(spec.get("xAxis"), list) and spec["xAxis"]:
+                        if isinstance(spec["xAxis"][0], dict):
+                            spec["xAxis"][0]["type"] = "category"
+                    df_sorted = df
+            else:
+                df_sorted = df
+
+            # 填充每个系列
+            new_series = []
+            for s in series_list:
+                if not isinstance(s, dict):
+                    new_series.append(s)
+                    continue
+                name = s.get("name")
+                y_col = self._find_y_column_for_series(df_sorted, name) if name else None
+                data_vals: List[Any] = []
+                if y_col is not None:
+                    if x_type == "time" and np.issubdtype(df_sorted[x_col].dtype, np.datetime64):
+                        # 若原始值看似业务编码（如 020250501），避免时间戳化；输出原字符串
+                        def _raw_or_iso(raw, parsed):
+                            try:
+                                raw_str = str(raw)
+                                if raw_str and raw_str.isdigit() and (8 <= len(raw_str) <= 12):
+                                    return raw_str
+                            except Exception:
+                                pass
+                            return (pd.Timestamp(parsed).isoformat() if pd.notna(parsed) else None)
+                        data_vals = [[
+                            _raw_or_iso(raw=v, parsed=v),
+                            (float(val) if pd.notna(val) else None)
+                        ] for v, val in zip(df_sorted[x_col], df_sorted[y_col])]
+                    else:
+                        data_vals = [[
+                            (v if v is not None else ""),
+                            (float(val) if pd.notna(val) else None)
+                        ] for v, val in zip(df_sorted[x_col], df_sorted[y_col])]
+                else:
+                    # 未匹配到列：若名称包含“数量”，可退化为按x聚合计数
+                    if isinstance(name, str) and ("数量" in name or "count" in name.lower()):
+                        grouped = df_sorted.groupby(x_col, dropna=False).size().reset_index(name="value")
+                        if x_type == "time" and np.issubdtype(df_sorted[x_col].dtype, np.datetime64):
+                            def _raw_or_iso(raw, parsed):
+                                try:
+                                    raw_str = str(raw)
+                                    if raw_str and raw_str.isdigit() and (8 <= len(raw_str) <= 12):
+                                        return raw_str
+                                except Exception:
+                                    pass
+                                return (pd.Timestamp(parsed).isoformat() if pd.notna(parsed) else None)
+                            data_vals = [[_raw_or_iso(v, v), float(val)] for v, val in zip(grouped[x_col], grouped["value"])]
+                        else:
+                            data_vals = [[v, float(val)] for v, val in zip(grouped[x_col], grouped["value"])]
+                # 仅在未有数据或为空时写入
+                if not s.get("data") and data_vals:
+                    s["data"] = clean_numpy_types(data_vals)
+                new_series.append(s)
+
+            spec["series"] = new_series
+            # 若time轴但xAxis没有data，不需要显式提供
+            return spec
+        except Exception as e:
+            logger.error(f"填充series数据时出错: {e}")
+            return spec
+
     def _parse_data(self, data: Any, data_type: str) -> Optional[pd.DataFrame]:
         """解析各种格式的数据为DataFrame"""
         try:
@@ -448,7 +647,7 @@ class LocalChartGenerator:
     
     def _build_llm_prompt(self, data_summary: Dict[str, Any], user_prompt: str) -> str:
         """构建LLM提示"""
-        prompt = f"""你是一个专业的数据可视化专家。请根据以下数据特征和用户需求，生成最合适的ECharts配置。
+        base = f"""你是一个专业的数据可视化专家。请根据以下数据特征和用户需求，生成最合适的ECharts配置。
 
 数据概况:
 - 数据行数: {data_summary.get('shape', [0, 0])[0]}
@@ -464,65 +663,189 @@ class LocalChartGenerator:
 {json.dumps(data_summary.get('numeric_stats', {}), ensure_ascii=False, indent=2)}
 
 用户需求: {user_prompt}
-
-请生成一个完整的ECharts配置对象，要求:
-1. 根据数据特征选择最合适的图表类型（柱状图、折线图、饼图、散点图等）
-2. 配置必须是有效的ECharts option对象
-3. 包含合适的标题、图例、坐标轴标签
-4. 颜色搭配要美观
-5. 如果是时间序列数据，要正确处理时间轴
-6. 响应式设计，适应不同屏幕尺寸
-
-请严格按照以下JSON格式返回:
-{{
-    "chart_type": "图表类型（如bar、line、pie、scatter等）",
-    "spec": {{
-        "title": {{"text": "图表标题"}},
-        "tooltip": {{}},
-        "legend": {{}},
-        "xAxis": {{}},
-        "yAxis": {{}},
-        "series": [{{}}]
-    }}
-}}
-
-注意：
-- 只返回JSON格式的配置，不要包含任何其他文字说明
-- 确保所有数据引用都使用实际的列名
-- 如果检测到时间格式数据（如YYYYMMDD），要进行适当的格式转换
 """
-        return prompt
-    
+        instructions = """
+请只输出 JSON，不要包含任何解释、Markdown或代码块围栏。返回以下三种形式之一：
+1) {"chart_type": "bar|line|pie|scatter|...", "spec": {"title": {}, "tooltip": {}, "legend": {}, "xAxis": {}, "yAxis": {}, "series": []}}
+2) {"chart_type": "bar|line|pie|scatter|...", "option": {"title": {}, "tooltip": {}, "legend": {}, "xAxis": {}, "yAxis": {}, "series": []}}
+3) 直接返回 ECharts option 对象（顶层包含 "series"/"xAxis"/"yAxis"/"title"/"tooltip"/"legend" 等字段）
+
+要求：
+- 仅返回合法 JSON
+- 使用实际列名进行编码映射
+- 若存在时间列，请设置 xAxis.type 为 "time"
+- 根据数据特征选择合适图表与尺度（必要时使用对数坐标或 dataZoom）
+"""
+        return base + instructions
+
+    # --------------------- LLM 响应解析增强工具函数 ---------------------
+    def _extract_json_code_block(self, text: str) -> Optional[str]:
+        """优先提取 ```json 或 ``` 包裹的代码块内容。"""
+        text = text.strip()
+        if "```" not in text:
+            return None
+        # 寻找带语言标签的代码块
+        markers = ["```json", "```JSON", "```Json", "```"]
+        start_idx = -1
+        marker_len = 0
+        for m in markers:
+            idx = text.find(m)
+            if idx != -1:
+                start_idx = idx + len(m)
+                marker_len = len(m)
+                break
+        if start_idx == -1:
+            return None
+        end_idx = text.find("```", start_idx)
+        if end_idx == -1:
+            return None
+        return text[start_idx:end_idx].strip()
+
+    def _extract_first_json_object(self, text: str) -> Optional[str]:
+        """从文本中提取第一个看似有效的 JSON 对象或数组的子串。"""
+        s = text.strip()
+        # 尝试对象
+        brace_stack = 0
+        in_string = False
+        escape = False
+        start = -1
+        for i, ch in enumerate(s):
+            if ch == '"' and not escape:
+                in_string = not in_string
+            if in_string and ch == '\\' and not escape:
+                escape = True
+                continue
+            escape = False
+            if in_string:
+                continue
+            if ch == '{':
+                if brace_stack == 0:
+                    start = i
+                brace_stack += 1
+            elif ch == '}':
+                if brace_stack > 0:
+                    brace_stack -= 1
+                    if brace_stack == 0 and start != -1:
+                        return s[start:i+1]
+        # 尝试数组
+        bracket_stack = 0
+        start = -1
+        in_string = False
+        escape = False
+        for i, ch in enumerate(s):
+            if ch == '"' and not escape:
+                in_string = not in_string
+            if in_string and ch == '\\' and not escape:
+                escape = True
+                continue
+            escape = False
+            if in_string:
+                continue
+            if ch == '[':
+                if bracket_stack == 0:
+                    start = i
+                bracket_stack += 1
+            elif ch == ']':
+                if bracket_stack > 0:
+                    bracket_stack -= 1
+                    if bracket_stack == 0 and start != -1:
+                        return s[start:i+1]
+        return None
+
+    def _coerce_to_chart_config(self, obj: Any) -> Dict[str, Any]:
+        """将解析产物规整为 {"spec": option, "chart_type": str} 结构。"""
+        if isinstance(obj, str):
+            # 若是字符串，尝试再解析一次
+            try:
+                return self._coerce_to_chart_config(json.loads(obj))
+            except Exception:
+                try:
+                    fixed = repair_json(obj)
+                    return self._coerce_to_chart_config(json.loads(fixed))
+                except Exception:
+                    raise ValueError("LLM返回为字符串且无法解析为JSON")
+
+        if isinstance(obj, dict):
+            # 1) 已是期望结构
+            if "spec" in obj and isinstance(obj["spec"], dict):
+                return {"spec": obj["spec"], "chart_type": obj.get("chart_type", "unknown")}
+            # 2) 使用 option 字段
+            if "option" in obj and isinstance(obj["option"], dict):
+                return {"spec": obj["option"], "chart_type": obj.get("chart_type", "unknown")}
+            # 3) 直接是 ECharts 配置（启发式判断）
+            echarts_keys = {"series", "xAxis", "yAxis", "title", "tooltip", "legend", "dataset", "grid"}
+            if any(k in obj for k in echarts_keys):
+                return {"spec": obj, "chart_type": obj.get("chart_type", "unknown")}
+            # 4) 可能嵌套在 data/spec/option 字段中
+            for key in ["data", "result", "response", "chart", "config"]:
+                if key in obj and isinstance(obj[key], dict):
+                    try:
+                        return self._coerce_to_chart_config(obj[key])
+                    except Exception:
+                        pass
+            raise ValueError("JSON中未找到可用的ECharts配置")
+
+        if isinstance(obj, list) and obj:
+            # 若LLM返回了数组，尝试取第一个为配置
+            return self._coerce_to_chart_config(obj[0])
+
+        raise ValueError("无法从LLM响应中提取ECharts配置")
+
+    # --------------------- 解析主流程（替换为健壮版） ---------------------
     def _parse_llm_response(self, response_content: str) -> Dict[str, Any]:
-        """解析LLM响应"""
+        """解析LLM响应：支持markdown代码块、松散JSON修复、对象/option直返等。"""
         try:
-            # 清理响应内容，移除可能的markdown标记
-            content = response_content.strip()
-            if content.startswith('```json'):
-                content = content[7:]
-            if content.startswith('```'):
-                content = content[3:]
-            if content.endswith('```'):
-                content = content[:-3]
-            
-            # 解析JSON
-            chart_config = json.loads(content.strip())
-            
-            # 验证必需的字段
-            if not isinstance(chart_config, dict):
-                raise ValueError("响应不是有效的字典格式")
-            
-            if "spec" not in chart_config:
-                raise ValueError("响应中缺少spec字段")
-            
-            return chart_config
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"解析LLM响应JSON失败: {str(e)}")
-            logger.error(f"原始响应: {response_content}")
-            raise ValueError(f"LLM响应不是有效的JSON格式: {str(e)}")
+            if not response_content or not isinstance(response_content, str):
+                raise ValueError("LLM响应为空或类型错误")
+
+            raw = response_content.strip()
+
+            # 1) 直接尝试严格JSON
+            try:
+                return self._coerce_to_chart_config(json.loads(raw))
+            except Exception:
+                pass
+
+            # 2) 代码块提取
+            block = self._extract_json_code_block(raw)
+            if block:
+                try:
+                    return self._coerce_to_chart_config(json.loads(block))
+                except Exception:
+                    # 尝试修复
+                    try:
+                        fixed = repair_json(block)
+                        return self._coerce_to_chart_config(json.loads(fixed))
+                    except Exception:
+                        pass
+
+            # 3) 子串提取（首个JSON对象/数组）
+            frag = self._extract_first_json_object(raw)
+            if frag:
+                # 先严格，再修复
+                try:
+                    return self._coerce_to_chart_config(json.loads(frag))
+                except Exception:
+                    try:
+                        fixed = repair_json(frag)
+                        return self._coerce_to_chart_config(json.loads(fixed))
+                    except Exception:
+                        pass
+
+            # 4) 全量修复
+            try:
+                fixed_all = repair_json(raw)
+                return self._coerce_to_chart_config(json.loads(fixed_all))
+            except Exception:
+                pass
+
+            # 彻底失败
+            raise ValueError("LLM响应不是有效的JSON或无法修复")
+
         except Exception as e:
             logger.error(f"解析LLM响应失败: {str(e)}")
+            logger.error(f"原始响应: {response_content}")
+            # 向上抛出以触发上层回退到传统模式
             raise ValueError(f"解析LLM响应失败: {str(e)}")
     
     def _generate_echarts_spec(self, df: pd.DataFrame, chart_type: str) -> Dict[str, Any]:

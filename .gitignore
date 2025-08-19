@@ -19,9 +19,9 @@ venv/
 
 # user conf
 conf.yaml
-
 .idea/
 .langgraph_api/
+.vscode/
 
 # coverage report
 coverage.xml

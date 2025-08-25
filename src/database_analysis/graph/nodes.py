@@ -52,7 +52,7 @@ class DatabaseAnalysisNodes:
         try:
             # 基本清理
             user_query = state["user_query"].strip()
-            table_name = state["table_name"]
+
             # intent = self.intent_recognizer.analyze_query_intent(user_query, table_name)
 
 
@@ -62,11 +62,10 @@ class DatabaseAnalysisNodes:
 请识别用户意图，使其更适合数据库分析,以json格式返回：
 
 用户查询: {user_query}
-表名: {table_name}
 
 要求:
 1. 识别查询意图（intent_types），为统计分析、详细查询、关联查询、时间查询、趋势分析等
-2. 提取关键业务实体（entities）,如果指定了表名,则将表名作为实体，如果没有指定表名，则根据用户查询提取实体
+2. 提取关键业务实体（entities）,根据用户查询提取实体
 3. 如果识别成功,valid为True,否则为False
 4. 意图复杂程度complexity_level为simple、medium或complex
 5. 是否需要关联查询requires_relations为True或False
@@ -386,9 +385,9 @@ class DatabaseAnalysisNodes:
             # 清理table_name中可能存在的引号
             clean_table_name = table_name.strip().strip("'\"")
             
-            # 获取表结构
+            # 获取表结构（包含列描述信息）
             columns_query = f"""
-            SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+            SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_COMMENT
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = '{clean_table_name}'
             ORDER BY ORDINAL_POSITION
@@ -405,7 +404,8 @@ class DatabaseAnalysisNodes:
                             "name": row.get("COLUMN_NAME"),
                             "type": row.get("DATA_TYPE"),
                             "nullable": row.get("IS_NULLABLE") == "YES",
-                            "default": row.get("COLUMN_DEFAULT")
+                            "default": row.get("COLUMN_DEFAULT"),
+                            "comment": row.get("COLUMN_COMMENT", "")
                         })
                     else:
                         # 处理普通cursor返回的元组格式
@@ -413,11 +413,12 @@ class DatabaseAnalysisNodes:
                             "name": row[0],
                             "type": row[1],
                             "nullable": row[2] == "YES",
-                            "default": row[3]
+                            "default": row[3],
+                            "comment": row[4] if len(row) > 4 else ""
                         })
             
             # 获取样本数据
-            sample_query = f"SELECT * FROM {clean_table_name} LIMIT 5"
+            sample_query = f"SELECT * FROM {clean_table_name} LIMIT 2"
             with connection.cursor() as cursor:
                 cursor.execute(sample_query)
                 sample_result = cursor.fetchall()

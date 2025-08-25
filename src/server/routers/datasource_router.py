@@ -883,8 +883,7 @@ async def search_metadata_vectors(
         result = await MetadataVectorizeService.search_metadata_vectors(
             query=request.query,
             datasource_ids=request.datasource_ids,
-            limit=request.limit,
-            use_smart_search=request.use_smart_search
+            limit=request.limit
         )
         return result
     except Exception as e:
@@ -976,49 +975,6 @@ async def get_table_relationships(
         raise HTTPException(status_code=500, detail=f"获取表关系失败: {str(e)}")
 
 
-# 智能查询推荐API
-@router.post("/metadata/query-suggestions")
-async def get_query_suggestions(
-    request: MetadataSearchRequest,
-    user=Depends(GetCurrentUser)
-):
-    """获取查询建议和意图分析"""
-    try:
-        from src.server.services.metadata_vectorize_service import BusinessEntityRecognizer
-        
-        recognizer = BusinessEntityRecognizer()
-        intent = recognizer.analyze_query_intent(request.query)
-        
-        # 生成查询建议
-        suggestions = []
-        
-        # 基于识别的实体提供建议
-        for entity in intent["entities"]:
-            entity_info = recognizer.domain_keywords.get(entity, {})
-            for keyword in entity_info.get("keywords", [])[:3]:
-                if keyword not in request.query:
-                    suggestions.append(f"{request.query} {keyword}")
-        
-        # 基于意图类型提供建议
-        if "统计分析" in intent["intent_types"]:
-            suggestions.extend([
-                f"{request.query} 统计",
-                f"{request.query} 汇总",
-                f"{request.query} 趋势分析"
-            ])
-        
-        return {
-            "success": True,
-            "query": request.query,
-            "intent_analysis": intent,
-            "query_suggestions": suggestions[:5],
-            "complexity_level": intent["complexity_level"],
-            "requires_relations": intent["requires_relations"],
-            "message": "查询意图分析完成"
-        }
-    except Exception as e:
-        logger.exception(f"查询意图分析失败: {e}")
-        raise HTTPException(status_code=500, detail=f"查询意图分析失败: {str(e)}")
 
 
 # 表级搜索API

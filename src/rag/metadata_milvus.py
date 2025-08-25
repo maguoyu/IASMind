@@ -79,7 +79,7 @@ class MetadataVectorStore:
             raise
     
     def search_metadata(self, query: str, datasource_ids: Optional[List[str]] = None, 
-                       limit: int = 10, filter_business_domain: Optional[str] = None) -> List[Dict[str, Any]]:
+                       limit: int = 1, filter_business_domain: Optional[str] = None) -> List[Dict[str, Any]]:
         """搜索元数据向量 - 增强版"""
         try:
             # 构建搜索表达式

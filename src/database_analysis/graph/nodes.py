@@ -10,13 +10,17 @@ from src.llms.llm import get_llm_by_type
 from src.database.models import DataSource
 from .state import DatabaseAnalysisState, AnalysisEntity, TableMetadata, QueryResult
 from src.server.services.intent_recognized_service import IntentRecognized
+from src.rag.metadata_milvus import MetadataVectorStore
+import logging
+logger = logging.getLogger(__name__)
 
 class DatabaseAnalysisNodes:
     """数据库分析节点实现"""
-    
+
     def __init__(self):
         self.llm = get_llm_by_type("basic")
         self.intent_recognizer = IntentRecognized()
+        self.metadata_vector_store = MetadataVectorStore()
 
     def get_connection(self, datasource_id: str):
         """获取数据源连接"""
@@ -49,10 +53,10 @@ class DatabaseAnalysisNodes:
             # 基本清理
             user_query = state["user_query"].strip()
             table_name = state["table_name"]
-            intent = self.intent_recognizer.analyze_query_intent(user_query, table_name)
-            if intent.valid:
-                state["intent"] = intent
-                return state
+            # intent = self.intent_recognizer.analyze_query_intent(user_query, table_name)
+            # if intent.valid:
+            #     state["intent"] = intent
+            #     return state
 
             
             # 使用LLM进行查询意图理解和标准化
@@ -120,8 +124,10 @@ class DatabaseAnalysisNodes:
         """元数据检索"""
         try:
             datasource_id = state["datasource_id"]
-            entities = state.get("entities", [])
+            intent = state.get("intent")
+            entities = intent.entities if intent else []
             table_name = state.get("table_name")
+            logger.info(f"元数据检索: {datasource_id}, {entities}, {table_name}")
             
             # 获取数据源连接
             connection = self.get_connection(datasource_id)
@@ -141,10 +147,15 @@ class DatabaseAnalysisNodes:
                 if table_metadata:
                     metadata["tables"].append(table_metadata)
             else:
-                # 根据实体推荐相关表
-                recommended_tables = self._recommend_tables(connection, entities)
-                for table in recommended_tables:
-                    table_metadata = self._get_table_metadata(connection, table)
+                # 使用同步的元数据向量搜索
+                query_text = " ".join(entities) if entities else "表结构"
+                search_results = self.metadata_vector_store.search_metadata(
+                    query=query_text, 
+                    datasource_ids=[datasource_id],
+                    limit=1
+                )
+                for result in search_results:
+                    table_metadata = result.get("metadata", {})
                     if table_metadata:
                         metadata["tables"].append(table_metadata)
             
@@ -161,15 +172,20 @@ class DatabaseAnalysisNodes:
     def sql_generation(self, state: DatabaseAnalysisState) -> DatabaseAnalysisState:
         """SQL生成"""
         try:
-            query = state.get("user_query", {})
-            entities = state.get("entities", [])
+            query = state.get("user_query", "")
+            intent = state.get("intent")
+            entities = intent.entities if intent else []
             metadata = state.get("metadata", {})
             
             # 构建SQL生成提示
             tables_info = []
-            for table in metadata.get("tables", []):
-                columns_str = ", ".join([f"{col['name']}({col['type']})" for col in table.get("columns", [])])
-                tables_info.append(f"表 {table['name']}: {columns_str}")
+            if(state.get("table_name", "")):
+                for table in metadata.get("tables", []):
+                    columns_str = ", ".join([f"{col['name']}({col['type']})" for col in table.get("columns", [])])
+                    tables_info.append(f"表 {table['name']}: {columns_str}")
+            else:
+                for table in metadata.get("tables", []):
+                    tables_info.append(f"表 {table['table_name']} : {table['raw_data']}")
             
             prompt = f"""
 根据用户查询和数据库元数据，生成相应的SQL查询语句：

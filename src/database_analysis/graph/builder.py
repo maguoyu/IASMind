@@ -64,7 +64,7 @@ def create_database_analysis_graph():
 def validate_intent(state: DatabaseAnalysisState) -> str:
     """验证意图"""
     intent = state.get("intent")
-    if intent and intent.valid:
+    if intent and intent.entities:
         return "execute"
     return "end"
 
@@ -101,7 +101,6 @@ async def run_database_analysis(
         datasource_id=datasource_id,
         table_name=table_name,
         intent=None,
-        entities=[],
         metadata={},
         sql_query="",
         validation_result={},

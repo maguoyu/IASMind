@@ -116,7 +116,7 @@ class SmartTableDescriptionGenerator:
     
     @classmethod
     def generate_comprehensive_table_description(cls, table_data: Dict[str, Any], 
-                                               relationships: Dict[str, List[str]] = None) -> str:
+                                               relationships: Dict[str, List[str]] = None,is_simple:bool=True) -> str:
         """生成全面的表级描述"""
         
         table_name = table_data.get("table_name", "")
@@ -129,7 +129,8 @@ class SmartTableDescriptionGenerator:
         
         if table_comment:
             description_parts.append(f"业务用途: {table_comment}")
-        
+        if is_simple:
+            return " | ".join(description_parts)
         # 推断业务领域
         business_domain = cls._infer_business_domain(table_name, table_comment)
         if business_domain:
@@ -313,13 +314,15 @@ class SmartMultiTableRetriever:
     def __init__(self, vector_store: MetadataVectorStore):
         self.vector_store = vector_store
         self.relationship_manager = TableRelationshipManager()
-        self.entity_recognizer = BusinessEntityRecognizer()
+        # 初始化实体识别器
+        from .intent_recognized_service import IntentRecognized
+        self.entity_recognizer = IntentRecognized()
     
     async def smart_search(self, query: str, datasource_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         """智能多表检索主入口"""
         
         # 1. 分析查询意图
-        intent = self.entity_recognizer.analyze_query_intent(query)
+        intent = self.entity_recognizer.analyze_query_intent(query, None)
         logger.info(f"查询意图分析: {intent}")
         
         # 2. 基础向量检索
@@ -328,7 +331,7 @@ class SmartMultiTableRetriever:
         # 3. 根据意图决定是否需要扩展检索
         all_results = base_results.copy()
         
-        if intent["requires_relations"] or intent["complexity_level"] == "complex":
+        if intent.requires_relations or intent.complexity_level == "complex":
             # 关系感知扩展
             relation_results = await self._expand_by_relations(
                 base_results, datasource_id, intent
@@ -353,7 +356,7 @@ class SmartMultiTableRetriever:
         )
     
     async def _expand_by_relations(self, base_results: List[Dict], 
-                                 datasource_id: str, intent: Dict) -> List[Dict[str, Any]]:
+                                 datasource_id: str, intent) -> List[Dict[str, Any]]:
         """基于关系扩展检索"""
         if not base_results:
             return []
@@ -369,7 +372,7 @@ class SmartMultiTableRetriever:
         related_tables = set()
         for table in seed_tables:
             # 根据查询复杂度决定关系深度
-            depth = 2 if intent["complexity_level"] == "complex" else 1
+            depth = 2 if intent.complexity_level == "complex" else 1
             related = self.relationship_manager.get_related_tables(
                 datasource_id, table, depth
             )
@@ -384,12 +387,12 @@ class SmartMultiTableRetriever:
         return relation_results
     
     async def _expand_by_keywords(self, query: str, datasource_id: str, 
-                                intent: Dict) -> List[Dict[str, Any]]:
+                                intent) -> List[Dict[str, Any]]:
         """基于关键词扩展检索"""
         expanded_queries = []
         
         # 基于识别的实体生成扩展查询
-        for entity in intent["entities"]:
+        for entity in intent.entities:
             entity_keywords = self.entity_recognizer.domain_keywords.get(entity, {})
             for keyword in entity_keywords.get("keywords", [])[:3]:
                 if keyword not in query:
@@ -412,7 +415,7 @@ class SmartMultiTableRetriever:
             limit=1
         )
     
-    def _smart_merge(self, all_results: List[Dict], query: str, intent: Dict) -> List[Dict[str, Any]]:
+    def _smart_merge(self, all_results: List[Dict], query: str, intent) -> List[Dict[str, Any]]:
         """智能合并多个检索结果"""
         
         # 按表名去重
@@ -430,7 +433,7 @@ class SmartMultiTableRetriever:
         # 按综合分数排序
         return sorted(merged, key=lambda x: x.get('final_score', 0), reverse=True)
     
-    def _calculate_comprehensive_score(self, result: Dict, query: str, intent: Dict) -> float:
+    def _calculate_comprehensive_score(self, result: Dict, query: str, intent) -> float:
         """计算综合相关性分数"""
         base_score = result.get('score', 0.5)
         
@@ -447,12 +450,12 @@ class SmartMultiTableRetriever:
         
         # 业务实体匹配度
         entity_match_count = 0
-        for entity in intent["entities"]:
+        for entity in intent.entities:
             if entity in content:
                 entity_match_count += 1
         
-        if intent["entities"]:
-            entity_score = entity_match_count / len(intent["entities"])
+        if intent.entities:
+            entity_score = entity_match_count / len(intent.entities)
             score += entity_score * 0.3
         
         # 内容相关性
@@ -668,7 +671,7 @@ class MetadataVectorizeService:
         query: str,
         datasource_ids: Optional[List[str]] = None,
         limit: int = 10,
-        use_smart_search: bool = True
+        use_smart_search: bool = False
     ) -> Dict[str, Any]:
         """搜索元数据向量 - 智能版"""
         try:

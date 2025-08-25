@@ -54,21 +54,19 @@ class DatabaseAnalysisNodes:
             user_query = state["user_query"].strip()
             table_name = state["table_name"]
             # intent = self.intent_recognizer.analyze_query_intent(user_query, table_name)
-            # if intent.valid:
-            #     state["intent"] = intent
-            #     return state
+
 
             
             # 使用LLM进行查询意图理解和标准化
             prompt = f"""
-请识别用户意图，使其更适合数据库分析：
+请识别用户意图，使其更适合数据库分析,以json格式返回：
 
 用户查询: {user_query}
 表名: {table_name}
 
 要求:
 1. 识别查询意图（intent_types），统计分析、详细查询、趋势分析等
-2. 提取关键业务实体（entities）,如果指定了表名,则将表名作为实体
+2. 提取关键业务实体（entities）,如果指定了表名,则将表名作为实体，如果没有指定表名，则根据用户查询提取实体
 3. 如果识别成功,valid为True,否则为False
 4. 意图复杂程度complexity_level为simple、medium或complex
 5. 意图类型intent_types为统计分析、详细查询、关联查询、时间查询、趋势分析等
@@ -83,6 +81,8 @@ class DatabaseAnalysisNodes:
     "confidence_score": 0.8,
     "requires_relations": false
 }}
+
+请直接返回json格式数据，不要其他说明:
 """
             
             response = self.llm.invoke(prompt)

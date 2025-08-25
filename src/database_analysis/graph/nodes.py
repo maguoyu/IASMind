@@ -65,12 +65,11 @@ class DatabaseAnalysisNodes:
 表名: {table_name}
 
 要求:
-1. 识别查询意图（intent_types），统计分析、详细查询、趋势分析等
+1. 识别查询意图（intent_types），为统计分析、详细查询、关联查询、时间查询、趋势分析等
 2. 提取关键业务实体（entities）,如果指定了表名,则将表名作为实体，如果没有指定表名，则根据用户查询提取实体
 3. 如果识别成功,valid为True,否则为False
 4. 意图复杂程度complexity_level为simple、medium或complex
-5. 意图类型intent_types为统计分析、详细查询、关联查询、时间查询、趋势分析等
-6. 是否需要关联查询requires_relations为True或False
+5. 是否需要关联查询requires_relations为True或False
 
 返回JSON格式:
 {{

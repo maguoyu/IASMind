@@ -137,7 +137,7 @@ async def run_database_analysis(
                     message.pretty_print()
             else:
                 # For any other output format
-                print(f"Output: {s}")
+    
                 # 更新最终状态
                 if isinstance(s, dict):
                     final_state.update(s)

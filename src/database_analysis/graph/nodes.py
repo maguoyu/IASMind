@@ -125,7 +125,6 @@ class DatabaseAnalysisNodes:
             intent = state.get("intent")
             entities = intent.entities if intent else []
             table_name = state.get("table_name")
-            logger.info(f"元数据检索: {datasource_id}, {entities}, {table_name}")
             
             # 获取数据源连接
             connection = self.get_connection(datasource_id)
@@ -145,20 +144,35 @@ class DatabaseAnalysisNodes:
                 if table_metadata:
                     metadata["tables"].append(table_metadata)
             else:
-                # 使用同步的元数据向量搜索
-                query_text = " ".join(entities) if entities else "表结构"
-                search_results = self.metadata_vector_store.search_metadata(
-                    query=query_text, 
-                    datasource_ids=[datasource_id],
-                    limit=1
+                # 使用MetadataService获取优化的元数据，包含样本数据
+                from src.server.services.metadata_service import MetadataService
+                metadata_result = MetadataService.get_database_metadata(
+                    datasource_id, 
+                    use_cache=False, 
+                    optimize_for_chatbi=True,
+                    include_sample_data=True
                 )
-                for result in search_results:
-                    table_metadata = result.get("metadata", {})
-                    if table_metadata:
-                        metadata["tables"].append(table_metadata)
+                
+                if metadata_result.get("success") and metadata_result.get("data"):
+                    optimized_data = metadata_result["data"]
+                    metadata["tables"] = optimized_data.get("tables", [])
+                    metadata["relationships"] = optimized_data.get("relationships", [])
+                else:
+                    # 回退到向量搜索
+                    query_text = " ".join(entities) if entities else "表结构"
+                    search_results = self.metadata_vector_store.search_metadata(
+                        query=query_text, 
+                        datasource_ids=[datasource_id],
+                        limit=1
+                    )
+                    for result in search_results:
+                        table_metadata = result.get("metadata", {})
+                        if table_metadata:
+                            metadata["tables"].append(table_metadata)
             
-            # 获取表间关系
-            metadata["relationships"] = self._get_table_relationships(connection, metadata["tables"])
+            # 只有在没有通过MetadataService获取关系数据时才查询
+            if not metadata.get("relationships"):
+                metadata["relationships"] = self._get_table_relationships(connection, metadata["tables"])
             
             state["metadata"] = metadata
             return state
@@ -180,10 +194,12 @@ class DatabaseAnalysisNodes:
             if(state.get("table_name", "")):
                 for table in metadata.get("tables", []):
                     columns_str = ", ".join([f"{col['name']}({col['type']})" for col in table.get("columns", [])])
-                    tables_info.append(f"表 {table['name']}: {columns_str}")
+                    tables_info.append(f"表 {table['table_name']}: {columns_str}")
             else:
                 for table in metadata.get("tables", []):
-                    tables_info.append(f"表 {table['table_name']} : {table['raw_data']}")
+                    # 使用优化的元数据格式构建提示信息
+                    table_info = self._build_optimized_table_info(table)
+                    tables_info.append(table_info)
             
             prompt = f"""
 根据用户查询和数据库元数据，生成相应的SQL查询语句：
@@ -433,7 +449,7 @@ class DatabaseAnalysisNodes:
                         sample_data.append(row_dict)
             
             return {
-                "name": clean_table_name,
+                "table_name": clean_table_name,
                 "columns": columns,
                 "sample_data": sample_data
             }
@@ -515,4 +531,88 @@ class DatabaseAnalysisNodes:
             config["y"] = numeric_columns[0]
             config["x"] = categorical_columns[0] if categorical_columns else "index"
         
-        return config 
+        return config
+    
+    def _build_optimized_table_info(self, table: Dict[str, Any]) -> str:
+        """构建优化的表信息字符串，用于SQL生成提示"""
+        try:
+            table_name = table.get("name", table.get("table_name", ""))
+            table_comment = table.get("comment", table.get("table_comment", ""))
+            
+            # 构建表描述
+            table_desc = f"表 {table_name}"
+            if table_comment and table_comment != table_name:
+                table_desc += f": {table_comment}"
+            
+            # 构建列信息
+            columns_info = []
+            for col in table.get("columns", []):
+                col_name = col.get("name", col.get("column_name", ""))
+                col_type = col.get("type", col.get("data_type", ""))
+                col_comment = col.get("comment", col.get("column_comment", ""))
+                
+                col_info = f"{col_name}({col_type})"
+                
+                # 添加约束信息
+                if col.get("is_primary"):
+                    col_info += "[主键]"
+                elif col.get("is_unique"):
+                    col_info += "[唯一]"
+                elif col.get("has_index"):
+                    col_info += "[索引]"
+                
+                # 添加注释
+                if col_comment and col_comment != col_name:
+                    col_info += f" // {col_comment}"
+                
+                columns_info.append(col_info)
+            
+            result = f"{table_desc}\n列: {', '.join(columns_info)}"
+            
+            # 添加SQL提示（如果有）
+            sql_hints = table.get("sql_hints", [])
+            if sql_hints:
+                result += f"\nSQL提示: {'; '.join(sql_hints)}"
+            
+            # 添加外键关系（如果有）
+            foreign_keys = table.get("foreign_keys", [])
+            if foreign_keys:
+                fk_info = []
+                for fk in foreign_keys:
+                    fk_desc = f"{','.join(fk['columns'])} -> {fk['references']['table']}.{','.join(fk['references']['columns'])}"
+                    fk_info.append(fk_desc)
+                result += f"\n外键关系: {'; '.join(fk_info)}"
+            
+            # 添加样本数据（如果有）
+            sample_data = table.get("sample_data", [])
+            if sample_data:
+                result += f"\n样本数据({len(sample_data)}条):"
+                for i, row in enumerate(sample_data):
+                    row_values = []
+                    for col in table.get("columns", []):
+                        col_name = col.get("name", col.get("column_name", ""))
+                        value = row.get(col_name, "NULL")
+                        # 格式化值显示
+                        if value is None:
+                            row_values.append("NULL")
+                        elif isinstance(value, str) and len(value) > 20:
+                            row_values.append(f'"{value[:20]}..."')
+                        else:
+                            row_values.append(f'"{value}"' if isinstance(value, str) else str(value))
+                    result += f"\n  行{i+1}: {', '.join(row_values)}"
+            
+            return result
+            
+        except Exception as e:
+            # 回退到原始格式
+            logger.warning(f"构建优化表信息失败，使用原始格式: {e}")
+            if "raw_data" in table:
+                return f"表 {table.get('table_name', 'unknown')}: {table['raw_data']}"
+            else:
+                # 简单格式
+                columns = table.get("columns", [])
+                if columns:
+                    cols_str = ", ".join([f"{col.get('name', col.get('column_name', ''))}({col.get('type', col.get('data_type', ''))})" for col in columns])
+                    return f"表 {table.get('name', table.get('table_name', ''))}: {cols_str}"
+                else:
+                    return f"表 {table.get('name', table.get('table_name', ''))}: 无列信息" 

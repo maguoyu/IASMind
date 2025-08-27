@@ -23,13 +23,15 @@ class MetadataService:
     """元数据管理服务类"""
     
     @staticmethod
-    def get_database_metadata(datasource_id: str, use_cache: bool = False) -> Dict[str, Any]:
+    def get_database_metadata(datasource_id: str, use_cache: bool = False, optimize_for_chatbi: bool = False, include_sample_data: bool = False) -> Dict[str, Any]:
         """
         获取数据源的完整元数据
         
         Args:
             datasource_id: 数据源ID
             use_cache: 是否使用缓存数据（默认False，直接从数据源实时查询）
+            optimize_for_chatbi: 是否为ChatBI优化元数据格式（默认False）
+            include_sample_data: 是否包含样本数据（仅在optimize_for_chatbi=True时生效）
             
         Returns:
             元数据信息字典
@@ -73,6 +75,11 @@ class MetadataService:
                 metadata_result['sync_time'] = datetime.now().isoformat()
                 metadata_result['version'] = 'realtime'
                 logger.info(f"数据源 {datasource_id} 元数据实时获取成功")
+                
+                # 如果需要为ChatBI优化，则进行元数据格式优化
+                if optimize_for_chatbi:
+                    logger.info(f"为ChatBI优化数据源 {datasource_id} 的元数据格式")
+                    metadata_result = MetadataService.optimize_metadata_for_chatbi(metadata_result, datasource, include_sample_data)
             
             return metadata_result
             
@@ -502,6 +509,334 @@ class MetadataService:
             logger.exception(f"获取Oracle表元数据失败: {e}")
         
         return tables
+
+    @staticmethod
+    def optimize_metadata_for_chatbi(metadata_result: Dict[str, Any], datasource: DataSource = None, include_sample_data: bool = False) -> Dict[str, Any]:
+        """
+        为ChatBI优化元数据格式，移除冗余信息，突出SQL生成相关的关键信息
+        
+        Args:
+            metadata_result: 原始元数据结果
+            datasource: 数据源对象（获取样本数据时需要）
+            include_sample_data: 是否包含样本数据
+            
+        Returns:
+            优化后的元数据格式
+        """
+        if not metadata_result.get('success') or not metadata_result.get('data'):
+            return metadata_result
+            
+        try:
+            original_data = metadata_result['data']
+            optimized_tables = []
+            
+            for table in original_data.get('tables', []):
+                # 提取关键列信息
+                essential_columns = []
+                for col in table.get('columns', []):
+                    column_info = {
+                        'name': col['column_name'],
+                        'type': MetadataService._normalize_data_type(col['data_type']),
+                        'comment': col.get('column_comment', '').strip() or col['column_name'],
+                        'nullable': col['is_nullable'] == 'YES',
+                    }
+                    
+                    # 添加关键约束信息
+                    if col.get('column_key'):
+                        if col['column_key'] == 'PRI':
+                            column_info['is_primary'] = True
+                        elif col['column_key'] == 'UNI':
+                            column_info['is_unique'] = True
+                        elif col['column_key'] == 'MUL':
+                            column_info['has_index'] = True
+                    
+                    # 添加默认值（如果有意义）
+                    if col.get('column_default') is not None:
+                        column_info['default'] = col['column_default']
+                    
+                    essential_columns.append(column_info)
+                
+                # 提取关键索引信息（仅主键和唯一索引）
+                key_indexes = []
+                for idx in table.get('indexes', []):
+                    if idx['index_type'] in ['primary', 'unique']:
+                        key_indexes.append({
+                            'name': idx['index_name'],
+                            'type': idx['index_type'],
+                            'columns': idx['columns']
+                        })
+                
+                # 提取外键关系
+                foreign_keys = []
+                for constraint in table.get('constraints', []):
+                    if constraint.get('constraint_type') == 'foreign_key':
+                        foreign_keys.append({
+                            'columns': constraint['columns'],
+                            'references': {
+                                'table': constraint['referenced_table'],
+                                'columns': constraint['referenced_columns']
+                            }
+                        })
+                
+                # 构建优化的表信息
+                optimized_table = {
+                    'table_name': table['table_name'],
+                    'comment': table.get('table_comment', '').strip() or table['table_name'],
+                    'type': table.get('type', 'table'),
+                    'columns': essential_columns
+                }
+                
+                # 只在有关键索引时才添加
+                if key_indexes:
+                    optimized_table['key_indexes'] = key_indexes
+                
+                # 只在有外键时才添加
+                if foreign_keys:
+                    optimized_table['foreign_keys'] = foreign_keys
+                
+                # 添加表级别的SQL提示
+                sql_hints = MetadataService._generate_table_sql_hints(table, essential_columns)
+                if sql_hints:
+                    optimized_table['sql_hints'] = sql_hints
+                
+                # 如果需要样本数据且提供了数据源对象
+                if include_sample_data and datasource:
+                    sample_data = MetadataService._get_table_sample_data(datasource, table['table_name'])
+                    if sample_data:
+                        optimized_table['sample_data'] = sample_data
+                
+                optimized_tables.append(optimized_table)
+            
+            # 构建优化的数据库信息
+            optimized_data = {
+                'database': original_data.get('database_name', ''),
+                'tables': optimized_tables,
+                'table_count': len(optimized_tables)
+            }
+            
+            # 添加表间关系摘要
+            relationships = MetadataService._extract_table_relationships(optimized_tables)
+            if relationships:
+                optimized_data['relationships'] = relationships
+            
+            return {
+                'success': True,
+                'data': optimized_data,
+                'message': f'已优化元数据，包含 {len(optimized_tables)} 个表',
+                'version': 'chatbi_optimized',
+                'sync_time': metadata_result.get('sync_time')
+            }
+            
+        except Exception as e:
+            logger.exception(f"元数据优化失败: {e}")
+            return {
+                'success': False,
+                'message': f"元数据优化失败: {str(e)}",
+                'data': None
+            }
+    
+    @staticmethod
+    def _normalize_data_type(data_type: str) -> str:
+        """标准化数据类型名称，便于SQL生成"""
+        data_type = data_type.lower()
+        
+        # 字符串类型
+        if data_type in ['varchar', 'char', 'text', 'longtext', 'mediumtext']:
+            return 'string'
+        
+        # 数值类型
+        if data_type in ['int', 'integer', 'bigint', 'smallint', 'tinyint']:
+            return 'integer'
+        if data_type in ['decimal', 'numeric', 'float', 'double']:
+            return 'number'
+        
+        # 日期时间类型
+        if data_type in ['datetime', 'timestamp']:
+            return 'datetime'
+        if data_type == 'date':
+            return 'date'
+        if data_type == 'time':
+            return 'time'
+        
+        # 布尔类型
+        if data_type in ['boolean', 'bool', 'tinyint(1)']:
+            return 'boolean'
+        
+        # 其他类型保持原样
+        return data_type
+    
+    @staticmethod
+    def _generate_table_sql_hints(table: Dict[str, Any], columns: List[Dict[str, Any]]) -> List[str]:
+        """为表生成SQL使用提示"""
+        hints = []
+        table_name = table.get('table_name', '')
+        table_comment = table.get('table_comment', '')
+        
+        # 基于表名和注释生成用途提示
+        if '航班' in table_name or '航班' in table_comment:
+            hints.append("航班信息查询：flight表包含航班基本信息、时间、状态等")
+        
+        # 基于列分析生成查询提示
+        column_names = [col['name'] for col in columns]
+        
+        # 时间相关查询提示
+        time_columns = [col['name'] for col in columns if 'time' in col['type'] or any(keyword in col['name'].lower() for keyword in ['time', 'date', '时间', '日期'])]
+        if time_columns:
+            hints.append(f"时间查询字段：{', '.join(time_columns[:3])}")
+        
+        # 状态相关查询提示
+        status_columns = [col['name'] for col in columns if any(keyword in col['name'].lower() for keyword in ['status', 'state', '状态', '类型', 'type'])]
+        if status_columns:
+            hints.append(f"状态筛选字段：{', '.join(status_columns[:3])}")
+        
+        # 关键业务字段提示
+        key_columns = [col['name'] for col in columns if col.get('is_primary') or '号' in col.get('comment', '') or 'id' in col['name'].lower()]
+        if key_columns:
+            hints.append(f"关键标识字段：{', '.join(key_columns[:3])}")
+        
+        return hints
+    
+    @staticmethod
+    def _extract_table_relationships(tables: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """提取表间关系信息"""
+        relationships = []
+        
+        for table in tables:
+            for fk in table.get('foreign_keys', []):
+                relationships.append({
+                    'from_table': table['name'],
+                    'from_columns': fk['columns'],
+                    'to_table': fk['references']['table'],
+                    'to_columns': fk['references']['columns'],
+                    'relationship_type': 'foreign_key'
+                })
+        
+        return relationships
+    
+    @staticmethod
+    def _get_table_sample_data(datasource: DataSource, table_name: str, limit: int = 2) -> Optional[List[Dict[str, Any]]]:
+        """
+        获取表的样本数据，用于帮助SQL生成
+        
+        Args:
+            datasource: 数据源对象
+            table_name: 表名
+            limit: 样本数据条数限制（默认2条）
+            
+        Returns:
+            样本数据列表，失败时返回None
+        """
+        try:
+            if datasource.type == 'mysql':
+                return MetadataService._get_mysql_sample_data(datasource, table_name, limit)
+            elif datasource.type == 'oracle':
+                return MetadataService._get_oracle_sample_data(datasource, table_name, limit)
+            else:
+                logger.warning(f"不支持的数据源类型获取样本数据: {datasource.type}")
+                return None
+                
+        except Exception as e:
+            logger.warning(f"获取表 {table_name} 样本数据失败: {e}")
+            return None
+    
+    @staticmethod
+    def _get_mysql_sample_data(datasource: DataSource, table_name: str, limit: int = 2) -> Optional[List[Dict[str, Any]]]:
+        """获取MySQL表的样本数据"""
+        try:
+            import pymysql
+            
+            connection = pymysql.connect(
+                host=datasource.host,
+                port=datasource.port,
+                user=datasource.username,
+                password=datasource.password,
+                database=datasource.database,
+                charset='utf8mb4',
+                connect_timeout=5,
+                read_timeout=10
+            )
+            
+            with connection.cursor() as cursor:
+                # 使用LIMIT获取样本数据，避免大表导致的性能问题
+                sql = f"SELECT * FROM `{table_name}` LIMIT %s"
+                cursor.execute(sql, (limit,))
+                
+                # 获取列名
+                columns = [desc[0] for desc in cursor.description]
+                
+                # 获取数据行
+                rows = cursor.fetchall()
+                
+                # 转换为字典格式
+                sample_data = []
+                for row in rows:
+                    row_dict = {}
+                    for i, value in enumerate(row):
+                        # 处理特殊类型的值
+                        if value is None:
+                            row_dict[columns[i]] = None
+                        elif isinstance(value, (datetime,)):
+                            row_dict[columns[i]] = value.isoformat()
+                        else:
+                            row_dict[columns[i]] = str(value)
+                    sample_data.append(row_dict)
+                
+            connection.close()
+            return sample_data
+            
+        except Exception as e:
+            logger.warning(f"获取MySQL表 {table_name} 样本数据失败: {e}")
+            return None
+    
+    @staticmethod
+    def _get_oracle_sample_data(datasource: DataSource, table_name: str, limit: int = 2) -> Optional[List[Dict[str, Any]]]:
+        """获取Oracle表的样本数据"""
+        try:
+            import cx_Oracle
+            
+            # 构建连接字符串
+            if datasource.service_name:
+                dsn = cx_Oracle.makedsn(datasource.host, datasource.port, service_name=datasource.service_name)
+            else:
+                dsn = cx_Oracle.makedsn(datasource.host, datasource.port, sid=datasource.database)
+            
+            connection = cx_Oracle.connect(
+                user=datasource.username,
+                password=datasource.password,
+                dsn=dsn,
+                encoding="UTF-8"
+            )
+            
+            with connection.cursor() as cursor:
+                # Oracle使用ROWNUM限制行数
+                sql = f"SELECT * FROM {table_name} WHERE ROWNUM <= :limit"
+                cursor.execute(sql, {'limit': limit})
+                
+                # 获取列名
+                columns = [desc[0] for desc in cursor.description]
+                
+                # 获取数据行
+                rows = cursor.fetchall()
+                
+                # 转换为字典格式
+                sample_data = []
+                for row in rows:
+                    row_dict = {}
+                    for i, value in enumerate(row):
+                        if value is None:
+                            row_dict[columns[i]] = None
+                        elif isinstance(value, (datetime,)):
+                            row_dict[columns[i]] = value.isoformat()
+                        else:
+                            row_dict[columns[i]] = str(value)
+                    sample_data.append(row_dict)
+                
+            connection.close()
+            return sample_data
+            
+        except Exception as e:
+            logger.warning(f"获取Oracle表 {table_name} 样本数据失败: {e}")
+            return None
 
 
     

@@ -120,7 +120,7 @@ class SmartTableDescriptionGenerator:
         """生成全面的表级描述"""
         
         table_name = table_data.get("table_name", "")
-        table_comment = table_data.get("table_comment", "")
+        table_comment = table_data.get("comment", "")
         columns = table_data.get("columns", [])
         
         # 基础信息

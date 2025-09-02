@@ -148,31 +148,18 @@ class DatabaseAnalysisNodes:
                     table_metadata = metadata_result["data"]["tables"][0]
                     metadata["tables"].append(table_metadata)
             else:
-                # 使用MetadataService获取优化的元数据，包含样本数据
-                from src.server.services.metadata_service import MetadataService
-                metadata_result = MetadataService.get_database_metadata(
-                    datasource_id, 
-                    use_cache=False, 
-                    optimize_for_chatbi=True,
-                    include_sample_data=True
-                )
-                
-                if metadata_result.get("success") and metadata_result.get("data"):
-                    optimized_data = metadata_result["data"]
-                    metadata["tables"] = optimized_data.get("tables", [])
-                    metadata["relationships"] = optimized_data.get("relationships", [])
-                else:
-                    # 回退到向量搜索
-                    query_text = " ".join(entities) if entities else "表结构"
-                    search_results = self.metadata_vector_store.search_metadata(
-                        query=query_text, 
-                        datasource_ids=[datasource_id],
+                 # 向量搜索
+                query_text = " ".join(entities) if entities else "表结构"
+                search_results = self.metadata_vector_store.search_metadata(
+                query=query_text, 
+                    datasource_ids=[datasource_id],
                         limit=1
-                    )
-                    for result in search_results:
-                        table_metadata = result.get("metadata", {})
-                        if table_metadata:
-                            metadata["tables"].append(table_metadata)
+                )
+
+                for result in search_results:
+                    table_metadata = result.get("metadata", {})
+                    if table_metadata:
+                        metadata["tables"].append(table_metadata)
             
             # 只有在没有通过MetadataService获取关系数据时才查询
             if not metadata.get("relationships"):
@@ -202,7 +189,7 @@ class DatabaseAnalysisNodes:
             else:
                 for table in metadata.get("tables", []):
                     # 使用优化的元数据格式构建提示信息
-                    table_info = self._build_optimized_table_info(table)
+                    table_info = table['raw_data']
                     tables_info.append(table_info)
             
             prompt = f"""
@@ -536,8 +523,7 @@ class DatabaseAnalysisNodes:
             config["x"] = categorical_columns[0] if categorical_columns else "index"
         
         return config
-    
-    def _build_optimized_table_info(self, table: Dict[str, Any]) -> str:
+
         """构建优化的表信息字符串，用于SQL生成提示"""
         try:
             table_name = table.get("name", table.get("table_name", ""))

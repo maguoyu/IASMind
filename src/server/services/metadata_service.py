@@ -23,7 +23,7 @@ class MetadataService:
     """元数据管理服务类"""
     
     @staticmethod
-    def get_database_metadata(datasource_id: str, use_cache: bool = False, optimize_for_chatbi: bool = False, include_sample_data: bool = False) -> Dict[str, Any]:
+    def get_database_metadata(datasource_id: str,table_name: str = None, use_cache: bool = False, optimize_for_chatbi: bool = False, include_sample_data: bool = False) -> Dict[str, Any]:
         """
         获取数据源的完整元数据
         
@@ -58,9 +58,9 @@ class MetadataService:
             
             # 根据数据源类型进行实时查询
             if datasource.type == 'mysql':
-                metadata_result = MetadataService._get_mysql_metadata_realtime(datasource)
+                metadata_result = MetadataService._get_mysql_metadata_realtime(datasource, table_name)
             elif datasource.type == 'oracle':
-                metadata_result = MetadataService._get_oracle_metadata_realtime(datasource)
+                metadata_result = MetadataService._get_oracle_metadata_realtime(datasource, table_name)
             else:
                 return {
                     "success": False,
@@ -80,7 +80,8 @@ class MetadataService:
                 if optimize_for_chatbi:
                     logger.info(f"为ChatBI优化数据源 {datasource_id} 的元数据格式")
                     metadata_result = MetadataService.optimize_metadata_for_chatbi(metadata_result, datasource, include_sample_data)
-            
+                else:
+                    metadata_result = MetadataService.optimize_metadata_for_chatbi(metadata_result, datasource, include_sample_data)
             return metadata_result
             
         except Exception as e:
@@ -96,7 +97,7 @@ class MetadataService:
 
     
     @staticmethod
-    def _get_mysql_metadata_realtime(datasource: DataSource) -> Dict[str, Any]:
+    def _get_mysql_metadata_realtime(datasource: DataSource, table_name: str = None) -> Dict[str, Any]:
         """实时获取MySQL数据源元数据"""
         try:
             logger.info(f"开始实时查询MySQL数据源: {datasource.host}:{datasource.port}/{datasource.database}")
@@ -157,7 +158,7 @@ class MetadataService:
                         views_count = stat[1]
                 
                 # 获取详细表信息
-                tables = MetadataService._get_mysql_tables_metadata_realtime(cursor, datasource.database)
+                tables = MetadataService._get_mysql_tables_metadata_realtime(cursor, datasource.database, table_name)
             
             connection.close()
             
@@ -189,7 +190,7 @@ class MetadataService:
             }
     
     @staticmethod
-    def _get_mysql_tables_metadata_realtime(cursor, database_name: str) -> List[Dict[str, Any]]:
+    def _get_mysql_tables_metadata_realtime(cursor, database_name: str, target_table_name: str = None) -> List[Dict[str, Any]]:
         """实时获取MySQL表的详细元数据"""
         tables = []
         
@@ -213,6 +214,8 @@ class MetadataService:
             
             for table_info in table_infos:
                 table_name = table_info[0]
+                if target_table_name and table_name != target_table_name:
+                    continue
                 table_type = 'table' if table_info[1] == 'BASE TABLE' else 'view'
                 
                 # 获取列信息
@@ -371,7 +374,7 @@ class MetadataService:
         return constraints
     
     @staticmethod
-    def _get_oracle_metadata_realtime(datasource: DataSource) -> Dict[str, Any]:
+    def _get_oracle_metadata_realtime(datasource: DataSource, table_name: str = None) -> Dict[str, Any]:
         """实时获取Oracle数据源元数据"""
         try:
             logger.info(f"开始实时查询Oracle数据源: {datasource.host}:{datasource.port}/{datasource.service_name}")
@@ -412,7 +415,7 @@ class MetadataService:
                 views_count = cursor.fetchone()[0]
                 
                 # 获取详细表信息
-                tables = MetadataService._get_oracle_tables_metadata_realtime(cursor, schema_name)
+                tables = MetadataService._get_oracle_tables_metadata_realtime(cursor, schema_name, table_name)
             
             connection.close()
             
@@ -444,7 +447,7 @@ class MetadataService:
             }
     
     @staticmethod
-    def _get_oracle_tables_metadata_realtime(cursor, schema_name: str) -> List[Dict[str, Any]]:
+    def _get_oracle_tables_metadata_realtime(cursor, schema_name: str, target_table_name: str = None) -> List[Dict[str, Any]]:
         """实时获取Oracle表的详细元数据"""
         tables = []
         
@@ -463,7 +466,8 @@ class MetadataService:
             
             for row in cursor.fetchall():
                 table_name = row[0]
-                
+                if target_table_name and table_name != target_table_name:
+                    continue
                 # 获取列信息（简化版）
                 cursor.execute("""
                     SELECT 

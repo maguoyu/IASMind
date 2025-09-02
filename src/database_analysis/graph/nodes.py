@@ -140,8 +140,12 @@ class DatabaseAnalysisNodes:
             
             # 如果指定了表名，直接获取该表元数据
             if table_name:
-                table_metadata = self._get_table_metadata(connection, table_name)
-                if table_metadata:
+                from src.server.services.metadata_service import MetadataService
+
+                metadata_result = MetadataService.get_database_metadata(datasource_id, table_name, use_cache=False, optimize_for_chatbi=False, include_sample_data=True)
+
+                if metadata_result.get("success") and metadata_result.get("data"):
+                    table_metadata = metadata_result["data"]["tables"][0]
                     metadata["tables"].append(table_metadata)
             else:
                 # 使用MetadataService获取优化的元数据，包含样本数据

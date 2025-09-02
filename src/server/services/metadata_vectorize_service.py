@@ -583,7 +583,7 @@ class MetadataVectorizeService:
             
             # 获取元数据
             logger.info(f"开始向量化数据源 {datasource_id} 的元数据")
-            metadata_result = MetadataService.get_database_metadata(datasource_id, use_cache=False, optimize_for_chatbi=True)
+            metadata_result = MetadataService.get_database_metadata(datasource_id, use_cache=False, optimize_for_chatbi=True, include_sample_data=True)
             
             if not metadata_result["success"]:
                 raise Exception(f"获取元数据失败: {metadata_result.get('message', '未知错误')}")

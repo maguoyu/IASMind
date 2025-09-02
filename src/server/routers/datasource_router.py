@@ -718,79 +718,16 @@ async def get_metadata_realtime(
         raise HTTPException(status_code=500, detail=f"实时获取元数据失败: {str(e)}")
 
 
-@router.get("/{datasource_id}/metadata/cached", response_model=MetadataResponse)
-async def get_metadata_cached(
-    datasource_id: str,
-    user=Depends(GetCurrentUser)
-):
-    """
-    从缓存获取数据源元数据（已弃用，使用实时查询代替）
-    
-    缓存功能已弃用，将返回实时查询结果。
-    """
-    try:
-        datasource = DataSource.GetById(datasource_id)
-        if not datasource:
-            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
-        
-        logger.warning(f"缓存查询功能已弃用，使用实时查询代替")
-        result = MetadataService.get_database_metadata(datasource_id, use_cache=False)
-        if result['success']:
-            result['message'] = "缓存功能已弃用，已返回实时查询结果"
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(f"获取元数据失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取元数据失败: {str(e)}")
+# 已弃用的缓存功能已删除
 
 
-@router.post("/{datasource_id}/metadata/sync", response_model=MetadataResponse)
-async def sync_metadata(
-    datasource_id: str,
-    user=Depends(GetCurrentUser)
-):
-    """同步数据源元数据（已弃用，使用实时查询代替）"""
-    try:
-        datasource = DataSource.GetById(datasource_id)
-        if not datasource:
-            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
-        
-        # 元数据同步功能已弃用，返回实时查询结果
-        logger.warning(f"元数据同步功能已弃用，使用实时查询代替")
-        result = MetadataService.get_database_metadata(datasource_id, use_cache=False)
-        if result['success']:
-            result['message'] = "同步功能已弃用，已返回实时查询结果"
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(f"获取元数据失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取元数据失败: {str(e)}")
+# 已弃用的同步功能已删除
 
 
 
 
 
-@router.post("/{datasource_id}/metadata/stop")
-async def stop_sync(
-    datasource_id: str,
-    user=Depends(GetCurrentAdminUser)
-):
-    """停止元数据同步"""
-    try:
-        datasource = DataSource.GetById(datasource_id)
-        if not datasource:
-            raise HTTPException(status_code=404, detail=f"未找到ID为 {datasource_id} 的数据源")
-        
-        # 这里可以实现停止同步的逻辑
-        # 目前返回成功状态
-        return {"success": True, "message": "同步已停止"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(f"停止同步失败: {e}")
-        raise HTTPException(status_code=500, detail=f"停止同步失败: {str(e)}")
+# 已弃用的停止同步功能已删除
 
 
 # 元数据向量化相关API（基于现有Milvus集成）

@@ -1,5 +1,4 @@
 import logging
-from tkinter.constants import N
 from typing import List
 
 import unicodedata

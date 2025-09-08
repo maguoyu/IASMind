@@ -66,9 +66,10 @@ export interface Table {
 }
 
 export interface Column {
-  column_name: string;
-  data_type: string;
-  is_nullable: string;
+  // 原始格式字段
+  column_name?: string;
+  data_type?: string;
+  is_nullable?: string;
   column_key?: string;
   column_default?: any;
   extra?: string;
@@ -76,6 +77,16 @@ export interface Column {
   character_maximum_length?: number;
   numeric_precision?: number;
   numeric_scale?: number;
+  
+  // 优化格式字段
+  name?: string;
+  type?: string;
+  nullable?: string;
+  default?: any;
+  comment?: string;
+  max_length?: number;
+  precision?: number;
+  scale?: number;
 }
 
 export interface TablesResponse {
@@ -101,19 +112,24 @@ export interface TableMetadata {
   schema?: string;
   type: 'table' | 'view';
   table_comment?: string;
-  rows_count: number;
-  size_mb: number;
+  comment?: string;           // 优化格式中的注释字段
+  rows_count?: number;
+  size_mb?: number;
   created_at?: string;
   updated_at?: string;
-  columns: Column[];
-  indexes: Index[];
-  constraints: Constraint[];
+  columns?: Column[];
+  indexes?: Index[];          // 原始格式
+  key_indexes?: KeyIndex[];   // 优化格式
+  constraints?: Constraint[]; // 原始格式
+  foreign_keys?: ForeignKey[]; // 优化格式
+  sql_hints?: string[];       // 优化格式中的SQL提示
+  sample_data?: any[];        // 优化格式中的样本数据
 }
 
 export interface Index {
   index_name: string;
   index_type: string;
-  columns: string[];
+  columns?: string[];
   unique: boolean;
   index_comment?: string;
 }
@@ -121,21 +137,40 @@ export interface Index {
 export interface Constraint {
   constraint_name: string;
   constraint_type: string;
-  columns: string[];
+  columns?: string[];
   referenced_table?: string;
   referenced_columns?: string[];
   constraint_comment?: string;
 }
 
+// 优化格式的索引接口
+export interface KeyIndex {
+  name: string;
+  type: 'primary' | 'unique';
+  columns: string[];
+}
+
+// 优化格式的外键接口
+export interface ForeignKey {
+  columns: string[];
+  references: {
+    table: string;
+    columns: string[];
+  };
+}
+
 export interface DatabaseMetadata {
-  database_name: string;
+  database_name?: string;  // 原始格式
+  database?: string;       // 优化格式
   charset?: string;
   collation?: string;
-  size_mb: number;
-  tables_count: number;
-  views_count: number;
+  size_mb?: number;
+  tables_count?: number;   // 原始格式
+  table_count?: number;    // 优化格式
+  views_count?: number;
   created_at?: string;
   tables: TableMetadata[];
+  relationships?: any[];   // 优化格式中的关系信息
 }
 
 export interface MetadataResponse {

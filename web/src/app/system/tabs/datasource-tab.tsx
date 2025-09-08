@@ -931,19 +931,19 @@ export function DataSourceTab() {
                         <div>
                           <Label className="text-slate-500 dark:text-slate-400">数据库大小</Label>
                           <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
-                            {metadata.size_mb.toFixed(2)} MB
+                            {metadata.size_mb ? metadata.size_mb.toFixed(2) : '0.00'} MB
                           </div>
                         </div>
                         <div>
                           <Label className="text-slate-500 dark:text-slate-400">表数量</Label>
                           <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
-                            {metadata.tables_count}
+                            {metadata.tables_count || 0}
                           </div>
                         </div>
                         <div>
                           <Label className="text-slate-500 dark:text-slate-400">视图数量</Label>
                           <div className="mt-1 text-slate-900 dark:text-slate-100 font-medium">
-                            {metadata.views_count}
+                            {metadata.views_count || 0}
                           </div>
                         </div>
                         <div>
@@ -979,7 +979,7 @@ export function DataSourceTab() {
                                   </Badge>
                                 </div>
                                 <div className="text-xs text-slate-500">
-                                  {table.rows_count} 行 | {table.size_mb.toFixed(2)} MB
+                                  {table.rows_count || 0} 行 | {table.size_mb ? table.size_mb.toFixed(2) : '0.00'} MB
                                 </div>
                               </div>
                               {table.table_comment && (
@@ -1007,15 +1007,15 @@ export function DataSourceTab() {
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-slate-500">行数:</span>
-                                  <span>{selectedMetadataTable.rows_count.toLocaleString()}</span>
+                                  <span>{(selectedMetadataTable.rows_count || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-slate-500">大小:</span>
-                                  <span>{selectedMetadataTable.size_mb.toFixed(2)} MB</span>
+                                  <span>{selectedMetadataTable.size_mb ? selectedMetadataTable.size_mb.toFixed(2) : '0.00'} MB</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="text-slate-500">列数:</span>
-                                  <span>{selectedMetadataTable.columns.length}</span>
+                                  <span>{selectedMetadataTable.columns ? selectedMetadataTable.columns.length : 0}</span>
                                 </div>
                               </div>
 
@@ -1028,14 +1028,14 @@ export function DataSourceTab() {
                                   列信息
                                 </h4>
                                 <div className="space-y-1 max-h-40 overflow-y-auto">
-                                  {selectedMetadataTable.columns.map((column, index) => (
+                                  {selectedMetadataTable.columns && selectedMetadataTable.columns.map((column, index) => (
                                     <div key={index} className="flex items-center justify-between text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded">
                                       <div>
-                                        <span className="font-medium">{column.column_name}</span>
-                                        <span className="ml-2 text-slate-500">{column.data_type}</span>
+                                        <span className="font-medium">{column.name || column.column_name}</span>
+                                        <span className="ml-2 text-slate-500">{column.type || column.data_type}</span>
                                       </div>
                                       <div className="flex items-center space-x-1">
-                                        {column.is_nullable === 'NO' && <Badge variant="outline" className="text-xs">NOT NULL</Badge>}
+                                        {(column.nullable === 'NO' || column.is_nullable === 'NO') && <Badge variant="outline" className="text-xs">NOT NULL</Badge>}
                                         {column.column_key && <Badge variant="outline" className="text-xs">{column.column_key}</Badge>}
                                       </div>
                                     </div>
@@ -1044,7 +1044,7 @@ export function DataSourceTab() {
                               </div>
 
                               {/* 索引信息 */}
-                              {selectedMetadataTable.indexes.length > 0 && (
+                              {selectedMetadataTable.indexes && selectedMetadataTable.indexes.length > 0 && (
                                 <>
                                   <Separator />
                                   <div>
@@ -1060,7 +1060,7 @@ export function DataSourceTab() {
                                             <Badge variant="outline" className="text-xs">{index.index_type}</Badge>
                                           </div>
                                           <div className="text-slate-500 mt-1">
-                                            列: {index.columns.join(', ')}
+                                            列: {index.columns ? index.columns.join(', ') : ''}
                                           </div>
                                         </div>
                                       ))}
@@ -1070,7 +1070,7 @@ export function DataSourceTab() {
                               )}
 
                               {/* 约束信息 */}
-                              {selectedMetadataTable.constraints.length > 0 && (
+                              {selectedMetadataTable.constraints && selectedMetadataTable.constraints.length > 0 && (
                                 <>
                                   <Separator />
                                   <div>
@@ -1086,7 +1086,7 @@ export function DataSourceTab() {
                                             <Badge variant="outline" className="text-xs">{constraint.constraint_type}</Badge>
                                           </div>
                                           <div className="text-slate-500 mt-1">
-                                            列: {constraint.columns.join(', ')}
+                                            列: {constraint.columns ? constraint.columns.join(', ') : ''}
                                             {constraint.referenced_table && (
                                               <span> → {constraint.referenced_table}({constraint.referenced_columns?.join(', ')})</span>
                                             )}

@@ -40,12 +40,13 @@ def create_database_analysis_graph():
             "end": END
         }
     )
-    # 添加条件边：验证成功则执行，失败则结束
+    # 添加条件边：验证成功则执行，失败可重试或结束
     workflow.add_conditional_edges(
         "sql_validation",
         should_execute_sql,
         {
             "execute": "sql_execution",
+            "retry": "sql_generation",
             "end": END
         }
     )
@@ -58,7 +59,8 @@ def create_database_analysis_graph():
     
     # 编译图
     graph = workflow.compile(checkpointer=memory)
-    
+    graph.get_graph().draw_mermaid_png(output_file_path="deep_research.png")
+
     return graph
 
 def validate_intent(state: DatabaseAnalysisState) -> str:
@@ -71,16 +73,25 @@ def validate_intent(state: DatabaseAnalysisState) -> str:
 def should_execute_sql(state: DatabaseAnalysisState) -> str:
     """判断是否应该执行SQL"""
     validation_result = state.get("validation_result", {})
+    retry_count = state.get("retry_count", 0)
+    max_retries = 3  # 最大重试次数
     
-    # 如果有错误，直接结束
-    if state.get("error"):
+    # 如果有系统错误，直接结束
+    if state.get("error") and not validation_result.get("validation_errors"):
         return "end"
     
     # 如果验证通过，执行SQL
     if validation_result.get("is_valid", False):
         return "execute"
     
-    # 验证失败，结束流程
+    # 如果验证失败但还有重试次数，重新生成SQL
+    if retry_count < max_retries and validation_result.get("validation_errors"):
+        print(f"SQL验证失败，正在进行第 {retry_count + 1} 次重试...")
+        print(f"验证错误: {validation_result.get('validation_errors')}")
+        return "retry"
+    
+    # 超过最大重试次数或其他情况，结束流程
+    print(f"SQL验证失败，已达到最大重试次数 ({max_retries})，结束流程")
     return "end"
 
 

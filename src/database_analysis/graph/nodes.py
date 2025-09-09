@@ -179,6 +179,8 @@ class DatabaseAnalysisNodes:
             intent = state.get("intent")
             entities = intent.entities if intent else []
             metadata = state.get("metadata", {})
+            retry_count = state.get("retry_count", 0)
+            validation_result = state.get("validation_result", {})
             
             # 构建SQL生成提示
             tables_info = []
@@ -192,6 +194,7 @@ class DatabaseAnalysisNodes:
                     table_info = table['raw_data']
                     tables_info.append(table_info)
             
+            # 基础提示
             prompt = f"""
 根据用户查询和数据库元数据，生成相应的SQL查询语句：
 
@@ -202,6 +205,30 @@ class DatabaseAnalysisNodes:
 
 识别的实体:
 {json.dumps(entities, ensure_ascii=False, indent=2)}
+"""
+            
+            # 如果是重试，添加错误信息和改进建议
+            if retry_count > 0 and validation_result.get("validation_errors"):
+                previous_sql = state.get("sql_query", "")
+                errors = validation_result.get("validation_errors", [])
+                
+                prompt += f"""
+
+注意：这是第 {retry_count + 1} 次尝试生成SQL。
+之前的SQL语句存在问题:
+{previous_sql}
+
+错误信息:
+{chr(10).join(errors)}
+
+请根据错误信息修正SQL语句，特别注意：
+1. 表名和字段名的正确性
+2. SQL语法的正确性
+3. 数据类型的匹配
+4. JOIN条件的准确性
+"""
+            
+            prompt += """
 
 要求:
 1. 生成标准SQL语句
@@ -221,7 +248,10 @@ class DatabaseAnalysisNodes:
             sql_query = re.sub(r'\s*```$', '', sql_query)
             sql_query = sql_query.strip()
             
+            # 更新状态
             state["sql_query"] = sql_query
+            state["retry_count"] = retry_count + 1  # 增加重试计数
+            
             return state
             
         except Exception as e:

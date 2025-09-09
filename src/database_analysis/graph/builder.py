@@ -59,7 +59,7 @@ def create_database_analysis_graph():
     
     # 编译图
     graph = workflow.compile(checkpointer=memory)
-    graph.get_graph().draw_mermaid_png(output_file_path="deep_research.png")
+    # graph.get_graph().draw_mermaid_png(output_file_path="deep_research.png")
 
     return graph
 

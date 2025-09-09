@@ -2,7 +2,7 @@
 
 import { BarChartOutlined, DeleteOutlined, EyeOutlined, FileTextOutlined, UploadOutlined } from "@ant-design/icons";
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import EChartsWrapper from "~/components/charts/echarts-wrapper";
 import { toast } from "sonner";
@@ -177,74 +177,9 @@ export function DataExplorationMain() {
       });
   }, [isAuthenticated, handleAuthError]);
 
-  const generateMockPreview = (fileName: string) => {
-    // 生成模拟数据预览
-    if (fileName.includes('.csv') || fileName.includes('.xlsx') || fileName.includes('.json')) {
-      return [
-        { id: 1, name: "示例数据1", value: 100, category: "A", date: "2024-01-01" },
-        { id: 2, name: "示例数据2", value: 200, category: "B", date: "2024-01-02" },
-        { id: 3, name: "示例数据3", value: 150, category: "A", date: "2024-01-03" },
-        { id: 4, name: "示例数据4", value: 300, category: "C", date: "2024-01-04" },
-        { id: 5, name: "示例数据5", value: 250, category: "B", date: "2024-01-05" }
-      ];
-    }
-    return [];
-  };
 
-  // 生成可视化测试数据
-  const generateVisualizationData = useMemo(() => {
-    // 柱状图数据
-    const barData = [
-      { name: '类别A', value: 120, target: 100 },
-      { name: '类别B', value: 180, target: 150 },
-      { name: '类别C', value: 250, target: 200 },
-      { name: '类别D', value: 90, target: 120 },
-      { name: '类别E', value: 220, target: 180 }
-    ];
 
-    // 饼图数据
-    const pieData = [
-      { name: '类别A', value: 120, color: '#8884d8' },
-      { name: '类别B', value: 180, color: '#82ca9d' },
-      { name: '类别C', value: 250, color: '#ffc658' },
-      { name: '类别D', value: 90, color: '#ff7300' },
-      { name: '类别E', value: 220, color: '#8dd1e1' }
-    ];
 
-    // 折线图数据
-    const lineData = [
-      { month: '1月', sales: 1200, profit: 800, cost: 400 },
-      { month: '2月', sales: 1400, profit: 900, cost: 500 },
-      { month: '3月', sales: 1100, profit: 700, cost: 400 },
-      { month: '4月', sales: 1600, profit: 1000, cost: 600 },
-      { month: '5月', sales: 1800, profit: 1200, cost: 600 },
-      { month: '6月', sales: 2000, profit: 1400, cost: 600 }
-    ];
-
-    // 散点图数据
-    const scatterData = [
-      { x: 10, y: 20, size: 5, category: 'A' },
-      { x: 15, y: 35, size: 8, category: 'B' },
-      { x: 20, y: 25, size: 6, category: 'A' },
-      { x: 25, y: 45, size: 10, category: 'C' },
-      { x: 30, y: 30, size: 7, category: 'B' },
-      { x: 35, y: 55, size: 12, category: 'C' },
-      { x: 40, y: 40, size: 9, category: 'A' },
-      { x: 45, y: 65, size: 15, category: 'C' }
-    ];
-
-    // 面积图数据
-    const areaData = [
-      { month: '1月', revenue: 1200, expenses: 800, profit: 400 },
-      { month: '2月', revenue: 1400, expenses: 900, profit: 500 },
-      { month: '3月', revenue: 1100, expenses: 700, profit: 400 },
-      { month: '4月', revenue: 1600, expenses: 1000, profit: 600 },
-      { month: '5月', revenue: 1800, expenses: 1200, profit: 600 },
-      { month: '6月', revenue: 2000, expenses: 1400, profit: 600 }
-    ];
-
-    return { barData, pieData, lineData, scatterData, areaData };
-  }, []);
 
   const handleFileSelect = useCallback(async (file: DataFile) => {
     if (!isAuthenticated) {
@@ -824,35 +759,6 @@ export function DataExplorationMain() {
                         }
                       </p>
                       <div className="flex justify-end gap-2">
-                        <button
-                          className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-300 flex items-center text-sm"
-                          onClick={() => {
-                            // 生成一个简单的测试图表
-                            const testSpec = {
-                              title: { text: '测试图表', left: 'center' },
-                              tooltip: { trigger: 'axis' },
-                              xAxis: { 
-                                type: 'category', 
-                                data: ['1月', '2月', '3月', '4月', '5月', '6月'] 
-                              },
-                              yAxis: { type: 'value' },
-                              series: [{
-                                name: '测试数据',
-                                data: [120, 200, 150, 80, 70, 110],
-                                type: 'bar',
-                                itemStyle: { color: '#3b82f6' }
-                              }]
-                            };
-                            setVisualizationSpec(testSpec);
-                            setActiveTab('visualization');
-                            toast.success("测试图表已生成");
-                          }}
-                          disabled={isAnalyzing}
-                        >
-                          <BarChartOutlined className="h-4 w-4 inline-block mr-1" />
-                          测试图表
-                        </button>
-
                         <button
                           className={`px-4 py-2 text-white rounded-md flex items-center font-medium transition-all ${
                             useAIMode 

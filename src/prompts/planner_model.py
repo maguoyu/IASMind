@@ -14,7 +14,7 @@ class StepType(str, Enum):
 
 class Step(BaseModel):
     need_search: bool = Field(..., description="Must be explicitly set for each step")
-    title: str
+    title: str = Field(..., description="Title of the step")
     description: str = Field(..., description="Specify exactly what data to collect")
     step_type: StepType = Field(..., description="Indicates the nature of the step")
     execution_res: Optional[str] = Field(
@@ -26,9 +26,9 @@ class Plan(BaseModel):
     locale: str = Field(
         ..., description="e.g. 'en-US' or 'zh-CN', based on the user's language"
     )
-    has_enough_context: bool
-    thought: str
-    title: str
+    has_enough_context: bool = Field(..., description="Whether there is sufficient context to answer the question")
+    thought: str = Field(..., description="The reasoning behind the plan")
+    title: str = Field(..., description="Title of the research plan")
     steps: List[Step] = Field(
         default_factory=list,
         description="Research & Processing steps to get more context",

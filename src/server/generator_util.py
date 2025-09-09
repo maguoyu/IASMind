@@ -62,7 +62,7 @@ async def astream_workflow_generator(
                     "interrupt",
                     {
                         "thread_id": thread_id,
-                        "id": event_data["__interrupt__"][0].ns[0],
+                        "id": event_data["__interrupt__"][0].id,
                         "role": "assistant",
                         "content": event_data["__interrupt__"][0].value,
                         "finish_reason": "interrupt",
@@ -76,9 +76,15 @@ async def astream_workflow_generator(
         message_chunk, message_metadata = cast(
             tuple[BaseMessage, dict[str, Any]], event_data
         )
+        # 优先使用agent参数，如果为空则从message_metadata获取节点名称
+        if len(agent) > 0:
+            current_agent = agent[0].split(":")[0]
+        else:
+            current_agent = message_metadata.get("langgraph_node", "unknown")
+
         event_stream_message: dict[str, Any] = {
             "thread_id": thread_id,
-            "agent": agent[0].split(":")[0],
+            "agent": current_agent,
             "id": message_chunk.id,
             "role": "assistant",
             "content": message_chunk.content,

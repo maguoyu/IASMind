@@ -16,6 +16,7 @@ import logging
 import signal
 import sys
 import uvicorn
+import os
 
 # 配置日志
 logging.basicConfig(
@@ -70,7 +71,9 @@ if __name__ == "__main__":
     reload = True
     if args.reload:
         reload = True
-
+    if os.environ.get('DOCKER_CONTAINER', '').lower() == 'true':
+        reload = False
+        logger.info("检测到 Docker 环境，已禁用自动重载功能")
     try:
         logger.info(f"Starting DeerFlow API server on {args.host}:{args.port}")
         uvicorn.run(

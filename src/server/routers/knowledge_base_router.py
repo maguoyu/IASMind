@@ -8,16 +8,16 @@
 
 import os
 import logging
-import shutil
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Depends, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 import uuid
 from src.rag.vector import vector_documents, delete_documentsByKnowledgeBaseId, delete_documentsByFileId
 from src.database.models import KnowledgeBase, FileDocument
 from src.database.connection import db_connection
+from src.server.file_service import file_service
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,6 @@ router = APIRouter(
     tags=["knowledge_base"],
     responses={404: {"message": "您所访问的资源不存在！"}},
 )
-
-# 文件存储目录
-FILE_PATH = os.getenv("FILE_PATH", "uploads")
-os.makedirs(FILE_PATH, exist_ok=True)
 
 
 class KnowledgeBaseCreateRequest(BaseModel):
@@ -82,7 +78,7 @@ class VectorizeFileRequest(BaseModel):
 class HealthCheckResponse(BaseModel):
     status: str
     database: str
-    file_path: str
+    minio_status: str
     timestamp: str
 
 
@@ -108,13 +104,18 @@ async def health_check():
         logger.error(f"数据库连接失败: {e}")
         db_status = "disconnected"
     
-    # 检查上传目录
-    upload_status = "accessible" if os.access(FILE_PATH, os.W_OK) else "not_accessible"
+    # 检查MinIO连接
+    try:
+        file_service.client.bucket_exists(file_service.default_bucket)
+        minio_status = "connected"
+    except Exception as e:
+        logger.error(f"MinIO连接失败: {e}")
+        minio_status = "disconnected"
     
     return HealthCheckResponse(
-        status="healthy" if db_status == "connected" else "unhealthy",
+        status="healthy" if db_status == "connected" and minio_status == "connected" else "unhealthy",
         database=db_status,
-        file_path=upload_status,
+        minio_status=minio_status,
         timestamp=datetime.now().isoformat()
     )
 
@@ -255,8 +256,11 @@ async def DeleteKnowledgeBase(kb_id: str):
         # 删除知识库下的所有文件
         files = FileDocument.GetByKnowledgeBase(kb_id, limit=1000)
         for file in files:
-            if os.path.exists(file.file_path):
-                os.remove(file.file_path)
+            try:
+                # 从MinIO删除文件
+                file_service.delete_file(file.file_path, bucket_name="knowledge-base")
+            except Exception as e:
+                logger.warning(f"从MinIO删除文件失败: {file.file_path}, 错误: {e}")
             file.Delete()
         
         # 删除Milvus中对应的向量数据
@@ -343,14 +347,19 @@ async def upload_file(
         if file.size > max_size:
             raise HTTPException(status_code=400, detail="文件大小超过限制")
         
-        # 生成文件路径
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_filename = f"{timestamp}_{file.filename.replace(' ', '_')}"
-        file_path = os.path.join(FILE_PATH, safe_filename)
+        # 读取文件内容
+        file_content = await file.read()
         
-        # 保存文件
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # 上传到MinIO
+        upload_result = file_service.upload_file(
+            file_content=file_content,
+            filename=file.filename,
+            content_type=file.content_type or "application/octet-stream",
+            bucket_name="knowledge-base"  # 使用专门的知识库存储桶
+        )
+        
+        # 使用MinIO返回的file_id作为文件路径
+        file_path = upload_result["file_id"]
         
         # 创建文件文档记录
         metadata = {
@@ -473,9 +482,12 @@ async def DeleteFile(file_id: str):
         except Exception as vector_error:
             logger.warning(f"删除向量数据失败，但继续删除文件: {vector_error}")
         
-        # 删除物理文件
-        if os.path.exists(doc.file_path):
-            os.remove(doc.file_path)
+        # 从MinIO删除文件
+        try:
+            file_service.delete_file(doc.file_path, bucket_name="knowledge-base")
+            logger.info(f"从MinIO删除文件: {doc.file_path}")
+        except Exception as e:
+            logger.warning(f"从MinIO删除文件失败: {doc.file_path}, 错误: {e}")
         
         # 删除数据库记录
         success = doc.Delete()
@@ -588,13 +600,15 @@ async def DownloadFile(file_id: str):
         if not doc:
             raise HTTPException(status_code=404, detail="文件不存在")
         
-        if not os.path.exists(doc.file_path):
-            raise HTTPException(status_code=404, detail="文件不存在")
+        # 从MinIO下载文件
+        file_data = file_service.download_file(doc.file_path, bucket_name="knowledge-base")
         
-        return FileResponse(
-            path=doc.file_path,
-            filename=doc.name,
-            media_type=doc.type
+        return StreamingResponse(
+            file_data["content"],
+            media_type=file_data["content_type"],
+            headers={
+                "Content-Disposition": f"attachment; filename={doc.name}"
+            }
         )
     except HTTPException:
         raise

@@ -24,7 +24,6 @@ class Configuration:
     mcp_settings: dict = None  # MCP settings, including dynamic loaded tools
     report_style: str = ReportStyle.ACADEMIC.value  # Report style
     enable_deep_thinking: bool = False  # Whether to enable deep thinking
-    exploration_file_path: str = "data_exploration_files"  # 数据探索文件存储路径
 
     @classmethod
     def from_runnable_config(

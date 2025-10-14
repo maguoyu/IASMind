@@ -24,16 +24,9 @@ from ...database.models import FileExploration
 from ...utils.crypto import GenerateSecureToken
 from ...config.configuration import get_config
 from src.data_insight.chart_generator import LocalChartGenerator
+from src.server.file_service import file_service
 
 router = APIRouter(prefix="/api/data-exploration", tags=["数据探索"])
-
-# 配置文件存储目录
-config = get_config()
-DATA_EXPLORATION_DIR = os.getenv("EXPLORATION_FILE_PATH", config.exploration_file_path)
-os.makedirs(DATA_EXPLORATION_DIR, exist_ok=True)
-
-# 添加日志记录
-print(f"数据探索文件将被保存到: {DATA_EXPLORATION_DIR}")
 
 
 class FileExplorationCreate(BaseModel):
@@ -159,28 +152,36 @@ async def upload_file(
     user_id = user.sub
     print(f"用户 {user_id} 正在上传文件: {file.filename}, 类型: {file.content_type}")
     
-    # 创建用户目录
-    user_dir = os.path.join(DATA_EXPLORATION_DIR, user_id)
-    os.makedirs(user_dir, exist_ok=True)
+    # 读取文件内容
+    file_content = await file.read()
+    file_size = len(file_content)
     
-    # 生成唯一文件名
-    file_id = str(uuid.uuid4())
+    # 上传到MinIO
+    upload_result = file_service.upload_file(
+        file_content=file_content,
+        filename=file.filename,
+        content_type=file.content_type or "application/octet-stream",
+        bucket_name="data-exploration"  # 使用专门的数据探索存储桶
+    )
+    
+    # MinIO返回的file_id
+    minio_file_id = upload_result["file_id"]
+    
+    # 创建临时文件用于数据处理
     file_suffix = os.path.splitext(file.filename)[1].lower()
-    file_path = os.path.join(user_dir, f"{file_id}{file_suffix}")
+    temp_file_path = None
     
-    # 保存上传的文件
-    file_size = 0
     try:
-        with open(file_path, "wb") as f:
-            while content := await file.read(1024 * 1024):  # 每次读取1MB
-                f.write(content)
-                file_size += len(content)
+        # 将文件内容写入临时文件以便处理
+        with tempfile.NamedTemporaryFile(mode='wb', suffix=file_suffix, delete=False) as temp_file:
+            temp_file.write(file_content)
+            temp_file_path = temp_file.name
         
         # 记录日志
-        print(f"已保存文件到: {file_path}, 大小: {file_size} 字节")
+        print(f"已上传文件到MinIO: {minio_file_id}, 大小: {file_size} 字节")
         
         # 处理文件数据
-        file_data = process_file_data(file_path, file.content_type)
+        file_data = process_file_data(temp_file_path, file.content_type)
         
         if isinstance(file_data["metadata"], dict) and "error" in file_data["metadata"]:
             print(f"处理文件数据时出错: {file_data['metadata']['error']}")
@@ -189,13 +190,13 @@ async def upload_file(
         print(f"预览数据类型: {type(file_data['preview_data'])}")
         
         try:
-            # 创建文件记录
+            # 创建文件记录，使用MinIO的file_id作为file_path
             file_doc = FileExploration.Create(
                 name=file.filename,
                 file_type=file.content_type,
                 size=file_size,
                 user_id=user_id,
-                file_path=file_path,
+                file_path=minio_file_id,  # 保存MinIO的file_id
                 suffix=file_suffix,
                 metadata=file_data["metadata"],
                 preview_data=file_data["preview_data"]
@@ -215,23 +216,30 @@ async def upload_file(
             
     except HTTPException as he:
         # 传递HTTP异常
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                print(f"已删除文件: {file_path}")
-            except Exception as e:
-                print(f"删除文件失败: {str(e)}")
+        # 从MinIO删除已上传的文件
+        try:
+            file_service.delete_file(minio_file_id, bucket_name="data-exploration")
+            print(f"已从MinIO删除文件: {minio_file_id}")
+        except Exception as e:
+            print(f"从MinIO删除文件失败: {str(e)}")
         raise he
     except Exception as e:
-        # 如果处理过程中出现异常，记录日志并清理临时文件
+        # 如果处理过程中出现异常，记录日志并清理MinIO文件
         print(f"上传文件失败: {str(e)}")
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                print(f"已删除文件: {file_path}")
-            except Exception as delete_error:
-                print(f"删除文件失败: {str(delete_error)}")
+        try:
+            file_service.delete_file(minio_file_id, bucket_name="data-exploration")
+            print(f"已从MinIO删除文件: {minio_file_id}")
+        except Exception as delete_error:
+            print(f"从MinIO删除文件失败: {str(delete_error)}")
         raise HTTPException(status_code=500, detail=f"文件上传失败: {str(e)}")
+    finally:
+        # 清理临时文件
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+                print(f"已删除临时文件: {temp_file_path}")
+            except Exception as e:
+                print(f"删除临时文件失败: {str(e)}")
 
 
 @router.get("/files", response_model=FileListResponse)
@@ -341,16 +349,16 @@ async def delete_file(
     if file.user_id != user.sub:
         raise HTTPException(status_code=403, detail="无权删除该文件")
     
-    # 删除文件
-    success = file.Delete()
-    
-    # 尝试删除物理文件
+    # 从MinIO删除文件
     try:
-        if os.path.exists(file.file_path):
-            os.remove(file.file_path)
+        file_service.delete_file(file.file_path, bucket_name="data-exploration")
+        print(f"已从MinIO删除文件: {file.file_path}")
     except Exception as e:
-        # 文件记录已删除，即使物理文件删除失败也返回成功
-        pass
+        print(f"从MinIO删除文件失败: {file.file_path}, 错误: {e}")
+        # 继续删除数据库记录
+    
+    # 删除数据库记录
+    success = file.Delete()
     
     if success:
         return JSONResponse({"status": "success", "message": "文件已删除"})
@@ -473,11 +481,21 @@ async def analyze_data(
         if file.user_id != user.sub:
             raise HTTPException(status_code=403, detail="无权访问该文件")
         
-        # 检查文件路径是否存在
-        if not file.file_path or not os.path.exists(file.file_path):
-            raise HTTPException(status_code=404, detail="文件不存在或已被删除")
+        # 从MinIO下载文件到临时位置
+        file_data = file_service.download_file(file.file_path, bucket_name="data-exploration")
         
-        print(f"开始分析文件: file_id={request.file_id}, 文件路径={file.file_path}")
+        # 创建临时文件
+        file_suffix = os.path.splitext(file.name)[1].lower()
+        temp_file_path = None
+        
+        try:
+            with tempfile.NamedTemporaryFile(mode='wb', suffix=file_suffix, delete=False) as temp_file:
+                temp_file.write(file_data["content"].read())
+                temp_file_path = temp_file.name
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"创建临时文件失败: {str(e)}")
+        
+        print(f"开始分析文件: file_id={request.file_id}, 临时文件路径={temp_file_path}")
         
         # 初始化数据变量
         dataType = "dataset"
@@ -485,29 +503,29 @@ async def analyze_data(
         csvData = None
         textData = None
         fieldInfo = None
-        suffix = os.path.splitext(file.file_path)[1].lower()
+        suffix = file_suffix
         
         # 读取文件内容并进行处理
         try:
             if suffix == '.csv':
                 # 读取CSV文件
-                df = pd.read_csv(file.file_path)
+                df = pd.read_csv(temp_file_path)
                 csvData = df.to_csv(index=False)
                 dataType = "csv"
             elif suffix in ['.xls', '.xlsx']:
                 # 读取Excel文件
-                df = pd.read_excel(file.file_path)
+                df = pd.read_excel(temp_file_path)
                 csvData = df.to_csv(index=False)
                 dataType = "csv"
             elif suffix == '.json':
                 # 读取JSON文件
-                with open(file.file_path, 'r', encoding='utf-8') as f:
+                with open(temp_file_path, 'r', encoding='utf-8') as f:
                     file_content = json.load(f)
                     # 使用process_data函数处理JSON内容
                     dataType, dataset, csvData, textData, fieldInfo = process_data(file_content)
             elif suffix in ['.txt', '.text']:
                 # 读取文本文件
-                with open(file.file_path, 'r', encoding='utf-8') as f:
+                with open(temp_file_path, 'r', encoding='utf-8') as f:
                     file_content = f.read().strip()
                     # 使用process_data函数处理文本内容
                     dataType, dataset, csvData, textData, fieldInfo = process_data(file_content)
@@ -521,6 +539,14 @@ async def analyze_data(
             error_msg = f"处理文件内容时出错: {str(e)}"
             print(error_msg)
             raise HTTPException(status_code=500, detail=error_msg)
+        finally:
+            # 清理临时文件
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                    print(f"已删除临时文件: {temp_file_path}")
+                except Exception as e:
+                    print(f"删除临时文件失败: {str(e)}")
         
         # 创建本地图表生成器
         chart_generator = LocalChartGenerator()

@@ -20,3 +20,12 @@ BASIC_MODEL:
 #   base_url: https://ark-cn-beijing.bytedance.net/api/v3
 #   model: "doubao-1-5-thinking-pro-m-250428"
 #   api_key: xxxx
+
+# MinIO object storage configuration
+# Used for file upload, download, and management
+MINIO:
+  endpoint: "172.20.0.112:9000"  # MinIO server address and port
+  access_key: "minioadmin"        # Access key
+  secret_key: "minioadmin"        # Secret key
+  secure: false                   # Use HTTPS (true) or HTTP (false)
+  default_bucket: "ias-mind"      # Default bucket name

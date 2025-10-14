@@ -25,6 +25,7 @@ from src.server.routers.data_exploration_router import router as data_exploratio
 from src.server.routers.datasource_router import router as datasource_router
 from src.server.routers.database_analysis_router import router as database_analysis_router
 from src.server.routers.charts_router import router as charts_router
+from src.server.routers.file_router import router as file_router
 
 logger = logging.getLogger(__name__)
 
@@ -63,3 +64,4 @@ app.include_router(data_exploration_router)
 app.include_router(charts_router)
 app.include_router(datasource_router)
 app.include_router(database_analysis_router)
+app.include_router(file_router)

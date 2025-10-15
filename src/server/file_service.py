@@ -160,7 +160,7 @@ class FileService:
         从MinIO删除文件
         
         参数:
-        - file_id: 文件ID
+        - file_id: 文件ID（支持路径格式）
         - bucket_name: 存储桶名称（默认使用配置的default_bucket）
         """
         try:
@@ -170,10 +170,13 @@ class FileService:
             # 确保存储桶存在
             self._ensure_bucket_exists(bucket)
             
-            # 删除文件
-            self.client.remove_object(bucket, file_id)
+            # 清理 file_id：去除开头的斜杠
+            clean_file_id = file_id.lstrip('/')
             
-            logger.info(f"文件删除成功: {file_id}")
+            # 删除文件
+            self.client.remove_object(bucket, clean_file_id)
+            
+            logger.info(f"文件删除成功: {clean_file_id}")
             
         except S3Error as e:
             if e.code == "NoSuchKey":
@@ -199,7 +202,7 @@ class FileService:
         从MinIO下载文件
         
         参数:
-        - file_id: 文件ID
+        - file_id: 文件ID（支持路径格式，如 "管理制度/文件.png"）
         - bucket_name: 存储桶名称（默认使用配置的default_bucket）
         
         返回:
@@ -212,19 +215,33 @@ class FileService:
             # 确保存储桶存在
             self._ensure_bucket_exists(bucket)
             
+            # 清理 file_id：去除开头的斜杠（MinIO对象键不应以斜杠开头）
+            clean_file_id = file_id.lstrip('/')
+            
+            logger.info(f"准备下载文件: 原始={file_id}, 清理后={clean_file_id}")
+            
             # 获取文件对象
-            response = self.client.get_object(bucket, file_id)
+            response = self.client.get_object(bucket, clean_file_id)
             
             # 读取文件内容
             file_content = response.read()
             
             # 获取文件元数据
-            stat = self.client.stat_object(bucket, file_id)
+            stat = self.client.stat_object(bucket, clean_file_id)
             
             # 从file_id中提取原始文件名
-            filename = "_".join(file_id.split("_")[1:]) if "_" in file_id else file_id
+            # 优先处理路径格式（包含斜杠）
+            if "/" in clean_file_id:
+                # 路径格式：取最后一个斜杠后的部分
+                filename = clean_file_id.split("/")[-1]
+            elif "_" in clean_file_id:
+                # UUID格式：去掉前面的UUID部分
+                filename = "_".join(clean_file_id.split("_")[1:])
+            else:
+                # 其他情况：直接使用file_id
+                filename = clean_file_id
             
-            logger.info(f"文件下载成功: {file_id}")
+            logger.info(f"文件下载成功: {clean_file_id}, 文件名: {filename}")
             
             return {
                 "content": io.BytesIO(file_content),
@@ -261,7 +278,7 @@ class FileService:
         获取文件信息（不下载内容）
         
         参数:
-        - file_id: 文件ID
+        - file_id: 文件ID（支持路径格式）
         - bucket_name: 存储桶名称（默认使用配置的default_bucket）
         
         返回:
@@ -274,20 +291,31 @@ class FileService:
             # 确保存储桶存在
             self._ensure_bucket_exists(bucket)
             
+            # 清理 file_id：去除开头的斜杠
+            clean_file_id = file_id.lstrip('/')
+            
             # 获取文件统计信息
-            stat = self.client.stat_object(bucket, file_id)
+            stat = self.client.stat_object(bucket, clean_file_id)
             
             # 从file_id中提取原始文件名
-            filename = "_".join(file_id.split("_")[1:]) if "_" in file_id else file_id
+            if "/" in clean_file_id:
+                # 路径格式：取最后一个斜杠后的部分
+                filename = clean_file_id.split("/")[-1]
+            elif "_" in clean_file_id:
+                # UUID格式：去掉前面的UUID部分
+                filename = "_".join(clean_file_id.split("_")[1:])
+            else:
+                # 其他情况：直接使用file_id
+                filename = clean_file_id
             
             # 构建文件URL
             protocol = "https" if self.secure else "http"
-            file_url = f"{protocol}://{self.endpoint}/{bucket}/{file_id}"
+            file_url = f"{protocol}://{self.endpoint}/{bucket}/{clean_file_id}"
             
-            logger.info(f"获取文件信息成功: {file_id}")
+            logger.info(f"获取文件信息成功: {clean_file_id}, 文件名: {filename}")
             
             return {
-                "file_id": file_id,
+                "file_id": clean_file_id,
                 "filename": filename,
                 "content_type": stat.content_type or "application/octet-stream",
                 "size": stat.size,

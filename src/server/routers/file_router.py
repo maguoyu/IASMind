@@ -9,6 +9,7 @@
 import logging
 from typing import Optional, List
 from datetime import datetime
+from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, status, UploadFile, File, Query, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -163,12 +164,15 @@ async def download_file(
         
         logger.info(f"文件下载成功: {file_id}")
         
+        # 对中文文件名进行 RFC 5987 编码
+        encoded_filename = quote(file_data["filename"])
+        
         # 返回文件流
         return StreamingResponse(
             file_data['content'],
             media_type=file_data['content_type'],
             headers={
-                'Content-Disposition': f'attachment; filename="{file_data["filename"]}"'
+                'Content-Disposition': f'attachment; filename*=UTF-8\'\'{encoded_filename}'
             }
         )
         
@@ -176,6 +180,58 @@ async def download_file(
         raise
     except Exception as e:
         logger.exception(f"文件下载失败: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"文件下载失败: {str(e)}"
+        )
+
+
+@router.get("/download-path/{bucket}/{file_id:path}", summary="通过路径格式下载文件")
+async def download_file_by_path(
+    bucket: str,
+    file_id: str
+):
+    """
+    从MinIO服务器下载文件（使用 bucket/file_id 路径格式）
+    
+    参数:
+    - bucket: 存储桶名称
+    - file_id: 文件唯一标识（支持包含斜杠的路径）
+    
+    返回:
+    - 文件流
+    
+    示例:
+    - GET /api/files/download-path/ias-mind/abc123
+    - GET /api/files/download-path/ias-mind/管理制度/员工不安全行为管理档案.png
+    
+    注意:
+    - file_id 支持路径格式，会自动捕获所有剩余路径
+    """
+    try:
+        logger.info(f"开始下载文件(路径格式): bucket={bucket}, file_id={file_id}")
+        
+        # 获取文件
+        file_data = file_service.download_file(file_id=file_id, bucket_name=bucket)
+        
+        logger.info(f"文件下载成功(路径格式): {file_id}")
+        
+        # 对中文文件名进行 RFC 5987 编码
+        encoded_filename = quote(file_data["filename"])
+        
+        # 返回文件流
+        return StreamingResponse(
+            file_data['content'],
+            media_type=file_data['content_type'],
+            headers={
+                'Content-Disposition': f'attachment; filename*=UTF-8\'\'{encoded_filename}'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"文件下载失败(路径格式): {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"文件下载失败: {str(e)}"

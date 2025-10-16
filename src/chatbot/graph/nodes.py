@@ -21,113 +21,227 @@ from src.chatbot.graph.types import State
 logger = logging.getLogger(__name__)
 
 
+def truncate_content_intelligently(content: str, max_chars: int = 600) -> str:
+    """
+    智能截断内容，在语义边界处截断以保持完整性。
+    
+    Args:
+        content: 要截断的内容
+        max_chars: 最大字符数（默认600字符，约300个中文字）
+        
+    Returns:
+        截断后的内容
+    """
+    if not content or not isinstance(content, str):
+        return ""
+    
+    # 如果内容已经小于限制，直接返回
+    if len(content) <= max_chars:
+        return content
+    
+    # 截取内容
+    truncated = content[:max_chars]
+    
+    # 尝试在自然的语义边界处截断（句号、问号、感叹号、换行符等）
+    delimiters = ['。', '！', '？', '；', '. ', '! ', '? ', '; ', '\n\n', '\n']
+    
+    for delimiter in delimiters:
+        # 寻找最后一个分隔符的位置
+        last_pos = truncated.rfind(delimiter)
+        # 确保至少保留60%的内容，避免截断太多
+        if last_pos > max_chars * 0.6:
+            # 包含分隔符本身
+            return truncated[:last_pos + len(delimiter)] + "..."
+    
+    # 如果找不到合适的分隔符，在最后一个空格处截断
+    last_space = truncated.rfind(' ')
+    if last_space > max_chars * 0.8:
+        return truncated[:last_space] + "..."
+    
+    # 实在找不到好的截断点，直接截断并添加省略号
+    return truncated + "..."
+
 
 def search_knowledge_base_sync(user_query: str, resources: List) -> List[Dict[str, Any]]:
-    """Synchronous function to search local knowledge base."""
+    """同步搜索本地知识库"""
     try:
         retriever_tool = get_retriever_tool(resources)
         if retriever_tool:
-            logger.info("Searching local knowledge base...")
+            logger.info(f"正在搜索本地知识库，查询: '{user_query[:50]}...'")
             kb_results = retriever_tool.invoke({"keywords": user_query})
             if isinstance(kb_results, list):
-                logger.info(f"Found {len(kb_results)} results from knowledge base")
+                logger.info(f"从知识库中找到 {len(kb_results)} 条结果")
                 return kb_results
+            else:
+                logger.warning(f"知识库返回的结果类型不是列表: {type(kb_results)}")
+        else:
+            logger.warning("无法获取知识库检索工具")
     except Exception as e:
-        logger.warning(f"Error searching knowledge base: {e}")
+        logger.warning(f"搜索知识库时出错: {e}")
     return []
 
 
 def search_web_sync(user_query: str, max_results: int) -> List[Dict[str, Any]]:
-    """Synchronous function to search web for current information."""
+    """同步搜索网络获取最新信息"""
     try:
         web_search_tool = get_web_search_tool(max_results)
         if web_search_tool:
-            logger.info("Searching web for current information...")
+            logger.info(f"正在搜索网络，查询: '{user_query[:50]}...', 最多返回 {max_results} 条结果")
             web_results = web_search_tool.invoke({"query": user_query})
+            
             if isinstance(web_results, list):
-                logger.info(f"Found {len(web_results)} results from web search")
+                logger.info(f"从网络搜索中找到 {len(web_results)} 条结果")
                 return web_results
-            if isinstance(web_results, str):
-                web_results = json.loads(web_results)
-                return web_results
+            elif isinstance(web_results, str):
+                # 尝试解析JSON字符串
+                try:
+                    parsed_results = json.loads(web_results)
+                    if isinstance(parsed_results, list):
+                        logger.info(f"从网络搜索中解析到 {len(parsed_results)} 条结果")
+                        return parsed_results
+                except json.JSONDecodeError as json_err:
+                    logger.warning(f"无法解析网络搜索返回的JSON: {json_err}")
+            else:
+                logger.warning(f"网络搜索返回的结果类型不支持: {type(web_results)}")
+        else:
+            logger.warning("无法获取网络搜索工具")
     except Exception as e:
-        logger.warning(f"Error searching web: {e}")
+        logger.warning(f"搜索网络时出错: {e}")
     return []
 
 
 def enhanced_chatbot_node(state: State, config: RunnableConfig):
-    """Enhanced chatbot node with parallel fusion of local knowledge base and web search."""
-    logger.info("Enhanced chatbot node is processing user query with parallel fusion retrieval.")
+    """
+    增强型聊天机器人节点，支持知识库和网络搜索的并行融合检索。
+    
+    功能特性：
+    1. 智能并行执行：当同时启用知识库和网络搜索时，使用线程池并行执行以提升性能
+    2. 智能内容截断：使用语义边界截断算法，保留完整的句子和段落
+    3. 检索融合：综合知识库和网络搜索的结果，提供更全面的答案
+    4. 降级处理：当并行执行失败时自动降级到顺序执行
+    5. 详细日志：提供完整的执行过程日志，便于调试和监控
+    
+    Args:
+        state: 聊天状态，包含消息、配置和资源信息
+        config: 运行时配置
+        
+    Returns:
+        包含AI回复消息和检索结果的字典
+    """
+    logger.info("增强型聊天机器人节点开始处理用户查询，使用并行融合检索...")
     configurable = Configuration.from_runnable_config(config)
     
-    # Get the latest user message
+    # 获取用户消息和配置
     messages = state.get("messages", [])
     enable_online_search = state.get("enable_online_search", False)
     enable_knowledge_retrieval = state.get("enable_knowledge_retrieval", False)
 
     if not messages:
-        return {"response": "Hello! How can I help you today?"}
+        return {"response": "你好！我能为你做些什么？"}
     
+    # 提取用户查询
     user_query = messages[-1].content if messages else ""
     if not isinstance(user_query, str):
         user_query = str(user_query)
     
+    logger.info(f"用户查询: '{user_query[:100]}...', 知识库检索: {enable_knowledge_retrieval}, 网络搜索: {enable_online_search}")
+    
     resources = state.get("resources", [])
     max_search_results = configurable.max_search_results or 3
     
-    # Run parallel searches using ThreadPoolExecutor
+    # 并行执行知识库和网络搜索
     knowledge_base_results = []
     web_search_results = []
     
+    # 检查是否需要并行执行
+    need_parallel = enable_knowledge_retrieval and enable_online_search
+    
     try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Submit both search tasks
-            if enable_knowledge_retrieval:
+        if need_parallel:
+            # 两个搜索都需要，使用线程池并行执行
+            logger.info("并行执行知识库检索和网络搜索...")
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                # 同时提交两个任务
                 kb_future = executor.submit(search_knowledge_base_sync, user_query, resources)
-                knowledge_base_results = kb_future.result()
-            if enable_online_search:
                 web_future = executor.submit(search_web_sync, user_query, max_search_results)
+                
+                # 等待所有任务完成
+                knowledge_base_results = kb_future.result()
                 web_search_results = web_future.result()
-
+                
+                logger.info(f"并行搜索完成 - 知识库结果: {len(knowledge_base_results)}条, 网络结果: {len(web_search_results)}条")
+        else:
+            # 只需要一个搜索，顺序执行即可
+            if enable_knowledge_retrieval:
+                logger.info("执行知识库检索...")
+                knowledge_base_results = search_knowledge_base_sync(user_query, resources)
+                logger.info(f"知识库检索完成，找到 {len(knowledge_base_results)} 条结果")
             
-            # Wait for both tasks to complete
-      
+            if enable_online_search:
+                logger.info("执行网络搜索...")
+                web_search_results = search_web_sync(user_query, max_search_results)
+                logger.info(f"网络搜索完成，找到 {len(web_search_results)} 条结果")
             
     except Exception as e:
-        logger.exception(f"Error in parallel search execution: {str(e)}")
-        # Fallback to sequential execution if parallel fails
+        logger.exception(f"搜索执行过程中发生错误: {str(e)}")
+        # 降级处理：尝试顺序执行
         try:
-            knowledge_base_results = search_knowledge_base_sync(user_query, resources)
-            web_search_results = search_web_sync(user_query, max_search_results)
+            if enable_knowledge_retrieval and not knowledge_base_results:
+                logger.info("尝试顺序执行知识库检索...")
+                knowledge_base_results = search_knowledge_base_sync(user_query, resources)
+            if enable_online_search and not web_search_results:
+                logger.info("尝试顺序执行网络搜索...")
+                web_search_results = search_web_sync(user_query, max_search_results)
         except Exception as fallback_error:
-            logger.exception(f"Error in fallback sequential execution: {str(fallback_error)}")
+            logger.exception(f"降级执行也失败了: {str(fallback_error)}")
     
-    # Create enhanced context with fusion results
+    # 构建增强的上下文信息，使用检索融合的结果
     enhanced_messages = list(messages)
     context_info = []
     
+    # 处理知识库检索结果
     if knowledge_base_results:
-        context_info.append("**Knowledge Base Information:**")
-        for i, result in enumerate(knowledge_base_results[:3], 1):  # Limit to top 3
-            if isinstance(result, dict):
-                title = result.get('title', f'Result {i}')
-                content = result.get('content', str(result))
-                context_info.append(f"{i}. {title}: {content[:200]}...")
-            elif isinstance(result, Document):
-                context_info.append(f"{i}. {result.title}: {result.chunks[0].content[:200]}...")
-    if web_search_results:
-        context_info.append("\n**Web Search Information:**")
-        for i, result in enumerate(web_search_results[:3], 1):  # Limit to top 3
-            if isinstance(result, dict):
-                title = result.get('title', f'Web Result {i}')
-                content = result.get('content', str(result))
-                url = result.get('url', '')
-                context_info.append(f"{i}. {title}: {content[:200]}... (Source: {url})")
+        context_info.append("**知识库信息：**")
+        for i, result in enumerate(knowledge_base_results[:3], 1):  # 限制为前3条
+            try:
+                if isinstance(result, dict):
+                    title = result.get('title', f'结果 {i}')
+                    content = result.get('content', str(result))
+                    # 使用智能截断函数
+                    truncated_content = truncate_content_intelligently(content, max_chars=600)
+                    context_info.append(f"{i}. {title}:\n{truncated_content}")
+                elif isinstance(result, Document):
+                    # 处理Document对象
+                    title = result.title if hasattr(result, 'title') else f'文档 {i}'
+                    content = result.chunks[0].content if result.chunks else ""
+                    truncated_content = truncate_content_intelligently(content, max_chars=600)
+                    context_info.append(f"{i}. {title}:\n{truncated_content}")
+            except Exception as e:
+                logger.warning(f"处理知识库结果 {i} 时出错: {str(e)}")
+                continue
     
+    # 处理网络搜索结果
+    if web_search_results:
+        context_info.append("\n**网络搜索信息：**")
+        for i, result in enumerate(web_search_results[:3], 1):  # 限制为前3条
+            try:
+                if isinstance(result, dict):
+                    title = result.get('title', f'网络结果 {i}')
+                    content = result.get('content', str(result))
+                    url = result.get('url', '')
+                    # 使用智能截断函数
+                    truncated_content = truncate_content_intelligently(content, max_chars=600)
+                    source_info = f" (来源: {url})" if url else ""
+                    context_info.append(f"{i}. {title}{source_info}:\n{truncated_content}")
+            except Exception as e:
+                logger.warning(f"处理网络搜索结果 {i} 时出错: {str(e)}")
+                continue
+    
+    # 如果有上下文信息，添加到消息中
     if context_info:
-        context_message = f"Question: {user_query}\n"
-        context_message += "Context:".join(context_info)
-        context_message += "\n\nUse the following context to answer the question. Keep the answer concise and accurate"
+        context_message = f"问题: {user_query}\n\n"
+        context_message += "上下文:\n" + "\n\n".join(context_info)
+        context_message += "\n\n请基于以上上下文信息回答问题。保持回答简洁、准确，如果内容中有图片，优先以使用markdown格式展示，如果信息有冲突，请优先使用最新或最权威的来源。"
         
         system_context = HumanMessage(
             content=context_message,
@@ -135,29 +249,34 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
         )
         enhanced_messages.append(system_context)
     
-    # Generate response using LLM
+    # 使用LLM生成回答
     try:
         llm = get_llm_by_type(AGENT_LLM_MAP.get("chatbot", "basic"))
         
-        # Add fusion instructions
+        # 添加融合指令
         fusion_instructions = HumanMessage(
-            content="""You are an AI assistant with access to both knowledge base and web search results. 
-            Please synthesize this information to provide a comprehensive, accurate answer. 
-            If the information conflicts, prioritize the most recent or authoritative source.""",
+            content="""你是一个AI助手，可以访问知识库和网络搜索结果。
+请综合这些信息提供全面、准确的回答。
+如果信息有冲突，请优先使用最新或最权威的来源。
+回答应该清晰、有条理，并且基于提供的上下文。""",
             name="system"
         )
         enhanced_messages.append(fusion_instructions)
         
+        logger.info(f"准备调用LLM，消息数量: {len(enhanced_messages)}")
+
         response = llm.invoke(enhanced_messages)
         response_content = response.content
         
+        logger.info(f"LLM回复生成成功，长度: {len(response_content)} 字符")
+        
     except Exception as e:
-        logger.exception(f"Error in enhanced chatbot processing: {str(e)}")
-        response_content = f"抱歉，处理您的请求时出现了错误。请稍后再试。"
+        logger.exception(f"增强型聊天机器人处理过程中发生错误: {str(e)}")
+        response_content = "抱歉，处理您的请求时出现了错误。请稍后再试。"
     
-    logger.info(f"Enhanced chatbot response generated: {len(response_content)} characters")
+    logger.info(f"增强型聊天机器人回复生成完成: {len(response_content)} 字符")
     
-    # Convert Document objects to dictionaries for JSON serialization
+    # 将Document对象转换为字典以便JSON序列化
     def convert_to_dict(obj):
         if hasattr(obj, 'to_dict'):
             res =  obj.to_dict()

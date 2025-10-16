@@ -10,6 +10,7 @@ import os
 import logging
 from typing import List, Optional
 from datetime import datetime
+from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query, Depends, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -603,11 +604,15 @@ async def DownloadFile(file_id: str):
         # 从MinIO下载文件
         file_data = file_service.download_file(doc.file_path, bucket_name="knowledge-base")
         
+        # 对文件名进行URL编码以支持中文和特殊字符
+        # 使用 RFC 6266 标准的 filename* 参数
+        encoded_filename = quote(doc.name)
+        
         return StreamingResponse(
             file_data["content"],
             media_type=file_data["content_type"],
             headers={
-                "Content-Disposition": f"attachment; filename={doc.name}"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
             }
         )
     except HTTPException:

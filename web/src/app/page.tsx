@@ -89,10 +89,10 @@ export default function HomePage() {
     color: "bg-gradient-to-br from-violet-500 to-purple-600"
   },
     {
-      title: "LLM 代理",
-      description: "通过后端安全代理直接访问大语言模型，保证API密钥安全",
+      title: "自定义流程",
+      description: "通过可视化工作流编排自动化任务和业务流程",
       icon: <RobotOutlined className="text-2xl" />,
-      href: "/llm-demo",
+      href: "/n8n",
       color: "bg-gradient-to-br from-purple-500 to-violet-600"
     }
   ], []);

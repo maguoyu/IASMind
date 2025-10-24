@@ -89,7 +89,7 @@ export default function HomePage() {
     color: "bg-gradient-to-br from-violet-500 to-purple-600"
   },
     {
-      title: "自定义流程",
+      title: "工作流编排",
       description: "通过可视化工作流编排自动化任务和业务流程",
       icon: <RobotOutlined className="text-2xl" />,
       href: "/n8n",

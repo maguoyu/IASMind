@@ -18,6 +18,7 @@ import {
   Activity,
   AlertCircle,
   ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 
@@ -52,6 +53,10 @@ import {
   type N8nWorkflow,
   type N8nExecution,
 } from "~/core/api/n8n";
+import {
+  getWorkflowDefaults,
+  formatParamsToJson,
+} from "~/config/workflow-defaults";
 
 type ViewMode = "workflows" | "executions";
 
@@ -143,7 +148,11 @@ export default function N8nPage() {
   const handleOpenExecuteDialog = (workflowId: string) => {
     const workflow = workflows.find((w) => w.id === workflowId);
     setExecuteWorkflowId(workflowId);
-    setWorkflowParams("{}");
+    
+    // 使用默认参数（根据工作流名称）
+    const defaultParams = getWorkflowDefaults(workflow?.name || "");
+    setWorkflowParams(formatParamsToJson(defaultParams));
+    
     setParamsError("");
     setWebhookPath(workflow?.webhookPath || "");
     setWebhookError("");
@@ -328,9 +337,9 @@ export default function N8nPage() {
         {/* 标题和健康状态 */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">n8n 工作流管理</h1>
+            <h1 className="text-3xl font-bold">工作流管理</h1>
             <p className="text-muted-foreground mt-2">
-              管理和监控 n8n 自动化工作流
+              管理和监控  自动化工作流
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -344,6 +353,13 @@ export default function N8nPage() {
                 {healthStatus.status === "healthy" ? "服务正常" : "服务异常"}
               </Badge>
             )}
+            <Button 
+              onClick={() => window.open("http://172.20.0.113:15678/home/workflows", "_blank")}
+              variant="default"
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              工作流设计
+            </Button>
             <Button onClick={() => void loadWorkflows()} variant="outline">
               <RefreshCw className="mr-2 h-4 w-4" />
               刷新
@@ -614,6 +630,21 @@ export default function N8nPage() {
 
                     <Separator />
 
+                    {/* 默认参数 */}
+                    <div>
+                      <h3 className="mb-4 text-lg font-semibold">默认执行参数</h3>
+                      <div className="rounded-lg border bg-gray-50 p-4">
+                        <pre className="text-xs font-mono whitespace-pre-wrap break-words">
+                          {formatParamsToJson(getWorkflowDefaults(selectedWorkflow.name))}
+                        </pre>
+                      </div>
+                      <p className="text-muted-foreground text-xs mt-2">
+                        这些参数将在点击"带参数执行"时自动填充
+                      </p>
+                    </div>
+
+                    <Separator />
+
                     {/* 执行记录 */}
                     <div>
                       <div className="mb-4 flex items-center justify-between">
@@ -867,18 +898,36 @@ export default function N8nPage() {
                 <Label htmlFor="workflow-params" className="text-base font-semibold">
                   工作流参数 (JSON)
                 </Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setWorkflowParams('{\n  "input": "",\n  "config": {\n    "key": "value"\n  }\n}');
-                    setParamsError("");
-                  }}
-                  className="h-8 text-xs"
-                >
-                  使用模板
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (executeWorkflowId) {
+                        const workflow = workflows.find(w => w.id === executeWorkflowId);
+                        const defaultParams = getWorkflowDefaults(workflow?.name || "");
+                        setWorkflowParams(formatParamsToJson(defaultParams));
+                        setParamsError("");
+                      }
+                    }}
+                    className="h-8 text-xs"
+                  >
+                    使用默认参数
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setWorkflowParams('{\n  "input": "",\n  "config": {\n    "key": "value"\n  }\n}');
+                      setParamsError("");
+                    }}
+                    className="h-8 text-xs"
+                  >
+                    使用模板
+                  </Button>
+                </div>
               </div>
               
               <Textarea

@@ -5,6 +5,7 @@ import json
 import re
 import time
 from typing import Dict, List, Any, Optional
+from decimal import Decimal
 
 from src.llms.llm import get_llm_by_type
 from src.database.models import DataSource
@@ -21,6 +22,45 @@ class DatabaseAnalysisNodes:
         self.llm = get_llm_by_type("basic")
         self.intent_recognizer = IntentRecognized()
         self.metadata_vector_store = MetadataVectorStore()
+    
+    @staticmethod
+    def _is_numeric_value(value: Any) -> bool:
+        """判断值是否为数值类型
+        
+        支持的数值类型：
+        - int, float: Python 基本数值类型
+        - Decimal: 数据库精确数值类型
+        - bool: 不视为数值（虽然技术上是 int 的子类）
+        - 字符串数字: 尝试转换为数值
+        """
+        if value is None:
+            return False
+        
+        # 排除布尔类型（虽然 bool 是 int 的子类）
+        if isinstance(value, bool):
+            return False
+        
+        # 支持的数值类型
+        if isinstance(value, (int, float, Decimal)):
+            return True
+        
+        # 尝试将字符串转换为数值
+        if isinstance(value, str):
+            try:
+                float(value.replace(',', ''))  # 处理千分位分隔符
+                return True
+            except (ValueError, AttributeError):
+                return False
+        
+        # 支持 numpy 类型（如果存在）
+        try:
+            import numpy as np
+            if isinstance(value, (np.integer, np.floating)):
+                return True
+        except ImportError:
+            pass
+        
+        return False
 
     def get_connection(self, datasource_id: str):
         """获取数据源连接"""
@@ -375,14 +415,14 @@ class DatabaseAnalysisNodes:
             # 规则判断
             numeric_columns = []
             for col in columns:
-                if any(isinstance(row.get(col), (int, float)) for row in data[:5]):
+                if any(self._is_numeric_value(row.get(col)) for row in data[:5]):
                     numeric_columns.append(col)
             
             # 如果有多个数值列且数据量适中，考虑图表
             if len(numeric_columns) >= 1 and len(data) > 1 and len(data) <= 1000:
-                # 使用LLM进一步判断
+                # 使用LLM进一步判断显示方式和图表类型
                 prompt = f"""
-根据用户查询和数据特征，判断最适合的显示方式：
+根据用户查询和数据特征，判断最适合的显示方式和图表类型：
 
 用户查询: {user_query}
 数据行数: {len(data)}
@@ -391,24 +431,57 @@ class DatabaseAnalysisNodes:
 
 请选择最适合的显示方式:
 1. chart - 适合趋势分析、对比分析、统计分析
+   - bar: 适合类别对比、排名展示（如：各部门销售额、产品数量对比）
+   - line: 适合时间序列、趋势变化（如：月度销售趋势、增长曲线）
+   - pie: 适合占比分析、组成结构（如：市场份额、销售占比）
+   - scatter: 适合相关性分析、分布展示（如：价格与销量关系、数据分布）
+   - area: 适合累积趋势、数量变化（如：累计销售额、库存变化）
 2. table - 适合详细数据查看、列表展示
 3. text - 适合简单统计结果、摘要信息
 
-只返回: chart、table 或 text
+返回格式: 
+- 如果选择 chart，返回: chart:图表类型 (例如: chart:bar, chart:pie, chart:line)
+- 如果选择 table，返回: table
+- 如果选择 text，返回: text
+
+只返回一个结果，不要有其他内容。
 """
                 
                 response = self.llm.invoke(prompt)
-                suggested_type = response.content.strip().lower()
+                suggested_response = response.content.strip().lower()
                 
-                if suggested_type in ["chart", "table", "text"]:
-                    result_type = suggested_type
-            
-            state["result_type"] = result_type
-            
-            # 如果是图表类型，生成图表配置
-            if result_type == "chart":
-                chart_config = self._generate_chart_config(data, columns, user_query)
-                state["chart_config"] = chart_config
+                # 解析返回结果
+                if ":" in suggested_response:
+                    # 格式：chart:bar
+                    parts = suggested_response.split(":", 1)
+                    result_type = parts[0].strip()
+                    chart_type = parts[1].strip() if len(parts) > 1 else None
+                else:
+                    # 格式：chart / table / text
+                    result_type = suggested_response
+                    chart_type = None
+                
+                # 验证返回的类型是否有效
+                if result_type in ["chart", "table", "text"]:
+                    state["result_type"] = result_type
+                    
+                    # 如果是图表类型，生成图表配置
+                    if result_type == "chart":
+                        # 如果LLM指定了具体的图表类型，使用它
+                        if chart_type and chart_type in ["bar", "line", "pie", "scatter", "area"]:
+                            chart_config = self._generate_chart_config_with_type(
+                                data, columns, user_query, chart_type
+                            )
+                        else:
+                            # 回退到原有的自动判断逻辑
+                            chart_config = self._generate_chart_config(data, columns, user_query)
+                        
+                        state["chart_config"] = chart_config
+                else:
+                    # 如果返回无效，使用默认值
+                    state["result_type"] = result_type
+            else:
+                state["result_type"] = result_type
             
             return state
             
@@ -516,7 +589,7 @@ class DatabaseAnalysisNodes:
         return []
     
     def _generate_chart_config(self, data: List[Dict[str, Any]], columns: List[str], user_query: str) -> Dict[str, Any]:
-        """生成图表配置"""
+        """生成图表配置（自动判断图表类型）"""
         if not data:
             return {}
         
@@ -527,7 +600,7 @@ class DatabaseAnalysisNodes:
         for col in columns:
             sample_values = [row.get(col) for row in data[:10] if row.get(col) is not None]
             if sample_values:
-                if all(isinstance(v, (int, float)) for v in sample_values):
+                if all(self._is_numeric_value(v) for v in sample_values):
                     numeric_columns.append(col)
                 else:
                     categorical_columns.append(col)
@@ -551,6 +624,71 @@ class DatabaseAnalysisNodes:
             config["type"] = "line"
             config["y"] = numeric_columns[0]
             config["x"] = categorical_columns[0] if categorical_columns else "index"
+        
+        return config
+    
+    def _generate_chart_config_with_type(self, data: List[Dict[str, Any]], columns: List[str], 
+                                         user_query: str, chart_type: str) -> Dict[str, Any]:
+        """根据指定的图表类型生成图表配置"""
+        if not data:
+            return {}
+        
+        # 分析数据类型
+        numeric_columns = []
+        categorical_columns = []
+        
+        for col in columns:
+            sample_values = [row.get(col) for row in data[:10] if row.get(col) is not None]
+            if sample_values:
+                if all(self._is_numeric_value(v) for v in sample_values):
+                    numeric_columns.append(col)
+                else:
+                    categorical_columns.append(col)
+        
+        # 基础配置
+        config = {
+            "type": chart_type,
+            "data": data
+        }
+        
+        # 根据图表类型设置字段映射
+        if chart_type in ["bar", "line", "area"]:
+            # 柱状图、折线图、面积图：需要 x（类别）和 y（数值）
+            if categorical_columns and numeric_columns:
+                config["x"] = categorical_columns[0]
+                config["y"] = numeric_columns[0]
+            elif numeric_columns:
+                # 没有类别列，使用索引或第一个数值列
+                config["x"] = columns[0] if columns else "index"
+                config["y"] = numeric_columns[0]
+            else:
+                # 降级为表格
+                config["type"] = "table"
+                
+        elif chart_type == "pie":
+            # 饼图：需要类别和数值
+            if categorical_columns and numeric_columns:
+                config["x"] = categorical_columns[0]  # 类别（名称）
+                config["y"] = numeric_columns[0]      # 数值（value）
+            else:
+                # 如果没有合适的列，降级为柱状图
+                config["type"] = "bar"
+                config["x"] = columns[0] if columns else "category"
+                config["y"] = columns[1] if len(columns) > 1 else "value"
+                
+        elif chart_type == "scatter":
+            # 散点图：需要两个数值列
+            if len(numeric_columns) >= 2:
+                config["x"] = numeric_columns[0]
+                config["y"] = numeric_columns[1]
+            elif len(numeric_columns) == 1 and categorical_columns:
+                # 只有一个数值列，转换为柱状图
+                config["type"] = "bar"
+                config["x"] = categorical_columns[0]
+                config["y"] = numeric_columns[0]
+            else:
+                # 降级为表格
+                config["type"] = "table"
         
         return config
 

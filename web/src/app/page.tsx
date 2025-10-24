@@ -4,6 +4,7 @@
 "use client";
 
 import {
+  ApartmentOutlined,
   BarChartOutlined,
   BookOutlined,
   BulbOutlined,
@@ -11,8 +12,7 @@ import {
   FileTextOutlined,
   LineChartOutlined,
   MessageOutlined,
-  PieChartOutlined,
-  RobotOutlined
+  PieChartOutlined
 } from "@ant-design/icons";
 import { Settings } from "lucide-react";
 import Link from "next/link";
@@ -82,19 +82,19 @@ export default function HomePage() {
       color: "bg-gradient-to-br from-pink-500 to-rose-600"
     },
     {
+      title: "智能工作流",
+      description: "通过可视化智能工作流编排自动化任务和业务流程",
+      icon: <ApartmentOutlined className="text-2xl" />,
+      href: "/n8n",
+      color: "bg-gradient-to-br from-purple-500 to-violet-600"
+    },
+    {
     title: "系统管理",
     description: "个人设置、用户管理、系统配置等管理功能",
     icon: <Settings className="text-2xl" />,
     href: "/system",
     color: "bg-gradient-to-br from-violet-500 to-purple-600"
-  },
-    {
-      title: "工作流编排",
-      description: "通过可视化工作流编排自动化任务和业务流程",
-      icon: <RobotOutlined className="text-2xl" />,
-      href: "/n8n",
-      color: "bg-gradient-to-br from-purple-500 to-violet-600"
-    }
+  }
   ], []);
 
   return (

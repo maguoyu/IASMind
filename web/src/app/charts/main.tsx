@@ -128,6 +128,12 @@ const DatabaseTable = ({ chart }: { chart: ChartData }) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchTerm, setSearchTerm] = useState('');
+  const [displayLimit, setDisplayLimit] = useState(100); // 初始显示100行
+  
+  // 当搜索条件改变时，重置显示限制
+  useEffect(() => {
+    setDisplayLimit(100);
+  }, [searchTerm]);
   
   // 错误边界检查
   if (!Array.isArray(columns) || columns.length === 0) {
@@ -268,7 +274,7 @@ const DatabaseTable = ({ chart }: { chart: ChartData }) => {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {processedData.slice(0, 100).map((row: any, rowIndex: number) => (
+            {processedData.slice(0, displayLimit).map((row: any, rowIndex: number) => (
               <tr key={rowIndex} className="hover:bg-muted/20">
                 {columns.map((col: string, cellIndex: number) => (
                   <td
@@ -283,9 +289,43 @@ const DatabaseTable = ({ chart }: { chart: ChartData }) => {
             ))}
           </tbody>
         </table>
-        {processedData.length > 100 && (
-          <div className="text-xs text-muted-foreground p-2 text-center bg-muted/20">
-            还有 {processedData.length - 100} 行数据未显示（共 {processedData.length} 行）
+        {processedData.length > displayLimit && (
+          <div className="flex flex-col items-center gap-2 p-3 bg-muted/20 border-t">
+            <div className="text-xs text-muted-foreground">
+              还有 {processedData.length - displayLimit} 行数据未显示（共 {processedData.length} 行）
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setDisplayLimit(prev => Math.min(prev + 100, processedData.length))}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <ChevronDown className="w-4 h-4" />
+                显示更多 (100行)
+              </Button>
+              <Button
+                onClick={() => setDisplayLimit(processedData.length)}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                显示全部
+              </Button>
+            </div>
+          </div>
+        )}
+        {processedData.length <= displayLimit && displayLimit > 100 && (
+          <div className="flex justify-center p-3 bg-muted/20 border-t">
+            <Button
+              onClick={() => setDisplayLimit(100)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <ChevronUp className="w-4 h-4" />
+              收起
+            </Button>
           </div>
         )}
         {processedData.length === 0 && (

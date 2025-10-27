@@ -202,7 +202,7 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     # 处理知识库检索结果
     if knowledge_base_results:
         context_info.append("**知识库信息：**")
-        for i, result in enumerate(knowledge_base_results[:3], 1):  # 限制为前3条
+        for i, result in enumerate(knowledge_base_results[:10], 1):  # 限制为前3条
             try:
                 if isinstance(result, dict):
                     title = result.get('title', f'结果 {i}')
@@ -223,7 +223,7 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     # 处理网络搜索结果
     if web_search_results:
         context_info.append("\n**网络搜索信息：**")
-        for i, result in enumerate(web_search_results[:3], 1):  # 限制为前3条
+        for i, result in enumerate(web_search_results[:5], 1):  # 限制为前3条
             try:
                 if isinstance(result, dict):
                     title = result.get('title', f'网络结果 {i}')
@@ -241,14 +241,14 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     if context_info:
         context_message = f"问题: {user_query}\n\n"
         context_message += "上下文:\n" + "\n\n".join(context_info)
-        context_message += "\n\n请基于以上上下文信息回答问题。保持回答简洁、准确，如果内容中有图片，优先以使用markdown格式展示，如果信息有冲突，请优先使用最新或最权威的来源。"
+        context_message += "\n\n请基于以上上下文信息回答问题。保持回答简洁、准确，如果内容中有图片，尽量按照图文的方式展示，尽量不让用户点击下载图片，如果信息有冲突，请优先使用最新或最权威的来源。"
         
         system_context = HumanMessage(
             content=context_message,
             name="system"
         )
         enhanced_messages.append(system_context)
-    
+    print(enhanced_messages)
     # 使用LLM生成回答
     try:
         llm = get_llm_by_type(AGENT_LLM_MAP.get("chatbot", "basic"))

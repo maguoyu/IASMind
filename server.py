@@ -64,6 +64,12 @@ if __name__ == "__main__":
         choices=["debug", "info", "warning", "error", "critical"],
         help="Log level (default: info)",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Number of worker processes (default: None, uses single worker)",
+    )
 
     args = parser.parse_args()
 
@@ -76,13 +82,25 @@ if __name__ == "__main__":
         logger.info("检测到 Docker 环境，已禁用自动重载功能")
     try:
         logger.info(f"Starting DeerFlow API server on {args.host}:{args.port}")
-        uvicorn.run(
-            "src.server:app",
-            host=args.host,
-            port=args.port,
-            reload=reload,
-            log_level=args.log_level,
-        )
+        
+        # 配置 uvicorn 参数
+        uvicorn_config = {
+            "app": "src.server:app",
+            "host": args.host,
+            "port": args.port,
+            "reload": reload,
+            "log_level": args.log_level,
+        }
+        
+        # 如果指定了 workers，添加到配置中（注意：workers 和 reload 不能同时使用）
+        if args.workers and args.workers > 1:
+            if reload:
+                logger.warning("Workers > 1 时无法使用 reload 模式，已禁用 reload")
+                uvicorn_config["reload"] = False
+            uvicorn_config["workers"] = args.workers
+            logger.info(f"使用 {args.workers} 个 worker 进程")
+        
+        uvicorn.run(**uvicorn_config)
     except Exception as e:
         logger.error(f"Failed to start server: {str(e)}")
         sys.exit(1)

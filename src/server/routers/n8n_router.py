@@ -197,7 +197,7 @@ async def update_workflow(workflow_id: str, workflow_data: Dict[str, Any]):
     Returns:
         更新后的工作流
     """
-    return await make_n8n_request("PATCH", f"/workflows/{workflow_id}", json_data=workflow_data)
+    return await make_n8n_request("PUT", f"/workflows/{workflow_id}", json_data=workflow_data)
 
 
 @router.post("/workflows/{workflow_id}/activate")
@@ -207,16 +207,18 @@ async def activate_workflow(workflow_id: str, request: WorkflowActivateRequest):
     
     Args:
         workflow_id: 工作流 ID
-        request: 激活请求
+        request: 激活请求 (active: true 表示激活, false 表示停用)
         
     Returns:
         更新后的工作流
     """
-    return await make_n8n_request(
-        "PATCH",
-        f"/workflows/{workflow_id}",
-        json_data={"active": request.active}
-    )
+    # 使用 n8n 的专用 activate 端点
+    if request.active:
+        # 激活工作流
+        return await make_n8n_request("POST", f"/workflows/{workflow_id}/activate")
+    else:
+        # 停用工作流 (使用 deactivate 端点)
+        return await make_n8n_request("POST", f"/workflows/{workflow_id}/deactivate")
 
 
 @router.delete("/workflows/{workflow_id}")

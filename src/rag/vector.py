@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from pymilvus.milvus_client import IndexParams
 
 from src.rag.document_tool import loadDocument
-from src.rag.splitter_tool import getTextSplitter, getMdTextSplitter
+from src.rag.splitter_tool import getTextSplitter, getMdTextSplitter, split_markdown_with_size_control
 from src.database.connection import db_connection
 from src.database.models import FileDocument
 import os
@@ -81,27 +81,51 @@ def split_documents(documents, splitter=None):
     print(f"分割后文本块数：{len(split_docs)}")
 
     return split_docs
-def split_md_documents(documents, splitter=None):
+def split_md_documents(documents, splitter=None, max_chunk_size=1500, chunk_overlap=200):
     """
-    使用递归字符分割器处理文本
+    智能 Markdown 文档分割：先按标题分割，对过大的块进行二次分割
+    
     参数说明：
-    - chunk_size：每个文本块的最大字符数，推荐 500-1000
-    - chunk_overlap：相邻块之间的重叠字符数（保持上下文连贯），推荐 100-200
+    - documents: 待分割的文档列表
+    - splitter: 自定义分割器（可选），如果为 None 则使用智能分割
+    - max_chunk_size: 单个块的最大字符数，默认 1500
+    - chunk_overlap: 二次分割时的重叠字符数，默认 200
+    
+    处理逻辑：
+    1. 首先按 Markdown 标题层级分割（保留上下文结构）
+    2. 检查每个分割块的大小
+    3. 对超过 max_chunk_size 的块进行递归字符分割
+    4. 保留所有原始 metadata（文件ID、标题信息等）
     """
 
+    res_docs = []
+    
     if splitter is None:
-        splitter = getMdTextSplitter()
-
-    res_docs= []
-    for  document in documents:
-        split_docs = splitter.split_text(document.page_content)
-
-        for doc in split_docs:
-            # 合并原始元数据（id, category）与分割产生的标题元数据
-            doc.metadata.update(document.metadata)
-        res_docs.extend(split_docs)
+        # 使用智能分割：标题分割 + 大小控制
+        for document in documents:
+            split_docs = split_markdown_with_size_control(
+                markdown_text=document.page_content,
+                max_chunk_size=max_chunk_size,
+                chunk_overlap=chunk_overlap
+            )
+            
+            for doc in split_docs:
+                # 合并原始元数据（file_id, knowledge_base_id 等）与标题元数据
+                doc.metadata.update(document.metadata)
+            res_docs.extend(split_docs)
+    else:
+        # 使用自定义分割器（兼容旧代码）
+        for document in documents:
+            split_docs = splitter.split_text(document.page_content)
+            
+            for doc in split_docs:
+                # 合并原始元数据（id, category）与分割产生的标题元数据
+                doc.metadata.update(document.metadata)
+            res_docs.extend(split_docs)
+    
     print(f"原始文档数：{len(documents)}")
     print(f"分割后文本块数：{len(res_docs)}")
+    print(f"平均块大小：{sum(len(doc.page_content) for doc in res_docs) / len(res_docs):.0f} 字符")
 
     return res_docs
 

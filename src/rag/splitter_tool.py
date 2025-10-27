@@ -89,7 +89,7 @@ def getMdTextSplitter(headers_to_split_on=None, strip_headers=False):
 
 def getAdvancedMdTextSplitter(
     max_chunk_size=1500,
-    chunk_overlap=200,
+    chunk_overlap=300,
     headers_to_split_on=None,
     strip_headers=False
 ):
@@ -102,7 +102,7 @@ def getAdvancedMdTextSplitter(
     
     参数:
         max_chunk_size (int): 触发二次分割的阈值，默认 1500
-        chunk_overlap (int): 二次分割时的重叠字符数，默认 200
+        chunk_overlap (int): 二次分割时的重叠字符数，默认 300
         headers_to_split_on: 同 getMdTextSplitter
         strip_headers: 同 getMdTextSplitter
     
@@ -143,7 +143,7 @@ def getAdvancedMdTextSplitter(
 def split_markdown_with_size_control(
     markdown_text: str,
     max_chunk_size: int = 1500,
-    chunk_overlap: int = 200,
+    chunk_overlap: int = 300,
     headers_to_split_on: List = None,
     strip_headers: bool = False
 ) -> List[Document]:
@@ -155,7 +155,7 @@ def split_markdown_with_size_control(
     参数:
         markdown_text (str): 待分割的 Markdown 文本
         max_chunk_size (int): 单个块的最大字符数，默认 1500
-        chunk_overlap (int): 二次分割时的重叠字符数，默认 200
+        chunk_overlap (int): 二次分割时的重叠字符数，默认 300（提高重叠率以改善检索效果）
         headers_to_split_on (List[Tuple[str, str]], optional): 标题级别映射
         strip_headers (bool): 是否移除标题行，默认 False
     

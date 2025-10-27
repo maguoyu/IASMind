@@ -47,7 +47,7 @@ class LocalMilvusProvider(Retriever):
             # "search_type": "mmr",
             # "score_threshold": 0.7,  # 相似度阈值过滤
              "ranker_type": "weighted",
-            "ranker_params": {"weights": [0.6, 0.4]},
+            "ranker_params": {"weights": [0.5, 0.5]},  # 提高BM25权重，改善短查询的关键词匹配
             "expr": expr,
         }
     )

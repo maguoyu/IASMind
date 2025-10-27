@@ -81,7 +81,7 @@ def split_documents(documents, splitter=None):
     print(f"分割后文本块数：{len(split_docs)}")
 
     return split_docs
-def split_md_documents(documents, splitter=None, max_chunk_size=1500, chunk_overlap=200):
+def split_md_documents(documents, splitter=None, max_chunk_size=1500, chunk_overlap=300):
     """
     智能 Markdown 文档分割：先按标题分割，对过大的块进行二次分割
     
@@ -89,7 +89,7 @@ def split_md_documents(documents, splitter=None, max_chunk_size=1500, chunk_over
     - documents: 待分割的文档列表
     - splitter: 自定义分割器（可选），如果为 None 则使用智能分割
     - max_chunk_size: 单个块的最大字符数，默认 1500
-    - chunk_overlap: 二次分割时的重叠字符数，默认 200
+    - chunk_overlap: 二次分割时的重叠字符数，默认 300（提高重叠率以改善检索效果）
     
     处理逻辑：
     1. 首先按 Markdown 标题层级分割（保留上下文结构）

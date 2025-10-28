@@ -24,6 +24,21 @@ class DatabaseAnalysisNodes:
         self.metadata_vector_store = MetadataVectorStore()
     
     @staticmethod
+    def _convert_to_json_serializable(value: Any) -> Any:
+        """转换数据库值为JSON可序列化的类型"""
+        if isinstance(value, Decimal):
+            # 将 Decimal 转换为 float
+            return float(value)
+        elif isinstance(value, (bytes, bytearray)):
+            # 将二进制数据转换为字符串
+            return value.decode('utf-8', errors='ignore')
+        elif hasattr(value, 'isoformat'):
+            # 日期时间类型转换为 ISO 格式字符串
+            return value.isoformat()
+        else:
+            return value
+    
+    @staticmethod
     def _is_numeric_value(value: Any) -> bool:
         """判断值是否为数值类型
         
@@ -375,11 +390,14 @@ class DatabaseAnalysisNodes:
             data = []
             for row in rows:
                 if isinstance(row, dict):
-                    data.append(row)
+                    # 转换字典中的值为JSON可序列化类型
+                    row_dict = {k: self._convert_to_json_serializable(v) for k, v in row.items()}
+                    data.append(row_dict)
                 else:
                     row_dict = {}
                     for i, col in enumerate(columns):
-                        row_dict[col] = row[i] if i < len(row) else None
+                        value = row[i] if i < len(row) else None
+                        row_dict[col] = self._convert_to_json_serializable(value)
                     data.append(row_dict)
             
             query_result = {

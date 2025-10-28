@@ -9,9 +9,13 @@ import json
 import asyncio
 from uuid import uuid4
 from datetime import datetime
+import logging
 
-from src.database_analysis.graph.builder import run_database_analysis
+from src.database_analysis.graph.builder import run_database_analysis, run_database_analysis_stream
 from ..auth_middleware import GetCurrentUser
+
+# 获取logger
+logger = logging.getLogger(__name__)
 
 # 创建路由器
 router = APIRouter(prefix="/api/database_analysis", tags=["database_analysis"])
@@ -579,44 +583,96 @@ async def analyze_database_stream(
     """
     async def generate_stream():
         try:
-            thread_id = str(uuid4())
+            thread_id = request.thread_id or str(uuid4())
             
             # 发送开始信号
-            yield f"data: {json.dumps({'type': 'start', 'message': '开始分析查询...'}, ensure_ascii=False)}\n\n"
+            start_event = {'type': 'start', 'message': '开始分析查询...'}
+            logger.info(f"[SSE] 发送事件: {start_event}")
+            yield f"data: {json.dumps(start_event, ensure_ascii=False)}\n\n"
             
-            # 这里可以实现流式处理，目前简化为一次性处理
-            result = await run_database_analysis(
+            # 使用流式处理函数
+            async for event in run_database_analysis_stream(
                 user_query=request.user_query,
                 datasource_id=request.datasource_id,
                 table_name=request.table_name,
                 thread_id=thread_id
-            )
-            
-            # 发送进度更新
-            yield f"data: {json.dumps({'type': 'progress', 'message': '查询分析完成', 'step': 'analysis'}, ensure_ascii=False)}\n\n"
-            
-            # 发送最终结果
-            if result.get("error"):
-                yield f"data: {json.dumps({'type': 'error', 'error': result['error']}, ensure_ascii=False)}\n\n"
-            else:
-                response_data = {
-                    "type": "result",
-                    "result_type": result.get("result_type", "table"),
-                    "data": result.get("query_result", {}),
-                    "chart_config": result.get("chart_config"),
-                    "metadata": {
-                        "sql_query": result.get("sql_query", ""),
-                        "execution_time": result.get("query_result", {}).get("execution_time", 0),
-                        "row_count": result.get("query_result", {}).get("row_count", 0)
-                    }
-                }
-                yield f"data: {json.dumps(response_data, ensure_ascii=False)}\n\n"
+            ):
+                event_type = event.get("type")
+                
+                if event_type == "thinking_step":
+                    # 发送思考步骤事件
+                    logger.info(f"[SSE] 发送思考步骤: {event.get('data', {}).get('title', 'N/A')}")
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                
+                elif event_type == "final_result":
+                    # 处理最终结果
+                    result = event.get("data", {})
+                    
+                    if result.get("error"):
+                        yield f"data: {json.dumps({'type': 'error', 'error': result['error']}, ensure_ascii=False)}\n\n"
+                    else:
+                        # 构建响应数据
+                        query_result = result.get("query_result") or {}
+                        
+                        response_data = {
+                            "type": "result",
+                            "result_type": result.get("result_type", "table"),
+                            "data": query_result.get("data", []),
+                            "columns": query_result.get("columns", []),
+                            "chart_config": result.get("chart_config"),
+                            "metadata": {
+                                "sql_query": result.get("sql_query", ""),
+                                "execution_time": query_result.get("execution_time", 0),
+                                "row_count": query_result.get("row_count", 0),
+                                "entities": [],
+                                "tables": []
+                            }
+                        }
+                        
+                        # 添加意图信息
+                        intent = result.get("intent")
+                        if intent:
+                            if hasattr(intent, 'entities'):
+                                response_data["metadata"]["entities"] = [
+                                    e.dict() if hasattr(e, 'dict') else e 
+                                    for e in intent.entities
+                                ]
+                            if hasattr(intent, 'tables'):
+                                response_data["metadata"]["tables"] = intent.tables
+                        
+                        # 如果需要洞察分析
+                        if request.enable_insights and query_result.get("data"):
+                            metadata_for_insights = {
+                                "sql_query": result.get("sql_query", ""),
+                                "execution_time": query_result.get("execution_time", 0),
+                                "row_count": query_result.get("row_count", 0),
+                                "tables": response_data["metadata"]["tables"]
+                            }
+                            insight_md = generate_database_insight_markdown(
+                                data=query_result.get("data", []),
+                                columns=query_result.get("columns", []),
+                                metadata=metadata_for_insights,
+                                insights_data=None  # 暂时不传递insights，因为需要从result中提取
+                            )
+                            response_data["insight_md"] = insight_md
+                        
+                        logger.info(f"[SSE] 发送最终结果: result_type={response_data['result_type']}, row_count={len(response_data['data'])}")
+                        yield f"data: {json.dumps(response_data, ensure_ascii=False)}\n\n"
+                
+                elif event_type == "error":
+                    # 发送错误事件
+                    logger.error(f"[SSE] 发送错误: {event.get('error', 'Unknown error')}")
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             
             # 发送结束信号
-            yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
+            done_event = {'type': 'done'}
+            logger.info(f"[SSE] 发送结束信号: {done_event}")
+            yield f"data: {json.dumps(done_event, ensure_ascii=False)}\n\n"
             
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': f'分析失败: {str(e)}'}, ensure_ascii=False)}\n\n"
+            error_msg = f'分析失败: {str(e)}'
+            logger.error(f"[SSE] 流式处理异常: {error_msg}")
+            yield f"data: {json.dumps({'type': 'error', 'error': error_msg}, ensure_ascii=False)}\n\n"
     
     return StreamingResponse(
         generate_stream(),

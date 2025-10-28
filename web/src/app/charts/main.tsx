@@ -62,6 +62,17 @@ interface DatabaseAnalysisResponse {
   insight_md?: string;
 }
 
+// Agent思考步骤
+interface ThinkingStep {
+  node: string;
+  emoji: string;
+  title: string;
+  message: string;
+  details?: any;
+  timestamp: string;
+  status: 'processing' | 'completed' | 'error';
+}
+
 // 消息类型定义
 interface ChatMessage {
   id: string;
@@ -73,6 +84,8 @@ interface ChatMessage {
   files?: UploadedFile[];
   filePreview?: FilePreviewData; // 新增文件预览数据
   insight_md?: string; // Markdown格式的洞察报告
+  thinkingSteps?: ThinkingStep[]; // Agent思考步骤
+  isStreaming?: boolean; // 是否正在流式接收
 }
 
 interface ChartData {
@@ -337,6 +350,169 @@ const DatabaseTable = ({ chart }: { chart: ChartData }) => {
         )}
       </div>
     </div>
+  );
+};
+
+// 思考步骤可折叠卡片组件
+const ThinkingStepsCard = ({ thinkingSteps, isStreaming }: { thinkingSteps: ThinkingStep[], isStreaming?: boolean }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const previewSteps = 1; // 默认只显示最后1个步骤
+  const hasMoreSteps = thinkingSteps.length > previewSteps;
+  // 显示最后的几个步骤，而不是前面的
+  const displaySteps = isExpanded ? thinkingSteps : thinkingSteps.slice(-previewSteps);
+
+  return (
+    <Card className="mt-3 border-blue-200 bg-blue-50/30">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-blue-600 animate-pulse" />
+            <CardTitle className="text-sm font-medium text-blue-900">
+              Agent 思考过程
+              {isStreaming && <span className="ml-2 text-xs text-blue-600">(进行中...)</span>}
+            </CardTitle>
+          </div>
+          {hasMoreSteps && !isStreaming && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="w-3 h-3 mr-1" />
+                  收起
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-3 h-3 mr-1" />
+                  展开全部 ({thinkingSteps.length} 步)
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex flex-col space-y-2">
+          {/* 未展开时在顶部显示半透明的早期步骤预览 */}
+          {!isExpanded && hasMoreSteps && (
+            <div 
+              className="relative cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setIsExpanded(true)}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-transparent via-blue-50/60 to-blue-50 z-10 rounded-lg flex items-start justify-center pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100 z-20"
+                >
+                  <ChevronUp className="w-3 h-3 mr-1" />
+                  前面还有 {thinkingSteps.length - previewSteps} 个步骤，点击查看
+                </Button>
+              </div>
+              <div className="opacity-40 blur-[1px] pointer-events-none space-y-2">
+                {thinkingSteps.slice(0, 1).map((step, index) => (
+                  <div
+                    key={`preview-${step.node}-${index}`}
+                    className={`flex items-start gap-3 p-3 rounded-lg border ${
+                      step.status === 'completed' 
+                        ? 'bg-green-50/50 border-green-200' 
+                        : step.status === 'error'
+                        ? 'bg-red-50/50 border-red-200'
+                        : 'bg-blue-50/50 border-blue-200'
+                    }`}
+                  >
+                    <span className="text-2xl">{step.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-gray-900">
+                        {step.title}
+                      </span>
+                      <p className="text-xs text-gray-600">{step.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {displaySteps.map((step, index) => (
+            <motion.div
+              key={`${step.node}-${index}`}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+              className={`flex items-start gap-3 p-3 rounded-lg border ${
+                step.status === 'completed' 
+                  ? 'bg-green-50/50 border-green-200' 
+                  : step.status === 'error'
+                  ? 'bg-red-50/50 border-red-200'
+                  : 'bg-blue-50/50 border-blue-200'
+              }`}
+            >
+              <span className="text-2xl">{step.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium text-gray-900">
+                    {step.title}
+                  </span>
+                  {step.status === 'completed' && (
+                    <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+                      完成
+                    </Badge>
+                  )}
+                  {step.status === 'processing' && (
+                    <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                      处理中
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 mb-1">{step.message}</p>
+                
+                {/* 显示详细信息 */}
+                {step.details && (
+                  <div className="mt-2 text-xs">
+                    {step.details.sql && (
+                      <div className="bg-gray-900 text-gray-100 p-2 rounded font-mono overflow-x-auto">
+                        <pre className="whitespace-pre-wrap break-all">{step.details.sql}</pre>
+                      </div>
+                    )}
+                    {step.details.entities && step.details.entities.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {step.details.entities.map((entity: any, idx: number) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {entity.entity_type}: {entity.value}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {step.details.is_valid !== undefined && (
+                      <div className={`mt-1 p-2 rounded ${
+                        step.details.is_valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {step.details.is_valid ? '✓ SQL验证通过' : '✗ SQL验证失败'}
+                        {step.details.errors && step.details.errors.length > 0 && (
+                          <div className="mt-1 text-xs">
+                            错误: {step.details.errors.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {step.details.row_count !== undefined && (
+                      <div className="mt-1 text-gray-600">
+                        查询结果: {step.details.row_count} 行 
+                        {step.details.execution_time && ` · 耗时 ${step.details.execution_time.toFixed(3)}s`}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -1360,8 +1536,8 @@ export function ChartsMain() {
         let insights: string[] = [];
         
         if (currentDataSource.type === 'system') {
-          // 调用数据库分析接口
-          responseContent += `\n正在从 ${currentDataSource.name} 的 ${selectedTable} 表查询相关数据...`;
+          // 调用数据库分析流式接口
+          responseContent += `\n正在从 ${currentDataSource.name} 的 ${selectedTable || '数据库'} 查询相关数据...`;
           
           try {
             const requestData = {
@@ -1373,89 +1549,117 @@ export function ChartsMain() {
               language: 'zh'
             };
 
-            const analysisResponse = await databaseAnalysisApi.analyzeDatabase(requestData);
+            // 创建流式消息以展示思考步骤
+            const streamingMessageId = `assistant-streaming-${Date.now()}`;
+            const streamingMessage: ChatMessage = {
+              id: streamingMessageId,
+              type: 'assistant',
+              content: responseContent,
+              timestamp: new Date(),
+              thinkingSteps: [],
+              isStreaming: true
+            };
+            
+            setMessages(prev => [...prev, streamingMessage]);
 
-            if (!analysisResponse.data) {
-              throw new Error(analysisResponse.error || '分析请求失败');
+            let analysisResult: any = null;
+
+            // 使用SSE流式接口
+            for await (const event of databaseAnalysisApi.analyzeDatabaseStream(requestData)) {
+              console.log('收到SSE事件:', event.type, event);
+              
+              if (event.type === 'thinking_step') {
+                // 更新思考步骤
+                setMessages(prev => prev.map(msg => {
+                  if (msg.id === streamingMessageId) {
+                    return {
+                      ...msg,
+                      thinkingSteps: [...(msg.thinkingSteps || []), event.data]
+                    };
+                  }
+                  return msg;
+                }));
+              } else if (event.type === 'result') {
+                // 保存最终结果
+                analysisResult = event;
+                console.log('保存分析结果:', analysisResult);
+              } else if (event.type === 'error') {
+                throw new Error(event.error);
+              } else if (event.type === 'done') {
+                // 流式传输完成，继续处理让循环自然结束
+                console.log('收到done信号，流式传输完成');
+              }
             }
 
-            const analysisResult = analysisResponse.data;
+            if (!analysisResult) {
+              throw new Error('未收到分析结果');
+            }
             
-            if (analysisResult.success) {
-              // 根据结果类型处理数据
-              const titlePrefix = (selectedTable && selectedTable !== "__no_table__") 
-                ? `${currentDataSource.name}.${selectedTable}` 
-                : currentDataSource.name;
-                
-              if (analysisResult.result_type === 'chart' && analysisResult.chart_config) {
-                const chartData = analysisResult.data as { data: any[]; columns: string[] } | undefined;
-                
-                // 检查是否是ECharts格式的配置
-                const isEChartsFormat = analysisResult.chart_config.chart_type === 'custom';
-                
-                // 提取标题，确保是字符串格式
-                const chartTitle = isEChartsFormat && analysisResult.chart_config.title
-                  ? extractChartTitle(analysisResult.chart_config.title, `${titlePrefix} 分析结果`)
-                  : `${titlePrefix} 分析结果`;
-                
-                charts = [{
-                  type: isEChartsFormat ? 'custom' : (analysisResult.chart_config.type || 'bar'),
-                  title: chartTitle,
-                  data: chartData?.data || [],
-                  config: analysisResult.chart_config
-                }];
-              } else if (analysisResult.result_type === 'table') {
-                // 如果是表格数据，生成简单的表格图表
-                const tableData = analysisResult.data as { data: any[]; columns: string[] } | undefined;
-                charts = [{
-                  type: 'custom',
-                  title: `${titlePrefix} 查询结果`,
-                  data: tableData?.data || [],
-                  config: {
-                    type: 'table',
-                    columns: tableData?.columns || []
-                  }
-                }];
-              }
+            // SSE返回的result事件已经是格式化好的数据
+            const titlePrefix = (selectedTable && selectedTable !== "__no_table__") 
+              ? `${currentDataSource.name}.${selectedTable}` 
+              : currentDataSource.name;
               
-              if (enableInsights) {
-                const analysis = analysisResult as DatabaseAnalysisResponse;
-                insights = [
-                  `分析完成: ${analysis.metadata?.row_count || 0} 条记录`,
-                  `执行时间: ${(analysis.metadata?.execution_time || 0).toFixed(3)}秒`,
-                  `使用表: ${analysis.metadata?.tables?.join(', ') || selectedTable}`,
-                  `SQL查询: ${analysis.metadata?.sql_query || '已优化'}`
-                ];
+            if (analysisResult.result_type === 'chart' && analysisResult.chart_config) {
+              // 检查是否是ECharts格式的配置
+              const isEChartsFormat = analysisResult.chart_config.chart_type === 'custom';
+              
+              // 提取标题，确保是字符串格式
+              const chartTitle = isEChartsFormat && analysisResult.chart_config.title
+                ? extractChartTitle(analysisResult.chart_config.title, `${titlePrefix} 分析结果`)
+                : `${titlePrefix} 分析结果`;
+              
+              charts = [{
+                type: isEChartsFormat ? 'custom' : (analysisResult.chart_config.type || 'bar'),
+                title: chartTitle,
+                data: analysisResult.data || [],
+                config: analysisResult.chart_config
+              }];
+            } else if (analysisResult.result_type === 'table') {
+              // 如果是表格数据，生成简单的表格图表
+              charts = [{
+                type: 'custom',
+                title: `${titlePrefix} 查询结果`,
+                data: analysisResult.data || [],
+                config: {
+                  type: 'table',
+                  columns: analysisResult.columns || []
+                }
+              }];
+            }
+            
+            if (enableInsights) {
+              insights = [
+                `分析完成: ${analysisResult.metadata?.row_count || 0} 条记录`,
+                `执行时间: ${(analysisResult.metadata?.execution_time || 0).toFixed(3)}秒`,
+                `使用表: ${analysisResult.metadata?.tables?.join(', ') || selectedTable}`,
+                `SQL查询: ${analysisResult.metadata?.sql_query || '已优化'}`
+              ];
+              
+              // 添加数据洞察框架生成的洞察信息
+              if (analysisResult.insights) {
+                // 添加基础洞察
+                if (analysisResult.insights.basic_insights && Array.isArray(analysisResult.insights.basic_insights)) {
+                  insights.push(...analysisResult.insights.basic_insights);
+                }
                 
-                // 添加数据洞察框架生成的洞察信息
-                if (analysis.insights) {
-                  // 添加基础洞察
-                  if (analysis.insights.basic_insights && Array.isArray(analysis.insights.basic_insights)) {
-                    insights.push(...analysis.insights.basic_insights);
-                  }
-                  
-                  // 添加高级洞察
-                  if (analysis.insights.advanced_insights && Array.isArray(analysis.insights.advanced_insights)) {
-                    analysis.insights.advanced_insights.forEach((insight: any) => {
-                      insights.push(`${insight.column}: ${insight.description} (${insight.severity})`);
-                    });
-                  }
+                // 添加高级洞察
+                if (analysisResult.insights.advanced_insights && Array.isArray(analysisResult.insights.advanced_insights)) {
+                  analysisResult.insights.advanced_insights.forEach((insight: any) => {
+                    insights.push(`${insight.column}: ${insight.description} (${insight.severity})`);
+                  });
                 }
               }
-              
-              // 更新响应内容
-              const sourceDescription = (selectedTable && selectedTable !== "__no_table__") 
-                ? `${currentDataSource.name}.${selectedTable}` 
-                : currentDataSource.name;
-              const analysis = analysisResult as DatabaseAnalysisResponse;
-              responseContent = `${sourceDescription} 数据分析完成\n\n查询结果：${analysis.metadata?.row_count || 0} 条记录\n执行时间：${(analysis.metadata?.execution_time || 0).toFixed(3)}秒`;
-              
-              // 存储insight_md用于后续创建assistant消息
-              databaseInsightMd = analysis.insight_md;
-              
-            } else {
-              throw new Error(analysisResult.error || '分析失败');
             }
+            
+            // 更新响应内容
+            const sourceDescription = (selectedTable && selectedTable !== "__no_table__") 
+              ? `${currentDataSource.name}.${selectedTable}` 
+              : currentDataSource.name;
+            responseContent = `${sourceDescription} 数据分析完成\n\n查询结果：${analysisResult.metadata?.row_count || 0} 条记录\n执行时间：${(analysisResult.metadata?.execution_time || 0).toFixed(3)}秒`;
+            
+            // 存储insight_md用于后续创建assistant消息
+            databaseInsightMd = analysisResult.insight_md;
             
                      } catch (error) {
              console.error('数据库分析失败:', error);
@@ -1541,17 +1745,38 @@ export function ChartsMain() {
           });
         }
 
-        const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          type: 'assistant',
-          content: responseContent,
-          timestamp: new Date(),
-          charts,
-          insights: insights.length > 0 ? insights : undefined,
-          insight_md: databaseInsightMd
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
+        // 更新或创建assistant消息
+        // 如果是系统数据源且创建了streaming message，则更新它
+        const isSystemAnalysis = currentDataSource.type === 'system';
+        
+        if (isSystemAnalysis) {
+          // 更新流式消息为最终版本
+          setMessages(prev => prev.map(msg => {
+            if (msg.isStreaming) {
+              return {
+                ...msg,
+                content: responseContent,
+                charts,
+                insights: insights.length > 0 ? insights : undefined,
+                insight_md: databaseInsightMd,
+                isStreaming: false
+              };
+            }
+            return msg;
+          }));
+        } else {
+          // 非系统数据源，创建新消息
+          const assistantMessage: ChatMessage = {
+            id: `assistant-${Date.now()}`,
+            type: 'assistant',
+            content: responseContent,
+            timestamp: new Date(),
+            charts,
+            insights: insights.length > 0 ? insights : undefined,
+            insight_md: databaseInsightMd
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+        }
       }
     } catch (error) {
       console.error('处理消息错误:', error);
@@ -1932,7 +2157,105 @@ export function ChartsMain() {
                     </p>
                   </div>
                   
-            
+                  {/* Agent思考步骤展示 */}
+                  {message.thinkingSteps && message.thinkingSteps.length > 0 && (
+                    <ThinkingStepsCard 
+                      thinkingSteps={message.thinkingSteps} 
+                      isStreaming={message.isStreaming}
+                    />
+                  )}
+
+                  {/* 旧的思考步骤展示代码保留作为备用 */}
+                  {false && message.thinkingSteps && message.thinkingSteps.length > 0 && (
+                    <Card className="mt-3 border-blue-200 bg-blue-50/30">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-blue-600 animate-pulse" />
+                          <CardTitle className="text-sm font-medium text-blue-900">
+                            Agent 思考过程
+                            {message.isStreaming && <span className="ml-2 text-xs text-blue-600">(进行中...)</span>}
+                          </CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          {message.thinkingSteps.map((step, index) => (
+                            <motion.div
+                              key={`${step.node}-${index}`}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.3, delay: index * 0.1 }}
+                              className={`flex items-start gap-3 p-3 rounded-lg border ${
+                                step.status === 'completed' 
+                                  ? 'bg-green-50/50 border-green-200' 
+                                  : step.status === 'error'
+                                  ? 'bg-red-50/50 border-red-200'
+                                  : 'bg-blue-50/50 border-blue-200'
+                              }`}
+                            >
+                              <span className="text-2xl">{step.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {step.title}
+                                  </span>
+                                  {step.status === 'completed' && (
+                                    <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+                                      完成
+                                    </Badge>
+                                  )}
+                                  {step.status === 'processing' && (
+                                    <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                                      处理中
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-600 mb-1">{step.message}</p>
+                                
+                                {/* 显示详细信息 */}
+                                {step.details && (
+                                  <div className="mt-2 text-xs">
+                                    {step.details.sql && (
+                                      <div className="bg-gray-900 text-gray-100 p-2 rounded font-mono overflow-x-auto">
+                                        <pre className="whitespace-pre-wrap break-all">{step.details.sql}</pre>
+                                      </div>
+                                    )}
+                                    {step.details.entities && step.details.entities.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {step.details.entities.map((entity: any, idx: number) => (
+                                          <Badge key={idx} variant="secondary" className="text-xs">
+                                            {entity.entity_type}: {entity.value}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {step.details.is_valid !== undefined && (
+                                      <div className={`mt-1 p-2 rounded ${
+                                        step.details.is_valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                      }`}>
+                                        {step.details.is_valid ? '✓ SQL验证通过' : '✗ SQL验证失败'}
+                                        {step.details.errors && step.details.errors.length > 0 && (
+                                          <div className="mt-1 text-xs">
+                                            错误: {step.details.errors.join(', ')}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {step.details.row_count !== undefined && (
+                                      <div className="mt-1 text-gray-600">
+                                        查询结果: {step.details.row_count} 行 
+                                        {step.details.execution_time && ` · 耗时 ${step.details.execution_time.toFixed(3)}s`}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* 图表展示 */}
                   {message.charts && message.charts.length > 0 && (

@@ -24,12 +24,25 @@ def milvus_vector_store(drop_old:  bool = False):
     )
 
 def dense_embeddings_model():
-    """Embedding 模型"""
-
-    # https://ollama.com/library/nomic-embed-text
-    embeddings = OllamaEmbeddings(model=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"), base_url=os.getenv("OLLAMA_EMBEDDING_URL", "http://localhost:11434"))
-
-
+    """
+    Embedding 模型
+    
+    推荐中文模型（按效果排序）：
+    1. bge-m3: 中文效果最佳，支持长文档(8192 tokens)，混合检索
+       安装: ollama pull bge-m3
+    2. bge-large-zh-v1.5: 纯中文优化，速度快，准确率高
+       安装: ollama pull bge-large-zh-v1.5
+    3. mxbai-embed-large: 多语言支持，中英兼顾
+       安装: ollama pull mxbai-embed-large
+    
+    英文模型：
+    - nomic-embed-text: 主要为英文优化
+      安装: ollama pull nomic-embed-text
+    """
+    embeddings = OllamaEmbeddings(
+        model=os.getenv("OLLAMA_EMBEDDING_MODEL", "bge-m3"), 
+        base_url=os.getenv("OLLAMA_EMBEDDING_URL", "http://localhost:11434")
+    )
     return embeddings
 
 class LocalMilvusProvider(Retriever):

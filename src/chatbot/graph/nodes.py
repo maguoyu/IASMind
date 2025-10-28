@@ -241,7 +241,14 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     if context_info:
         context_message = f"问题: {user_query}\n\n"
         context_message += "上下文:\n" + "\n\n".join(context_info)
-        context_message += "\n\n请基于以上上下文信息回答问题。保持回答简洁、准确，如果内容中有图片，尽量按照图文的方式展示，尽量不让用户点击下载图片，如果信息有冲突，请优先使用最新或最权威的来源。"
+        context_message += """
+
+请基于以上上下文信息回答问题，遵循以下要求：
+1. **准确性**：优先使用知识库信息，网络搜索结果作为补充。如有冲突，优先使用最新或最权威的来源
+2. **格式要求**：使用清晰的结构（标题、列表、分段）组织回答，使内容易读
+3. **图片处理**：如果上下文中包含图片链接或图片描述，请在回答中直接展示图片，不使用链接方式，方便用户查看
+4. **完整性**：如果上下文信息不足以完整回答问题，请明确说明并提供已知的部分答案
+5. **简洁性**：保持回答简洁明了，聚焦核心问题，避免冗余信息"""
         
         system_context = HumanMessage(
             content=context_message,
@@ -253,15 +260,12 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     try:
         llm = get_llm_by_type(AGENT_LLM_MAP.get("chatbot", "basic"))
         
-        # 添加融合指令
-        fusion_instructions = HumanMessage(
-            content="""你是一个AI助手，可以访问知识库和网络搜索结果。
-请综合这些信息提供全面、准确的回答。
-如果信息有冲突，请优先使用最新或最权威的来源。
-回答应该清晰、有条理，并且基于提供的上下文。""",
+        # 添加系统角色定义
+        system_role = HumanMessage(
+            content="你是一个专业的AI知识助手，擅长综合知识库和网络信息，提供准确、结构化、易理解的回答。",
             name="system"
         )
-        enhanced_messages.append(fusion_instructions)
+        enhanced_messages.append(system_role)
         
         logger.info(f"准备调用LLM，消息数量: {len(enhanced_messages)}")
 

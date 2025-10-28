@@ -65,6 +65,10 @@ export const apiClient = {
         });
 
         if (!response.ok) {
+          // 如果是401未授权，跳转到登录页
+          if (response.status === 401 && typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
           const errorData = await response.json().catch(() => ({}));
           return {
             data: null as any,
@@ -111,6 +115,10 @@ export const apiClient = {
         });
 
         if (!response.ok) {
+          // 如果是401未授权，跳转到登录页
+          if (response.status === 401 && typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
           const errorData = await response.json().catch(() => ({}));
           return {
             data: null as any,
@@ -151,6 +159,10 @@ export const apiClient = {
         });
 
         if (!response.ok) {
+          // 如果是401未授权，跳转到登录页
+          if (response.status === 401 && typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
           const errorData = await response.json().catch(() => ({}));
           return {
             data: null as any,
@@ -190,6 +202,10 @@ export const apiClient = {
         });
 
         if (!response.ok) {
+          // 如果是401未授权，跳转到登录页
+          if (response.status === 401 && typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
           const errorData = await response.json().catch(() => ({}));
           return {
             data: null as any,

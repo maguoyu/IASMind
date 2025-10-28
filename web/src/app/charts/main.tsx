@@ -1818,7 +1818,6 @@ export function ChartsMain() {
   };
   
   const renderChart = (chart: ChartData) => {
-    console.log('正在渲染图表:', chart);
     
     // 优先处理数据库分析结果的表格显示
     if (chart.type === 'custom' && chart.config?.type === 'table') {

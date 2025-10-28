@@ -12,6 +12,10 @@ export async function generatePodcast(content: string) {
     body: JSON.stringify({ content }),
   });
   if (!response.ok) {
+    // 如果是401未授权，跳转到登录页
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
     throw new Error(`HTTP error! status: ${response.status}`);
   }
   const arrayBuffer = await response.arrayBuffer();

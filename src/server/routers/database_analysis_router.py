@@ -264,30 +264,64 @@ def generate_database_insight_markdown(
     # 数据样例（显示前5行）
     if data and len(data) > 0:
         md_content.append("## 数据样例")
+        md_content.append("")
         md_content.append("以下是查询结果的前5行数据：")
         md_content.append("")
         
-        # 创建表格头
-        md_content.append("| " + " | ".join(columns) + " |")
-        md_content.append("| " + " | ".join(["---"] * len(columns)) + " |")
+        # 使用HTML表格格式（reactMarkdown支持HTML）
+        md_content.append('<div style="overflow-x: auto; max-width: 100%;">')
+        md_content.append('<table style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;">')
         
-        # 添加数据行（最多5行）
+        # 创建表格头
+        md_content.append('  <thead>')
+        md_content.append('    <tr style="background-color: #f8f9fa;">')
+        for col in columns:
+            # HTML转义特殊字符
+            escaped_col = (str(col)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#39;"))
+            md_content.append(f'      <th style="border: 1px solid #ddd; padding: 12px 8px; text-align: left; font-weight: 600; white-space: nowrap;">{escaped_col}</th>')
+        md_content.append('    </tr>')
+        md_content.append('  </thead>')
+        
+        # 创建表格体
+        md_content.append('  <tbody>')
         for i, row in enumerate(data[:5]):
-            row_values = []
+            bg_color = "#ffffff" if i % 2 == 0 else "#f9fafb"
+            md_content.append(f'    <tr style="background-color: {bg_color};">')
             for col in columns:
                 value = row.get(col, "")
                 # 处理None值和长字符串
                 if value is None:
-                    value = "NULL"
-                elif isinstance(value, str) and len(value) > 20:
-                    value = value[:17] + "..."
-                row_values.append(str(value))
-            md_content.append("| " + " | ".join(row_values) + " |")
-            
-        if len(data) > 5:
-            md_content.append("")
-            md_content.append(f"*还有 {len(data) - 5} 行数据未显示*")
+                    display_value = '<span style="color: #9ca3af; font-style: italic;">NULL</span>'
+                elif isinstance(value, str):
+                    # 截断过长的字符串
+                    if len(value) > 100:
+                        value = value[:97] + "..."
+                    # HTML转义
+                    display_value = (value
+                        .replace("&", "&amp;")
+                        .replace("<", "&lt;")
+                        .replace(">", "&gt;")
+                        .replace('"', "&quot;")
+                        .replace("'", "&#39;"))
+                else:
+                    display_value = str(value)
+                
+                md_content.append(f'      <td style="border: 1px solid #ddd; padding: 8px; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{display_value}</td>')
+            md_content.append('    </tr>')
+        md_content.append('  </tbody>')
+        
+        md_content.append('</table>')
+        md_content.append('</div>')
         md_content.append("")
+        
+        if len(data) > 5:
+            md_content.append(f"*数据集共 {len(data)} 行，此处仅显示前 5 行*")
+            md_content.append("")
     
     # 数据质量评估
     if data and insights_data:

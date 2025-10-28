@@ -7,6 +7,7 @@ import ReactMarkdown, {
   type Options as ReactMarkdownOptions,
 } from "react-markdown";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
@@ -52,9 +53,9 @@ export function Markdown({
 
   const rehypePlugins = useMemo(() => {
     if (animated) {
-      return [rehypeKatex, rehypeSplitWordsIntoSpans];
+      return [rehypeRaw, rehypeKatex, rehypeSplitWordsIntoSpans];
     }
-    return [rehypeKatex];
+    return [rehypeRaw, rehypeKatex];
   }, [animated]);
   return (
     <div className={cn(className, "prose dark:prose-invert")} style={style}>

@@ -7,6 +7,8 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Database, BarChart3, TrendingUp, Users, DollarSign, PieChart, LineChart, Activity, FileText, File, Plane, Fuel, CalendarClock, X, Eye, ChevronDown, ChevronUp, Table, RotateCcw, Trash2, MessageSquareX, FileBarChart } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import EChartsWrapper from "~/components/charts/echarts-wrapper";
 import { convertVChartToECharts, generateEChartsConfig } from "~/utils/chart-converter";
 import { toast } from "sonner";
@@ -2053,7 +2055,10 @@ export function ChartsMain() {
                       </CardHeader>
                       <CardContent>
                         <div className="prose prose-sm max-w-none text-muted-foreground">
-                          <ReactMarkdown>
+                          <ReactMarkdown 
+                            rehypePlugins={[rehypeRaw]}
+                            remarkPlugins={[remarkGfm]}
+                          >
                             {message.insight_md}
                           </ReactMarkdown>
                         </div>

@@ -3,6 +3,13 @@
 
 import { resolveServiceURL } from "./resolve-service-url";
 
+// 检查并处理401未授权错误
+function handleUnauthorized(response: Response) {
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+}
+
 export interface KnowledgeBase {
   id: string;
   name: string;
@@ -125,6 +132,9 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      if (response.status === 401 && typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
       throw new Error(`健康检查失败: ${response.statusText}`);
     }
 
@@ -142,6 +152,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || `创建知识库失败: ${response.statusText}`);
     }
@@ -169,6 +180,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取知识库列表失败: ${response.statusText}`);
     }
 
@@ -186,6 +198,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取知识库详情失败: ${response.statusText}`);
     }
 
@@ -203,6 +216,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || `更新知识库失败: ${response.statusText}`);
     }
@@ -217,6 +231,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`删除知识库失败: ${response.statusText}`);
     }
 
@@ -240,6 +255,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.detail || `文件上传失败: ${response.statusText}`);
     }
@@ -278,6 +294,7 @@ export const knowledgeBaseApi = {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取文件列表失败: ${response.statusText}`);
     }
 
@@ -295,6 +312,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取文件详情失败: ${response.statusText}`);
     }
 
@@ -308,6 +326,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`删除文件失败: ${response.statusText}`);
     }
 
@@ -327,6 +346,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`文件向量化失败: ${response.statusText}`);
     }
 
@@ -344,6 +364,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`批量向量化失败: ${response.statusText}`);
     }
 
@@ -357,6 +378,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`文件下载失败: ${response.statusText}`);
     }
 
@@ -370,6 +392,7 @@ export const knowledgeBaseApi = {
     });
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取统计信息失败: ${response.statusText}`);
     }
 

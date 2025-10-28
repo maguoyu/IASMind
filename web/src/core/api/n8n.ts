@@ -8,6 +8,13 @@
 
 import { env } from "~/env";
 
+// 检查并处理401未授权错误
+function handleUnauthorized(response: Response) {
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+}
+
 // 获取 API 基础 URL，确保没有 /api 后缀
 const getApiBaseUrl = () => {
   const baseUrl = env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -88,6 +95,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取工作流列表失败: ${response.statusText}`);
     }
 
@@ -103,6 +111,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取工作流详情失败: ${response.statusText}`);
     }
 
@@ -128,6 +137,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`激活工作流失败: ${response.statusText}`);
     }
 
@@ -146,6 +156,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`删除工作流失败: ${response.statusText}`);
     }
   }
@@ -169,6 +180,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`执行工作流失败: ${response.statusText}`);
     }
 
@@ -196,6 +208,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取执行记录失败: ${response.statusText}`);
     }
 
@@ -211,6 +224,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`获取执行记录详情失败: ${response.statusText}`);
     }
 
@@ -229,6 +243,7 @@ export class N8nApi {
     );
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`删除执行记录失败: ${response.statusText}`);
     }
   }
@@ -245,6 +260,7 @@ export class N8nApi {
     const response = await fetch(`${API_BASE_URL}/api/n8n/health`);
 
     if (!response.ok) {
+      handleUnauthorized(response);
       throw new Error(`健康检查失败: ${response.statusText}`);
     }
 

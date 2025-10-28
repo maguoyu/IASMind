@@ -69,6 +69,10 @@ export async function callLLMProxy(
     });
 
     if (!response.ok) {
+      // 如果是401未授权，跳转到登录页
+      if (response.status === 401 && typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
       const errorText = await response.text();
       throw new Error(`LLM API error (${response.status}): ${errorText}`);
     }
@@ -111,6 +115,10 @@ export async function* streamLLMProxy(
     });
 
     if (!response.ok) {
+      // 如果是401未授权，跳转到登录页
+      if (response.status === 401 && typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
       const errorText = await response.text();
       throw new Error(`LLM API error (${response.status}): ${errorText}`);
     }

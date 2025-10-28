@@ -118,6 +118,10 @@ export class RbacApi {
    */
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
+      // 如果是401未授权，跳转到登录页
+      if (response.status === 401 && typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.detail || errorData.error_description || errorData.error || `HTTP ${response.status}`;
       throw new Error(errorMessage);

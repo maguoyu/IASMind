@@ -1829,7 +1829,7 @@ export function ChartsMain() {
     if (chart.type === 'custom' && chart.config) {
       console.log('渲染自定义图表，使用spec:', chart.config);
       return (
-        <div style={{ width: '100%', height: 500, minWidth: '600px' }} className="w-full min-h-[500px]">
+        <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
           <EChartsWrapper 
             spec={chart.config} 
             onError={(error) => {
@@ -1842,15 +1842,13 @@ export function ChartsMain() {
     }
     
     if (!chart.data || chart.data.length === 0) {
-      return <div className="text-center text-muted-foreground">暂无数据</div>;
+      return <div className="text-center text-muted-foreground py-8">暂无数据</div>;
     }
-
-    const chartHeight = 500; // 增加图表高度以提升显示效果
     
     switch (chart.type) {
       case 'bar':
         return (
-          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
+          <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
               spec={generateEChartsConfig(chart.data, 'bar')} 
               onError={(error) => {
@@ -1863,7 +1861,7 @@ export function ChartsMain() {
       
             case 'pie':
         return (
-          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
+          <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
               spec={generateEChartsConfig(chart.data, 'pie')}
               onError={(error) => {
@@ -1876,7 +1874,7 @@ export function ChartsMain() {
       
             case 'line':
         return (
-          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
+          <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
               spec={generateEChartsConfig(chart.data, 'line')}
               onError={(error) => {
@@ -1889,7 +1887,7 @@ export function ChartsMain() {
       
             case 'area':
         return (
-          <div style={{ width: '100%', height: chartHeight, minWidth: '600px' }} className="w-full min-h-[500px]">
+          <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
               spec={generateEChartsConfig(chart.data, 'line')} // area图使用line类型但填充区域
               onError={(error) => {
@@ -1914,22 +1912,23 @@ export function ChartsMain() {
       <div className={cn("max-w-7xl mx-auto w-full flex flex-col h-full")}>
         {/* 数据源选择区域 - 固定在顶部 */}
         <motion.div 
-          className="sticky top-20 z-40 mb-4 p-4 bg-card rounded-lg border backdrop-blur-sm bg-card/95 shadow-sm"
+          className="sticky top-20 z-40 mb-6 p-4 md:p-6 bg-card rounded-xl border-2 backdrop-blur-sm bg-card/95 shadow-lg"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="flex flex-wrap items-center gap-4">
+          {/* 数据源选择 */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4 mb-3 lg:mb-0 pb-3 lg:pb-0 border-b lg:border-b-0">
             <div className="flex items-center gap-2">
-              <Database className="w-4 h-4" />
-              <span className="text-sm font-medium">数据源:</span>
+              <Database className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold">数据源</span>
             </div>
             <Select 
               value={selectedDataSource} 
               onValueChange={handleDataSourceChange}
               disabled={isDataSourceDisabled}
             >
-              <SelectTrigger className={`w-48 ${isDataSourceDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              <SelectTrigger className={`w-full lg:w-56 ${isDataSourceDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1984,55 +1983,85 @@ export function ChartsMain() {
               </SelectContent>
             </Select>
 
-            {/* 临时文件选择 - 当选择临时文件数据源时显示 */}
-            {selectedDataSource === 'uploaded_file' && (
-              <>
-                <span className="text-sm font-medium">选择文件:</span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileInputChange}
-                  multiple={false}
-                  accept=".csv,.json,.xlsx,.xls,.txt,.text"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs"
-                >
-                  <File className="w-3 h-3 mr-1" />
-                  选择文件
-                </Button>
-                
-                {/* 显示已选择的文件 */}
-                {uploadedFiles.length > 0 && uploadedFiles[0] && (
-                  <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1">
-                    <FileText className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground truncate max-w-48">
-                      {uploadedFiles[0].name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 hover:bg-destructive/10"
-                      onClick={resetFileUpload}
-                    >
-                      <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
+            {/* 数据洞察选项 */}
+            <div className="flex items-center gap-2 lg:ml-auto">
+              <Checkbox 
+                id="enable-insights"
+                checked={enableInsights}
+                onCheckedChange={(checked) => setEnableInsights(checked === true)}
+              />
+              <label
+                htmlFor="enable-insights"
+                className="text-sm font-medium leading-none cursor-pointer select-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                启用数据洞察
+              </label>
+            </div>
+          </div>
 
-            {/* 系统数据源的表选择 */}
-            {currentDataSource && currentDataSource.type === 'system' && (
-              <>
-                <span className="text-sm font-medium">数据表 (可选):</span>
+          {/* 文件选择区域 - 当选择临时文件数据源时显示 */}
+          {selectedDataSource === 'uploaded_file' && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-3 border-t">
+              <div className="flex items-center gap-2">
+                <File className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">文件</span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileInputChange}
+                multiple={false}
+                accept=".csv,.json,.xlsx,.xls,.txt,.text"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs"
+              >
+                <File className="w-3 h-3 mr-1" />
+                选择文件
+              </Button>
+              
+              {/* 显示已选择的文件 */}
+              {uploadedFiles.length > 0 && uploadedFiles[0] && (
+                <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 flex-1 min-w-0">
+                  <FileText className="w-4 h-4 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {uploadedFiles[0].name}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatFileSize(uploadedFiles[0].size)}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-destructive/10 shrink-0"
+                    onClick={resetFileUpload}
+                  >
+                    <X className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 系统数据源的表选择区域 */}
+          {currentDataSource && currentDataSource.type === 'system' && (
+            <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4 pt-3 border-t">
+              <div className="flex items-center gap-2">
+                <Table className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">数据表</span>
+                <span className="text-xs text-muted-foreground">(可选)</span>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-1">
                 <Select value={selectedTable} onValueChange={setSelectedTable}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="选择数据表 (可留空分析整个数据库)" />
+                  <SelectTrigger className="w-full sm:w-56">
+                    <SelectValue placeholder="选择数据表或留空分析整库" />
                   </SelectTrigger>
                   <SelectContent>
                     {tablesLoading ? (
@@ -2071,6 +2100,7 @@ export function ChartsMain() {
                     )}
                   </SelectContent>
                 </Select>
+                
                 {!tablesLoading && currentDataSource && (
                   <Button
                     variant="outline"
@@ -2078,80 +2108,72 @@ export function ChartsMain() {
                     onClick={() => fetchTables(currentDataSource.id)}
                     className="text-xs"
                   >
-                    刷新
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    刷新表列表
                   </Button>
                 )}
                 
                 {/* 数据源信息显示 */}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="outline" className="text-xs">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground ml-auto">
+                  <Badge 
+                    variant="outline" 
+                    className={`text-xs ${
+                      currentDataSource.status === 'connected' 
+                        ? 'bg-green-50 text-green-700 border-green-300' 
+                        : 'bg-red-50 text-red-700 border-red-300'
+                    }`}
+                  >
                     {currentDataSource.status === 'connected' ? '已连接' : '未连接'}
                   </Badge>
-                  {currentDataSource.tables > 0 && (
-                    <span className="text-xs">{currentDataSource.tables} 个表</span>
+                  {tablesList.length > 0 && (
+                    <span className="text-xs hidden sm:inline">{tablesList.length} 个表</span>
                   )}
-                  <span className="text-xs">{currentDataSource.lastUpdated.toLocaleDateString()}</span>
                 </div>
-              </>
-            )}
-            
-            {/* 数据洞察选项 */}
-            <div className="flex items-center space-x-2 ml-auto">
-              <Checkbox 
-                id="enable-insights"
-                checked={enableInsights}
-                onCheckedChange={(checked) => setEnableInsights(checked === true)}
-              />
-              <label
-                htmlFor="enable-insights"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                启用数据洞察
-              </label>
+              </div>
             </div>
-          </div>
+          )}
         </motion.div>
 
         {/* 消息列表区域 */}
-        <div className="flex flex-grow flex-col px-4">
-          <div className="flex-grow overflow-y-auto space-y-4 mb-6 pt-4">
+        <div className="flex flex-grow flex-col px-2 sm:px-4 lg:px-6">
+          <div className="flex-grow overflow-y-auto space-y-6 mb-6 pt-2 pb-4">
             {messages.map((message) => (
               <motion.div 
                 key={message.id} 
-                className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 sm:gap-4 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
                 {message.type === 'assistant' && (
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center shrink-0">
-                    <Activity className="w-4 h-4 text-primary-foreground" />
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shrink-0 shadow-md">
+                    <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
                   </div>
                 )}
                 
                 <div className={`${message.type === 'user' ? 'max-w-lg order-first' : 'w-full max-w-none'}`}>
-                  <div className={`p-3 rounded-lg relative group ${
+                  <div className={`p-4 sm:p-5 rounded-2xl relative group shadow-sm ${
                     message.type === 'user' 
-                      ? 'bg-primary text-primary-foreground ml-auto' 
-                      : 'bg-card border'
+                      ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground ml-auto' 
+                      : 'bg-card border-2 border-border/50'
                   }`}>
                     {/* 删除按钮 */}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => deleteMessage(message.id)}
-                      className={`absolute top-2 right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${
+                      className={`absolute top-2 right-2 w-7 h-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity ${
                         message.type === 'user' 
                           ? 'hover:bg-primary-foreground/20 text-primary-foreground/70 hover:text-primary-foreground' 
                           : 'hover:bg-destructive hover:text-destructive-foreground'
                       }`}
                       title="删除此消息"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                     
-                    <p className="text-sm whitespace-pre-line pr-8">{message.content}</p>
-                    <p className={`text-xs mt-1 opacity-70`}>
+                    <p className="text-sm sm:text-base whitespace-pre-line pr-8 leading-relaxed">{message.content}</p>
+                    <p className={`text-xs mt-2 opacity-70`}>
                       {message.timestamp.toLocaleTimeString()}
                     </p>
                   </div>
@@ -2164,107 +2186,18 @@ export function ChartsMain() {
                     />
                   )}
 
-                  {/* 旧的思考步骤展示代码保留作为备用 */}
-                  {false && message.thinkingSteps && message.thinkingSteps.length > 0 && (
-                    <Card className="mt-3 border-blue-200 bg-blue-50/30">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-blue-600 animate-pulse" />
-                          <CardTitle className="text-sm font-medium text-blue-900">
-                            Agent 思考过程
-                            {message.isStreaming && <span className="ml-2 text-xs text-blue-600">(进行中...)</span>}
-                          </CardTitle>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="space-y-2">
-                          {message.thinkingSteps.map((step, index) => (
-                            <motion.div
-                              key={`${step.node}-${index}`}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.3, delay: index * 0.1 }}
-                              className={`flex items-start gap-3 p-3 rounded-lg border ${
-                                step.status === 'completed' 
-                                  ? 'bg-green-50/50 border-green-200' 
-                                  : step.status === 'error'
-                                  ? 'bg-red-50/50 border-red-200'
-                                  : 'bg-blue-50/50 border-blue-200'
-                              }`}
-                            >
-                              <span className="text-2xl">{step.emoji}</span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-medium text-gray-900">
-                                    {step.title}
-                                  </span>
-                                  {step.status === 'completed' && (
-                                    <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
-                                      完成
-                                    </Badge>
-                                  )}
-                                  {step.status === 'processing' && (
-                                    <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
-                                      处理中
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-xs text-gray-600 mb-1">{step.message}</p>
-                                
-                                {/* 显示详细信息 */}
-                                {step.details && (
-                                  <div className="mt-2 text-xs">
-                                    {step.details.sql && (
-                                      <div className="bg-gray-900 text-gray-100 p-2 rounded font-mono overflow-x-auto">
-                                        <pre className="whitespace-pre-wrap break-all">{step.details.sql}</pre>
-                                      </div>
-                                    )}
-                                    {step.details.entities && step.details.entities.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-1">
-                                        {step.details.entities.map((entity: any, idx: number) => (
-                                          <Badge key={idx} variant="secondary" className="text-xs">
-                                            {entity.entity_type}: {entity.value}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {step.details.is_valid !== undefined && (
-                                      <div className={`mt-1 p-2 rounded ${
-                                        step.details.is_valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                      }`}>
-                                        {step.details.is_valid ? '✓ SQL验证通过' : '✗ SQL验证失败'}
-                                        {step.details.errors && step.details.errors.length > 0 && (
-                                          <div className="mt-1 text-xs">
-                                            错误: {step.details.errors.join(', ')}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    {step.details.row_count !== undefined && (
-                                      <div className="mt-1 text-gray-600">
-                                        查询结果: {step.details.row_count} 行 
-                                        {step.details.execution_time && ` · 耗时 ${step.details.execution_time.toFixed(3)}s`}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
                   {/* 图表展示 */}
                   {message.charts && message.charts.length > 0 && (
-                    <div className="mt-3 space-y-4">
+                    <div className="mt-4 space-y-4">
                       {message.charts.map((chart, index) => (
-                        <Card key={index} className="w-full">
-                          <CardHeader className="pb-4">
-                            <CardTitle className="text-lg font-semibold">{chart.title}</CardTitle>
+                        <Card key={index} className="w-full border-2 shadow-md hover:shadow-lg transition-shadow duration-300">
+                          <CardHeader className="pb-3 bg-muted/30 border-b">
+                            <div className="flex items-center gap-2">
+                              <BarChart3 className="w-5 h-5 text-primary" />
+                              <CardTitle className="text-base sm:text-lg font-semibold">{chart.title}</CardTitle>
+                            </div>
                           </CardHeader>
-                          <CardContent className="p-6">
+                          <CardContent className="p-4 sm:p-6">
                             <div className="w-full">
                               {renderChart(chart)}
                             </div>
@@ -2276,15 +2209,17 @@ export function ChartsMain() {
 
                   {/* 文件预览 */}
                   {message.filePreview && (
-                    <Card className="mt-3 border-dashed">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
+                    <Card className="mt-4 border-2 border-dashed border-primary/30 bg-primary/5 shadow-sm">
+                      <CardHeader className="pb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <Table className="w-4 h-4 text-blue-600" />
-                            <CardTitle className="text-sm">文件预览</CardTitle>
+                            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                              <Table className="w-4 h-4 text-primary" />
+                            </div>
+                            <CardTitle className="text-sm sm:text-base font-semibold">文件预览</CardTitle>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30">
                               {message.filePreview.fileInfo.extension}
                             </Badge>
                             <Badge variant="secondary" className="text-xs">
@@ -2295,7 +2230,7 @@ export function ChartsMain() {
                             </Badge>
                           </div>
                         </div>
-                        <CardDescription className="text-xs">
+                        <CardDescription className="text-xs mt-1">
                           {message.filePreview.fileInfo.size} • {
                             message.filePreview.headers.length === 1 && message.filePreview.headers[0] === '文本内容' 
                               ? '文本预览' 
@@ -2365,17 +2300,23 @@ export function ChartsMain() {
 
                   {/* Markdown洞察报告 */}
                   {message.insight_md && (
-                    <Card className="mt-3">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <FileBarChart className="w-4 h-4" />
-                          数据洞察报告
-                        </CardTitle>
-                        <CardDescription>
-                          详细的数据洞察分析报告 · {Math.ceil(message.insight_md.length / 500)} 分钟阅读
-                        </CardDescription>
+                    <Card className="mt-4 border-2 border-blue-200 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 shadow-md">
+                      <CardHeader className="pb-3 bg-gradient-to-r from-blue-100/50 to-indigo-100/30 border-b">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                            <FileBarChart className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <CardTitle className="text-base sm:text-lg font-semibold text-blue-900">
+                              数据洞察报告
+                            </CardTitle>
+                            <CardDescription className="text-xs mt-1">
+                              详细的数据洞察分析报告 · {Math.ceil(message.insight_md.length / 500)} 分钟阅读
+                            </CardDescription>
+                          </div>
+                        </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="pt-4">
                         <div className="prose prose-sm max-w-none text-muted-foreground">
                           <ReactMarkdown 
                             rehypePlugins={[rehypeRaw]}
@@ -2390,8 +2331,8 @@ export function ChartsMain() {
                 </div>
 
                 {message.type === 'user' && (
-                  <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center text-secondary-foreground text-sm font-medium shrink-0">
-                    U
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-secondary to-secondary/80 rounded-full flex items-center justify-center text-secondary-foreground text-sm sm:text-base font-semibold shrink-0 shadow-md border-2 border-secondary-foreground/10">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 )}
               </motion.div>
@@ -2400,19 +2341,19 @@ export function ChartsMain() {
             {/* 加载状态 */}
             {isLoading && (
               <motion.div 
-                className="flex gap-3 justify-start"
+                className="flex gap-3 sm:gap-4 justify-start"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-primary-foreground" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-md shrink-0">
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground animate-pulse" />
                 </div>
-                <div className="bg-card border p-3 rounded-lg">
-                  <div className="flex items-center gap-2">
+                <div className="bg-card border-2 p-4 sm:p-5 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                     <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                     <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    <span className="text-sm text-muted-foreground ml-2">正在分析数据...</span>
+                    <span className="text-sm sm:text-base text-muted-foreground ml-1">正在分析数据...</span>
                   </div>
                 </div>
               </motion.div>
@@ -2420,7 +2361,7 @@ export function ChartsMain() {
           </div>
 
           {/* 快速问题 / 输入区域 */}
-          <div className="relative flex shrink-0 pb-4 pt-2 flex-col">
+          <div className="relative flex shrink-0 pb-6 pt-4 flex-col border-t-2 bg-gradient-to-t from-background/95 to-background/50 backdrop-blur-sm">
             {/* 清空对话按钮 - 仅在有消息时显示 */}
             {messages.length > 0 && (
               <div className="flex justify-center mb-4">
@@ -2428,7 +2369,7 @@ export function ChartsMain() {
                   variant="outline"
                   size="sm"
                   onClick={clearAllMessages}
-                  className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                  className="text-destructive hover:text-destructive-foreground hover:bg-destructive border-2 shadow-sm hover:shadow-md transition-all"
                 >
                   <MessageSquareX className="w-4 h-4 mr-2" />
                   清空所有对话
@@ -2444,26 +2385,24 @@ export function ChartsMain() {
               >
                 {/* 欢迎界面 */}
                 <motion.div
-                  className="flex flex-col items-center mb-8"
+                  className="flex flex-col items-center mb-8 px-4"
                   initial={{ opacity: 0, scale: 0.85 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h3 className="mb-2 text-center text-3xl font-medium">
+                  <h3 className="mb-3 text-center text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
                     ✈️ 欢迎使用航空数据分析
                   </h3>
-                  <div className="text-muted-foreground px-4 text-center text-lg">
+                  <div className="text-muted-foreground text-center text-sm sm:text-base lg:text-lg max-w-2xl">
                     使用自然语言查询航班和航油数据，获得即时的可视化分析结果
                   </div>
                 </motion.div>
 
                 {/* 快速问题 */}
-                <ul className="flex flex-wrap">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {quickQuestions.map((question, index) => (
-                    <motion.li
+                    <motion.div
                       key={question}
-                      className="flex w-1/2 shrink-0 p-2 active:scale-105"
-                      style={{ transition: "all 0.2s ease-out" }}
                       initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
@@ -2473,23 +2412,25 @@ export function ChartsMain() {
                         ease: "easeOut",
                       }}
                     >
-                      <div
-                        className="bg-card text-muted-foreground cursor-pointer rounded-2xl border px-4 py-4 opacity-75 transition-all duration-300 hover:opacity-100 hover:shadow-md w-full"
+                      <button
+                        className="w-full bg-card text-muted-foreground cursor-pointer rounded-xl border-2 border-border/50 px-4 py-4 transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] text-left group"
                         onClick={() => handleQuickQuestion(question)}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
-                            {index === 0 && <Fuel className="w-3 h-3 text-primary" />}
-                            {index === 1 && <Plane className="w-3 h-3 text-primary" />}
-                            {index === 2 && <DollarSign className="w-3 h-3 text-primary" />}
-                            {index === 3 && <PieChart className="w-3 h-3 text-primary" />}
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                            {index === 0 && <Fuel className="w-5 h-5 text-primary" />}
+                            {index === 1 && <Plane className="w-5 h-5 text-primary" />}
+                            {index === 2 && <DollarSign className="w-5 h-5 text-primary" />}
+                            {index === 3 && <PieChart className="w-5 h-5 text-primary" />}
                           </div>
-                          <span className="text-sm">{question}</span>
+                          <span className="text-sm sm:text-base leading-relaxed group-hover:text-foreground transition-colors">
+                            {question}
+                          </span>
                         </div>
-                      </div>
-                    </motion.li>
+                      </button>
+                    </motion.div>
                   ))}
-                </ul>
+                </div>
               </motion.div>
             )}
 

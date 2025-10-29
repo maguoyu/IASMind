@@ -281,6 +281,7 @@ class DatabaseAnalysisNodes:
 2. SQL语法的正确性
 3. 数据类型的匹配
 4. JOIN条件的准确性
+5. 列名别名尽量使用中文有单位附加在后面，不要使用英文别名
 """
             
             prompt += """
@@ -290,7 +291,12 @@ class DatabaseAnalysisNodes:
 2. 确保字段名和表名正确
 3. 添加适当的WHERE条件
 4. 如需聚合，使用适当的GROUP BY
-5. 限制结果数量（LIMIT 1000）
+5. 必须添加LIMIT限制结果数量，根据查询场景智能选择：
+   - 聚合统计查询（SUM、COUNT、AVG等单值结果）：LIMIT 1
+   - 分组统计查询（GROUP BY）：LIMIT 50-100
+   - 详细数据列表查询：LIMIT 100-500
+   - 用户明确要求"所有"、"全部"数据时：不限制结果数量
+6. 列名别名必须使用中文有单位附加在后面，不要使用英文别名（例如：使用"总加油量（千克）"而不是"total_refueling_weight"）
 
 只返回SQL语句，不要其他说明:
 """

@@ -1,0 +1,182 @@
+{
+  "工作流名称": "智能问答机器人",
+  "Webhook URL": "POST http://localhost:5678/webhook/qa-bot",
+  
+  "输入示例": {
+    
+    "示例1_基础问答": {
+      "question": "Python 中如何读取 CSV 文件？",
+      "sessionId": "user-session-001",
+      "userId": "user-123",
+      "context": ""
+    },
+    
+    "示例2_技术问题": {
+      "question": "我的代码报错 'ModuleNotFoundError: No module named pandas'，怎么解决？",
+      "sessionId": "tech-support-001",
+      "userId": "developer-456",
+      "context": "我在 Python 3.9 环境中运行代码"
+    },
+    
+    "示例3_多轮对话_第一轮": {
+      "question": "什么是 Docker？",
+      "sessionId": "conversation-001",
+      "userId": "learner-789",
+      "context": ""
+    },
+    
+    "示例4_多轮对话_第二轮_追问": {
+      "question": "那它和虚拟机有什么区别？",
+      "sessionId": "conversation-001",
+      "userId": "learner-789",
+      "context": ""
+    },
+    
+    "示例5_知识库查询": {
+      "question": "公司的差旅报销流程是什么？",
+      "sessionId": "kb-query-001",
+      "userId": "employee-123",
+      "context": "我需要出差到上海参加会议"
+    },
+    
+    "示例6_需要搜索的问题": {
+      "question": "2025年最新的 Python 版本是什么？",
+      "sessionId": "search-001",
+      "userId": "user-456",
+      "context": ""
+    },
+    
+    "示例7_需要计算的问题": {
+      "question": "计算从1加到100的和",
+      "sessionId": "calc-001",
+      "userId": "user-789",
+      "context": ""
+    },
+    
+    "示例8_复杂问题": {
+      "question": "我想搭建一个电商网站，需要使用什么技术栈？",
+      "sessionId": "consulting-001",
+      "userId": "startup-founder-001",
+      "context": "预算有限，团队只有2个开发人员，希望快速上线"
+    },
+    
+    "示例9_最简输入": {
+      "question": "你好"
+    },
+    
+    "示例10_带完整上下文": {
+      "question": "这段代码有什么问题？",
+      "sessionId": "debug-001",
+      "userId": "developer-999",
+      "context": "代码：\nimport pandas as pd\ndf = pd.read_csv('data.csv', encoding='gbk')\nprint(df.head())\n\n错误信息：\nUnicodeDecodeError: 'gbk' codec can't decode byte 0xff in position 0"
+    }
+  },
+  
+  "字段说明": {
+    "question": {
+      "类型": "string",
+      "必填": true,
+      "说明": "用户的问题或查询内容",
+      "示例": "Python 如何连接数据库？"
+    },
+    "sessionId": {
+      "类型": "string",
+      "必填": false,
+      "默认值": "default-session",
+      "说明": "会话ID，用于多轮对话的上下文管理。同一个sessionId会保持对话历史",
+      "最佳实践": "为每个用户生成唯一的会话ID，如 user-{userId}-{timestamp}"
+    },
+    "userId": {
+      "类型": "string",
+      "必填": false,
+      "默认值": "anonymous",
+      "说明": "用户唯一标识符，用于用户行为追踪和个性化",
+      "示例": "user-123, employee-456, developer-789"
+    },
+    "context": {
+      "类型": "string",
+      "必填": false,
+      "默认值": "",
+      "说明": "额外的上下文信息，帮助AI更好地理解问题",
+      "使用场景": [
+        "提供错误信息",
+        "描述使用环境",
+        "补充背景信息",
+        "粘贴相关代码"
+      ]
+    }
+  },
+  
+  "响应格式": {
+    "success": true,
+    "timestamp": "2025-10-30T12:34:56.789Z",
+    "sessionId": "user-session-001",
+    "question": "Python 中如何读取 CSV 文件？",
+    "answer": "## 使用 pandas 读取 CSV（推荐）\n\n最简单的方法是使用 pandas 库：\n\n```python\nimport pandas as pd\n\ndf = pd.read_csv('file.csv')\nprint(df.head())  # 查看前5行\n```\n\n## 使用标准库 csv 模块\n\n如果不想安装额外库：\n\n```python\nimport csv\n\nwith open('file.csv', 'r', encoding='utf-8') as file:\n    reader = csv.reader(file)\n    for row in reader:\n        print(row)\n```\n\n## 常见参数\n- `encoding='utf-8'`：指定编码，避免中文乱码\n- `delimiter=','`：指定分隔符（默认逗号）\n- `header=0`：指定表头行（默认第一行）",
+    "metadata": {
+      "responseTime": 1730289296789,
+      "answerLength": 456,
+      "hasContext": true
+    },
+    "message": "问答完成"
+  },
+  
+  "cURL_示例": {
+    "基础请求": "curl -X POST http://localhost:5678/webhook/qa-bot \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"question\": \"什么是 n8n？\",\n    \"sessionId\": \"user-001\"\n  }'",
+    
+    "带完整参数": "curl -X POST http://localhost:5678/webhook/qa-bot \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"question\": \"Docker 怎么安装？\",\n    \"sessionId\": \"tech-support-123\",\n    \"userId\": \"developer-456\",\n    \"context\": \"我使用的是 Ubuntu 22.04 系统\"\n  }'",
+    
+    "多轮对话第一轮": "curl -X POST http://localhost:5678/webhook/qa-bot \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"question\": \"什么是微服务架构？\",\n    \"sessionId\": \"conversation-789\"\n  }'",
+    
+    "多轮对话第二轮": "curl -X POST http://localhost:5678/webhook/qa-bot \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"question\": \"它有什么优缺点？\",\n    \"sessionId\": \"conversation-789\"\n  }'"
+  },
+  
+  "Python_示例": {
+    "基础调用": "import requests\n\nresponse = requests.post(\n    'http://localhost:5678/webhook/qa-bot',\n    json={\n        'question': 'Python 如何处理异常？',\n        'sessionId': 'user-001'\n    }\n)\n\nresult = response.json()\nprint(result['answer'])",
+    
+    "完整示例": "import requests\nimport json\nfrom datetime import datetime\n\nclass QABot:\n    def __init__(self, base_url='http://localhost:5678', user_id='default-user'):\n        self.base_url = base_url\n        self.user_id = user_id\n        self.session_id = f\"{user_id}-{datetime.now().timestamp()}\"\n    \n    def ask(self, question, context=''):\n        \"\"\"发送问题到智能问答机器人\"\"\"\n        url = f\"{self.base_url}/webhook/qa-bot\"\n        payload = {\n            'question': question,\n            'sessionId': self.session_id,\n            'userId': self.user_id,\n            'context': context\n        }\n        \n        try:\n            response = requests.post(url, json=payload, timeout=30)\n            response.raise_for_status()\n            return response.json()\n        except requests.exceptions.RequestException as e:\n            return {'success': False, 'error': str(e)}\n    \n    def chat(self, question, context=''):\n        \"\"\"简化的聊天接口，直接返回答案\"\"\"\n        result = self.ask(question, context)\n        if result.get('success'):\n            return result.get('answer', '')\n        else:\n            return f\"错误: {result.get('error', '未知错误')}\"\n\n# 使用示例\nbot = QABot(user_id='developer-123')\n\n# 单次问答\nanswer = bot.chat('什么是 RESTful API？')\nprint(answer)\n\n# 多轮对话\nprint(bot.chat('什么是 Docker？'))\nprint(bot.chat('那它和虚拟机有什么区别？'))  # 基于上一轮对话\nprint(bot.chat('应该什么时候用 Docker？'))  # 继续对话\n\n# 带上下文的问答\ncode_context = '''\n代码：\ndef divide(a, b):\n    return a / b\n\nresult = divide(10, 0)\n'''\nanswer = bot.chat('这段代码有什么问题？', context=code_context)\nprint(answer)"
+  },
+  
+  "JavaScript_示例": {
+    "基础调用": "const response = await fetch('http://localhost:5678/webhook/qa-bot', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json',\n  },\n  body: JSON.stringify({\n    question: 'JavaScript 中如何实现深拷贝？',\n    sessionId: 'user-001'\n  })\n});\n\nconst result = await response.json();\nconsole.log(result.answer);",
+    
+    "完整类封装": "class QABot {\n  constructor(baseUrl = 'http://localhost:5678', userId = 'default-user') {\n    this.baseUrl = baseUrl;\n    this.userId = userId;\n    this.sessionId = `${userId}-${Date.now()}`;\n  }\n\n  async ask(question, context = '') {\n    const url = `${this.baseUrl}/webhook/qa-bot`;\n    const payload = {\n      question,\n      sessionId: this.sessionId,\n      userId: this.userId,\n      context\n    };\n\n    try {\n      const response = await fetch(url, {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n        },\n        body: JSON.stringify(payload),\n        timeout: 30000\n      });\n\n      if (!response.ok) {\n        throw new Error(`HTTP error! status: ${response.status}`);\n      }\n\n      return await response.json();\n    } catch (error) {\n      return { success: false, error: error.message };\n    }\n  }\n\n  async chat(question, context = '') {\n    const result = await this.ask(question, context);\n    return result.success ? result.answer : `错误: ${result.error}`;\n  }\n}\n\n// 使用示例\nconst bot = new QABot('http://localhost:5678', 'developer-123');\n\n// 单次问答\nconst answer = await bot.chat('React 和 Vue 有什么区别？');\nconsole.log(answer);\n\n// 多轮对话\nawait bot.chat('什么是 TypeScript？');\nawait bot.chat('它有什么优势？');  // 基于上一轮对话\nawait bot.chat('如何开始学习？');  // 继续对话"
+  },
+  
+  "使用建议": {
+    "sessionId_管理": [
+      "为每个独立的对话会话生成唯一的 sessionId",
+      "格式建议: user-{userId}-{timestamp} 或 UUID",
+      "同一个 sessionId 会保持对话上下文，不同 sessionId 之间互不影响",
+      "如果需要开始新对话，生成新的 sessionId"
+    ],
+    "context_使用": [
+      "当问题需要额外背景信息时提供 context",
+      "适合提供错误信息、代码片段、系统环境等",
+      "保持 context 简洁相关，避免无关信息",
+      "可以是多行文本，支持代码块"
+    ],
+    "超时设置": [
+      "建议设置 30-60 秒的请求超时",
+      "AI 处理复杂问题可能需要较长时间",
+      "已在后端配置 5 分钟超时保护"
+    ],
+    "错误处理": [
+      "检查响应中的 success 字段",
+      "处理网络错误和超时",
+      "为用户提供友好的错误提示"
+    ]
+  },
+  
+  "测试检查清单": [
+    "✅ 基础问答：简单问题能否正确回答",
+    "✅ 多轮对话：追问是否能理解上下文",
+    "✅ 上下文理解：提供 context 后答案是否更准确",
+    "✅ 工具调用：需要搜索/计算时工具是否被调用",
+    "✅ 知识库查询：企业内部知识是否能正确检索",
+    "✅ 错误处理：无效输入是否有合理响应",
+    "✅ 性能：响应时间是否在可接受范围内",
+    "✅ 会话隔离：不同 sessionId 是否互不干扰"
+  ]
+}
+

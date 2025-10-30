@@ -1,0 +1,352 @@
+{
+  "name": "智能问答机器人",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-bot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        0
+      ],
+      "id": "webhook-qa-bot-001",
+      "name": "问答接收Webhook",
+      "webhookId": "qa-bot-webhook-001"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "extract-question",
+              "name": "question",
+              "value": "={{ $json.body.question || $json.question || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-session-id",
+              "name": "sessionId",
+              "value": "={{ $json.body.sessionId || $json.sessionId || 'default-session' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-context",
+              "name": "context",
+              "value": "={{ $json.body.context || $json.context || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-user-id",
+              "name": "userId",
+              "value": "={{ $json.body.userId || $json.userId || 'anonymous' }}",
+              "type": "string"
+            },
+            {
+              "id": "chat-input-format",
+              "name": "chatInput",
+              "value": "={{ $json.body.question || $json.question || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -120,
+        0
+      ],
+      "id": "extract-qa-data",
+      "name": "提取问题数据"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "# 智能问答机器人系统提示词\n\n你是一个专业、友好、高效的智能问答助手，能够准确理解用户问题并提供高质量的答案。\n\n## 核心能力\n\n- **准确理解**：精准把握用户问题的核心意图\n- **全面回答**：提供详细、准确、有价值的答案\n- **知识丰富**：涵盖多个领域的专业知识\n- **逻辑清晰**：回答结构化、条理清晰\n- **友好互动**：保持礼貌、耐心、专业的沟通风格\n\n## 回答原则\n\n### 1. 准确性优先\n- 基于事实和可靠信息回答\n- 不确定时诚实说明\n- 避免编造或猜测\n- 必要时说明信息来源的局限性\n\n### 2. 结构化回答\n- 使用清晰的段落结构\n- 对于复杂问题，使用列表或步骤\n- 先给出核心答案，再展开细节\n- 适当使用 emoji 增强可读性（但不要过度）\n\n### 3. 上下文感知\n- 记住对话历史，保持上下文连贯\n- 对于追问，基于之前的回答展开\n- 理解用户的背景和需求层次\n\n### 4. 多领域支持\n- **技术问题**：编程、系统、工具使用等\n- **业务问题**：流程、规范、最佳实践等\n- **通用知识**：科学、历史、文化等\n- **实用建议**：生活技巧、决策支持等\n\n## 回答格式指南\n\n### 简单问题回答模板\n```\n[直接答案]\n\n[简要说明或补充信息]\n```\n\n### 复杂问题回答模板\n```\n## 核心答案\n[一句话总结]\n\n## 详细说明\n1. [要点一]\n   - 细节说明\n   \n2. [要点二]\n   - 细节说明\n\n## 补充建议\n- [相关建议]\n\n## 参考资料（如适用）\n- [相关链接或资料]\n```\n\n### 技术问题回答模板\n```\n## 解决方案\n[方案概述]\n\n## 实现步骤\n1. [步骤一]\n2. [步骤二]\n\n## 代码示例（如适用）\n```code\n[示例代码]\n```\n\n## 注意事项\n- [重要提醒]\n```\n\n## 特殊情况处理\n\n### 问题不清晰时\n礼貌地请求澄清：\n\"我想更好地帮助您。能否请您详细说明一下：\n1. 具体是关于 [主题] 的哪个方面？\n2. 您期望的结果是什么？\"\n\n### 超出知识范围时\n诚实说明并提供替代方案：\n\"关于这个问题，我的知识可能有限。建议您：\n1. [替代信息来源]\n2. [相关专业人士或资源]\"\n\n### 敏感问题时\n保持中立和专业：\n\"这是一个涉及 [领域] 的专业问题。我会基于一般性原则提供参考信息，但具体情况建议咨询专业人士。\"\n\n## 工具使用（如配置）\n\n如果配置了外部工具（如搜索、知识库、API），按需使用：\n- 需要实时信息时，使用搜索工具\n- 需要专业知识时，查询知识库\n- 需要计算或数据处理时，使用代码工具\n\n## 对话风格\n\n- **专业但不生硬**：使用专业术语时配以通俗解释\n- **友好但不啰嗦**：简洁高效，避免冗余\n- **耐心但不敷衍**：认真对待每个问题\n- **积极但不夸张**：提供实际可行的建议\n\n## 持续改进\n\n- 根据用户反馈调整回答方式\n- 对于重复问题，提供更优化的答案\n- 学习用户的偏好和需求模式\n\n## 示例对话\n\n**用户**：\"Python 中如何读取 CSV 文件？\"\n\n**助手**：\n\"## 使用 pandas 读取 CSV（推荐）\n\n最简单的方法是使用 pandas 库：\n\n```python\nimport pandas as pd\n\ndf = pd.read_csv('file.csv')\nprint(df.head())  # 查看前5行\n```\n\n## 使用标准库 csv 模块\n\n如果不想安装额外库：\n\n```python\nimport csv\n\nwith open('file.csv', 'r', encoding='utf-8') as file:\n    reader = csv.reader(file)\n    for row in reader:\n        print(row)\n```\n\n## 常见参数\n- `encoding='utf-8'`：指定编码，避免中文乱码\n- `delimiter=','`：指定分隔符（默认逗号）\n- `header=0`：指定表头行（默认第一行）\n\n需要处理特定格式的 CSV 吗？我可以提供更详细的示例。\"\n\n---\n\n记住：你的目标是让用户感到被理解、被帮助，并获得有价值的信息！"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        0
+      ],
+      "id": "ai-qa-agent",
+      "name": "AI问答智能体"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3-max-preview",
+          "mode": "list",
+          "cachedResultName": "qwen3-max-preview"
+        },
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        240
+      ],
+      "id": "openai-chat-model",
+      "name": "OpenAI 对话模型",
+      "credentials": {
+        "openAiApi": {
+          "id": "9LqVI8o5oytd2Z4c",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        240
+      ],
+      "id": "conversation-memory",
+      "name": "对话记忆"
+    },
+    {
+      "parameters": {
+        "description": "当需要搜索实时信息、查询最新数据、或者获取当前事件信息时使用此工具。适用于需要网络搜索的问题。",
+        "url": "https://api.example.com/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        240
+      ],
+      "id": "search-tool",
+      "name": "网络搜索工具"
+    },
+    {
+      "parameters": {
+        "description": "用于执行数据处理、计算、文本分析等需要编程逻辑的任务。可以处理 JSON 数据、进行数学计算、字符串操作等。",
+        "language": "python",
+        "pythonCode": "# 智能问答辅助代码工具\nimport json\nimport re\nfrom datetime import datetime\n\n# 获取用户输入\nuser_question = _input.first().json.get('question', '')\ncontext = _input.first().json.get('context', '')\n\n# 数据处理示例\nresult = {\n    \"processed\": True,\n    \"timestamp\": datetime.now().isoformat(),\n    \"question_length\": len(user_question),\n    \"has_context\": bool(context),\n    \"analysis\": \"问题已处理\"\n}\n\n# 返回处理结果\nreturn json.dumps(result, ensure_ascii=False, indent=2)\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        640,
+        240
+      ],
+      "id": "code-processing-tool",
+      "name": "代码处理工具"
+    },
+    {
+      "parameters": {
+        "description": "查询内部知识库，获取企业内部文档、规范、流程等专业知识。适用于需要查询特定领域知识的问题。",
+        "url": "={{ $env.KNOWLEDGE_BASE_URL || 'http://localhost:8000/api/knowledge/search' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.question }}"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        240
+      ],
+      "id": "knowledge-base-tool",
+      "name": "知识库查询工具"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 格式化 AI 回答结果\nconst aiOutput = $input.first().json.output || '';\nconst chatInput = $input.first().json.chatInput || '';\nconst sessionId = $input.first().json.sessionId || 'default-session';\nconst timestamp = new Date().toISOString();\n\n// 构建响应数据\nconst response = {\n  success: true,\n  timestamp: timestamp,\n  sessionId: sessionId,\n  \n  // 用户问题\n  question: chatInput,\n  \n  // AI 回答\n  answer: aiOutput,\n  \n  // 元数据\n  metadata: {\n    responseTime: new Date().getTime(),\n    answerLength: aiOutput.length,\n    hasContext: Boolean(chatInput)\n  },\n  \n  // 消息\n  message: '问答完成'\n};\n\nreturn { json: response };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ],
+      "id": "format-qa-response",
+      "name": "格式化问答结果"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "X-Response-Time",
+                "value": "={{ $json.metadata.responseTime }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        0
+      ],
+      "id": "respond-to-user",
+      "name": "返回问答结果"
+    }
+  ],
+  "connections": {
+    "问答接收Webhook": {
+      "main": [
+        [
+          {
+            "node": "提取问题数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "提取问题数据": {
+      "main": [
+        [
+          {
+            "node": "AI问答智能体",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI问答智能体": {
+      "main": [
+        [
+          {
+            "node": "格式化问答结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI 对话模型": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI问答智能体",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "对话记忆": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI问答智能体",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "网络搜索工具": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI问答智能体",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "代码处理工具": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI问答智能体",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "知识库查询工具": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI问答智能体",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "格式化问答结果": {
+      "main": [
+        [
+          {
+            "node": "返回问答结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "46455fcd361ade4fbba5c43d3931cd4a5eebe22458f955842eb63d378a2d1c33"
+  },
+  "tags": [
+    {
+      "id": "qa-bot",
+      "name": "智能问答"
+    },
+    {
+      "id": "ai-agent",
+      "name": "AI 智能体"
+    }
+  ]
+}
+

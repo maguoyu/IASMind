@@ -23,7 +23,7 @@ export const workflowDefaults: Record<string, WorkflowDefaultParams> = {
     chatInput: "hello world`",
     sessionId: "user-12345",
   },
-  "测试笑话-sse": {
+  "传输协议-sse": {
     chatInput: "给我讲个关于加油的笑话",
     sessionId: "user-11111",
   },
@@ -34,6 +34,12 @@ export const workflowDefaults: Record<string, WorkflowDefaultParams> = {
       "sessionId": "user-123-contract-5696"
   
   },
+  "智能问答机器人": {
+    "question": "航空汽油是什么？",
+    "sessionId": "user-session-001",
+    "userId": "developer-123",
+    "context": "我是一个学生"
+  }
   // 示例：为特定工作流名称配置参数
   // "我的聊天机器人": {
   //   chatInput: "你好，请介绍一下你自己",

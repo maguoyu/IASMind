@@ -1,0 +1,321 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contract-review",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -32
+      ],
+      "id": "323c6a55-b70a-4da9-8b33-344a82b33074",
+      "name": "合同接收Webhook",
+      "webhookId": "contract-review-webhook-001"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "contract-text-extract",
+              "name": "contractText",
+              "value": "={{ $json.body.contractText || $json.contractText || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "contract-type-extract",
+              "name": "contractType",
+              "value": "={{ $json.body.contractType || $json.contractType || 'aviation-fuel-purchase' }}",
+              "type": "string"
+            },
+            {
+              "id": "contract-id-extract",
+              "name": "contractId",
+              "value": "={{ $json.body.contractId || $json.contractId || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "supplier-name-extract",
+              "name": "supplierName",
+              "value": "={{ $json.body.supplierName || $json.supplierName || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "contract-amount-extract",
+              "name": "contractAmount",
+              "value": "={{ $json.body.contractAmount || $json.contractAmount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "chat-input-prompt",
+              "name": "chatInput",
+              "value": "={{ \"请审查以下航油采购合同：\\n\\n合同编号：\" + ($json.body.contractId || $json.contractId || '未提供') + \"\\n供应商：\" + ($json.body.supplierName || $json.supplierName || '未提供') + \"\\n合同金额：\" + ($json.body.contractAmount || $json.contractAmount || 0) + \"元\\n\\n合同全文：\\n\" + ($json.body.contractText || $json.contractText || '') }}",
+              "type": "string"
+            },
+            {
+              "id": "session-id-field",
+              "name": "sessionId",
+              "value": "={{ $json.body.sessionId || $json.sessionId || ($json.body.contractId || $json.contractId || 'default-session') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        -32
+      ],
+      "id": "424e351b-bc1b-4f82-be2c-145d71becdb4",
+      "name": "提取合同数据"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "# 航油采购合同智能审查系统\n\n你是一位专业的航空燃油采购合同审查专家，具备深厚的法律、财务和航空行业知识。你的任务是对航油采购合同进行全面、专业的智能审查。\n\n## 核心职责\n\n- 全面审查航油采购合同的各项条款\n- 识别合同中的潜在风险和问题\n- 评估合同的合规性和合理性\n- 提供专业的修改建议和风险提示\n- 生成结构化的 JSON 格式审查报告\n\n## 审查维度\n\n### 1. 基本信息审查\n- 合同主体：供应商资质、买方信息完整性\n- 合同编号、签订日期、生效日期\n- 合同期限和终止条件\n- 签章和授权代表信息\n\n### 2. 商务条款审查\n- **价格条款**：油品单价、计价方式、价格调整机制、结算货币\n- **数量条款**：采购数量、计量单位、数量偏差、最低采购量\n- **交付条款**：交付地点、交付时间、延迟责任、紧急供应\n\n### 3. 质量与技术规范\n- 油品质量标准（如ASTM、国标等）\n- 质量检测方法和标准\n- 不合格品处理机制\n\n### 4. 付款条款审查\n- 付款方式（预付、账期、信用证等）\n- 付款周期和条件\n- 发票开具要求\n- 逾期付款违约责任\n\n### 5. 法律与合规性\n- 适用法律和管辖权\n- 合同变更和解除条款\n- 不可抗力条款\n- 争议解决机制（仲裁/诉讼）\n\n### 6. 风险与责任\n- 违约责任条款的对等性\n- 赔偿责任上限\n- 保险要求\n- 免责条款的合理性\n\n### 7. 特殊条款审查\n- 独家供应或排他性条款\n- 竞业限制条款\n- 自动续约条款\n- 反商业贿赂条款\n\n## 工具使用指南\n\n### 1. TermsExtractor（条款提取工具）- 必须首先调用\n提取合同的关键信息：价格、数量、交付、付款、质量标准等\n\n### 2. ContractRiskAssessment（合同风险评估工具）- 必须调用\n进行量化风险分析：价格风险、供应风险、质量风险、法律风险、财务风险\n\n### 3. ComplianceChecker（合规性检查工具）- 必须调用\n验证合同是否符合民航法规、安全生产法、环保标准等\n\n## ⚠️ 重要：JSON 输出格式要求\n\n你必须严格按照以下 JSON 格式输出审查报告。不要输出任何其他文本，只输出纯 JSON：\n\n```json\n{\n  \"合同基本信息\": {\n    \"合同编号\": \"从合同中提取的编号\",\n    \"甲方\": \"供应商名称\",\n    \"乙方\": \"采购方名称\",\n    \"合同金额\": \"金额（带单位）\",\n    \"签订日期\": \"YYYY-MM-DD\",\n    \"合同期限\": \"起止日期或期限描述\",\n    \"采购数量\": \"数量（带单位）\",\n    \"交付地点\": \"交付地点描述\"\n  },\n  \"详细审查意见\": {\n    \"合规条款\": [\n      \"✅ 明确标注为航空燃油产品\",\n      \"✅ 包含质量标准条款（ASTM D1655）\"\n    ],\n    \"注意条款\": [\n      \"⚠️ 价格调整机制需进一步明确触发条件\",\n      \"⚠️ 建议补充延迟交付的具体违约金比例\"\n    ],\n    \"问题条款\": [\n      \"❌ 缺少明确的争议解决条款\",\n      \"❌ 未约定质量争议的仲裁机构\"\n    ],\n    \"优化建议\": [\n      \"💡 建议增加价格保护条款，设定价格波动上限\",\n      \"💡 建议补充不可抗力的具体情形和责任分担\"\n    ]\n  },\n  \"风险评估\": {\n    \"价格风险\": {\n      \"评分\": 65,\n      \"等级\": \"中等\",\n      \"说明\": \"价格与国际油价挂钩，存在一定波动风险\"\n    },\n    \"供应风险\": {\n      \"评分\": 40,\n      \"等级\": \"低\",\n      \"说明\": \"供应商具备充足供应能力和应急机制\"\n    },\n    \"质量风险\": {\n      \"评分\": 35,\n      \"等级\": \"低\",\n      \"说明\": \"质量标准明确，采用国际标准ASTM D1655\"\n    },\n    \"法律风险\": {\n      \"评分\": 55,\n      \"等级\": \"中等\",\n      \"说明\": \"部分法律条款不够完整，需补充\"\n    },\n    \"财务风险\": {\n      \"评分\": 50,\n      \"等级\": \"中等\",\n      \"说明\": \"付款方式合理，但建议增加账期保护机制\"\n    }\n  },\n  \"合规性检查\": {\n    \"总体合规性\": \"基本合规\",\n    \"合规项数量\": 5,\n    \"不合规项数量\": 2,\n    \"建议补充项数量\": 3,\n    \"关键问题\": [\n      \"缺少争议解决条款\",\n      \"未明确质量标准检测机构\"\n    ]\n  },\n  \"修改建议\": [\n    {\n      \"条款\": \"第三条 价格条款\",\n      \"问题\": \"价格调整机制不够明确\",\n      \"建议\": \"建议增加：'当国际油价波动超过±10%时，双方协商调整价格，调整幅度不超过基准价的±8%'\"\n    },\n    {\n      \"条款\": \"第七条 争议解决\",\n      \"问题\": \"缺少争议解决条款\",\n      \"建议\": \"建议增加：'因本合同引起的或与本合同有关的任何争议，均提交中国国际经济贸易仲裁委员会，按照申请仲裁时该会现行有效的仲裁规则进行仲裁'\"\n    }\n  ],\n  \"总体评估\": {\n    \"综合评分\": 75,\n    \"评分等级\": \"良好\",\n    \"风险等级\": \"中低风险\",\n    \"建议操作\": \"建议签署（需修改部分条款后再签）\",\n    \"关键问题\": [\n      \"价格调整机制需要进一步明确\",\n      \"争议解决条款缺失，必须补充\",\n      \"建议增加供应保障的具体违约责任\"\n    ],\n    \"后续建议\": [\n      \"与供应商协商补充争议解决条款\",\n      \"明确价格调整的触发条件和计算方式\",\n      \"要求供应商提供资质证明和业绩案例\",\n      \"建议购买货物运输保险\"\n    ]\n  }\n}\n```\n\n## 工作流程\n\n1. 接收合同文本后，**立即调用 TermsExtractor 工具**提取关键信息\n2. **调用 ContractRiskAssessment 工具**进行风险量化分析\n3. **调用 ComplianceChecker 工具**进行合规性检查\n4. 综合以上三个工具的输出数据\n5. **严格按照上述 JSON 格式**生成完整的审查报告\n6. **只输出 JSON，不要有任何其他文字说明**\n\n## 关键要求\n\n- ✅ 必须输出标准 JSON 格式，不能有任何额外文字\n- ✅ 必须包含所有字段：合同基本信息、详细审查意见、风险评估、合规性检查、修改建议、总体评估\n- ✅ 综合评分必须是 0-100 的数字\n- ✅ 风险等级必须是：低风险/中低风险/中风险/中高风险/高风险\n- ✅ 建议操作必须明确：建议签署/建议签署（需修改部分条款）/谨慎签署/不建议签署\n- ✅ 所有数组字段不能为空，至少包含 1-2 条内容\n\n记住：你的最终输出必须是完整的、可解析的 JSON 对象，帮助企业全面了解合同风险！"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        -32
+      ],
+      "id": "a2812e04-2b58-4dd8-b630-5f50d4cd6847",
+      "name": "AI合同审查专家"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3-next-80b-a3b-instruct",
+          "mode": "list",
+          "cachedResultName": "qwen3-next-80b-a3b-instruct"
+        },
+        "options": {
+          "maxTokens": 4000,
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        208
+      ],
+      "id": "781e7f8a-7135-4bbb-9d2d-8b284c88ee9b",
+      "name": "OpenAI模型",
+      "credentials": {
+        "openAiApi": {
+          "id": "9LqVI8o5oytd2Z4c",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "评估航油采购合同的各类风险，包括价格风险、供应风险、质量风险、法律风险和财务风险。输入合同文本和关注的风险类型，输出风险评分（0-100）和详细分析。",
+        "language": "python",
+        "pythonCode": "# 合同风险评估工具\nimport json\nimport re\n\ndef assess_contract_risks(contract_text, contract_amount):\n    \"\"\"\n    评估合同风险\n    \"\"\"\n    risks = {\n        \"总体风险评分\": 0,\n        \"价格风险\": {\"评分\": 0, \"说明\": \"\"},\n        \"供应风险\": {\"评分\": 0, \"说明\": \"\"},\n        \"质量风险\": {\"评分\": 0, \"说明\": \"\"},\n        \"法律风险\": {\"评分\": 0, \"说明\": \"\"},\n        \"财务风险\": {\"评分\": 0, \"说明\": \"\"}\n    }\n    \n    # 价格风险评估\n    price_keywords = [\"价格调整\", \"浮动\", \"国际油价\", \"市场价\", \"价格保护\"]\n    price_risk = 70  # 默认中等风险\n    if any(kw in contract_text for kw in price_keywords):\n        price_risk = 50  # 有价格保护机制，降低风险\n    if \"固定价格\" in contract_text:\n        price_risk = 30  # 固定价格，低风险\n    risks[\"价格风险\"][\"评分\"] = price_risk\n    risks[\"价格风险\"][\"说明\"] = f\"价格条款风险等级：{'低' if price_risk < 40 else '中' if price_risk < 70 else '高'}\"\n    \n    # 供应风险评估\n    supply_keywords = [\"保证供应\", \"备用供应\", \"供应保障\", \"紧急供应\"]\n    supply_risk = 60\n    if any(kw in contract_text for kw in supply_keywords):\n        supply_risk = 40\n    risks[\"供应风险\"][\"评分\"] = supply_risk\n    risks[\"供应风险\"][\"说明\"] = \"供应商应具备充足的供应能力和应急机制\"\n    \n    # 质量风险评估\n    quality_keywords = [\"ASTM\", \"GB\", \"国标\", \"质量标准\", \"检测\", \"质检\"]\n    quality_risk = 80\n    if any(kw in contract_text for kw in quality_keywords):\n        quality_risk = 35\n    risks[\"质量风险\"][\"评分\"] = quality_risk\n    risks[\"质量风险\"][\"说明\"] = \"质量标准明确性对风险影响重大\"\n    \n    # 法律风险评估\n    legal_keywords = [\"仲裁\", \"管辖\", \"适用法律\", \"违约责任\", \"赔偿\"]\n    legal_risk = 70\n    legal_count = sum(1 for kw in legal_keywords if kw in contract_text)\n    if legal_count >= 4:\n        legal_risk = 30\n    elif legal_count >= 2:\n        legal_risk = 50\n    risks[\"法律风险\"][\"评分\"] = legal_risk\n    risks[\"法律风险\"][\"说明\"] = f\"法律条款完整性：{legal_count}/5个关键条款\"\n    \n    # 财务风险评估\n    payment_keywords = [\"账期\", \"付款\", \"预付\", \"信用证\", \"保证金\"]\n    financial_risk = 60\n    if \"预付\" in contract_text and contract_amount > 10000000:  # 大额预付高风险\n        financial_risk = 80\n    elif \"账期\" in contract_text or \"信用证\" in contract_text:\n        financial_risk = 40\n    risks[\"财务风险\"][\"评分\"] = financial_risk\n    risks[\"财务风险\"][\"说明\"] = \"财务风险与付款方式和金额相关\"\n    \n    # 计算总体风险\n    total_risk = (price_risk + supply_risk + quality_risk + legal_risk + financial_risk) / 5\n    risks[\"总体风险评分\"] = round(total_risk, 1)\n    \n    return risks  # 直接返回字典，不转成 JSON 字符串\n\n# n8n AI Agent Tool 调用接口\n# 获取输入数据（AI Agent 会传入 contractText 和 contractAmount）\ncontract_text = _input.first().json.get('contractText', '')\ncontract_amount = _input.first().json.get('contractAmount', 0)\n\n# 执行风险评估\nresult = assess_contract_risks(contract_text, contract_amount)\n\n# AI Agent Tool 直接返回字符串（JSON 格式）\nreturn json.dumps(result, ensure_ascii=False, indent=2)\n\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        912,
+        272
+      ],
+      "id": "0797bf74-2e7b-4390-b673-05e11075da93",
+      "name": "Risk Assessment Tool 合同风险评估"
+    },
+    {
+      "parameters": {
+        "description": "检查航油采购合同是否符合民航法规、安全生产法、环保标准等相关法律法规。输入合同文本，输出合规性检查报告。",
+        "language": "python",
+        "pythonCode": "# 航油采购合规检查工具\nimport json\nimport re\n\ndef check_compliance(contract_text):\n    \"\"\"\n    合规性检查\n    \"\"\"\n    compliance_report = {\n        \"总体合规性\": \"待评估\",\n        \"合规项\": [],\n        \"不合规项\": [],\n        \"建议补充项\": []\n    }\n    \n    # 民航法规检查\n    if \"航空燃油\" in contract_text or \"航油\" in contract_text:\n        compliance_report[\"合规项\"].append(\"✓ 明确标注航空燃油产品类型\")\n    else:\n        compliance_report[\"不合规项\"].append(\"✗ 未明确标注为航空燃油\")\n    \n    # 质量标准检查\n    quality_standards = [\"ASTM\", \"D1655\", \"GB\", \"国标\", \"质量标准\"]\n    if any(std in contract_text for std in quality_standards):\n        compliance_report[\"合规项\"].append(\"✓ 包含质量标准条款\")\n    else:\n        compliance_report[\"不合规项\"].append(\"✗ 缺少明确的质量标准\")\n    \n    # 安全条款检查\n    safety_keywords = [\"安全\", \"危险品\", \"消防\", \"应急\"]\n    if any(kw in contract_text for kw in safety_keywords):\n        compliance_report[\"合规项\"].append(\"✓ 包含安全管理条款\")\n    else:\n        compliance_report[\"建议补充项\"].append(\"建议补充：安全生产和应急管理条款\")\n    \n    # 环保要求检查\n    env_keywords = [\"环保\", \"排放\", \"环境保护\"]\n    if any(kw in contract_text for kw in env_keywords):\n        compliance_report[\"合规项\"].append(\"✓ 包含环保要求\")\n    else:\n        compliance_report[\"建议补充项\"].append(\"建议补充：环境保护相关条款\")\n    \n    # 保险条款检查\n    if \"保险\" in contract_text:\n        compliance_report[\"合规项\"].append(\"✓ 包含保险条款\")\n    else:\n        compliance_report[\"建议补充项\"].append(\"建议补充：货物运输保险条款\")\n    \n    # 争议解决检查\n    dispute_keywords = [\"仲裁\", \"诉讼\", \"管辖\", \"争议解决\"]\n    if any(kw in contract_text for kw in dispute_keywords):\n        compliance_report[\"合规项\"].append(\"✓ 明确争议解决机制\")\n    else:\n        compliance_report[\"不合规项\"].append(\"✗ 缺少争议解决条款\")\n    \n    # 反商业贿赂检查\n    if \"反商业贿赂\" in contract_text or \"廉洁\" in contract_text:\n        compliance_report[\"合规项\"].append(\"✓ 包含反商业贿赂条款\")\n    else:\n        compliance_report[\"建议补充项\"].append(\"建议补充：反商业贿赂承诺条款\")\n    \n    # 评估总体合规性\n    total_items = len(compliance_report[\"合规项\"]) + len(compliance_report[\"不合规项\"])\n    compliance_rate = len(compliance_report[\"合规项\"]) / total_items if total_items > 0 else 0\n    \n    if compliance_rate >= 0.8:\n        compliance_report[\"总体合规性\"] = \"合规\"\n    elif compliance_rate >= 0.6:\n        compliance_report[\"总体合规性\"] = \"基本合规\"\n    else:\n        compliance_report[\"总体合规性\"] = \"不合规\"\n    \n    return compliance_report  # 直接返回字典，不转成 JSON 字符串\n\n# n8n AI Agent Tool 调用接口\n# 获取输入数据（AI Agent 会传入 contractText）\ncontract_text = _input.first().json.get('contractText', '')\n\n# 执行合规检查\nresult = check_compliance(contract_text)\n\n# AI Agent Tool 直接返回字符串（JSON 格式）\nreturn json.dumps(result, ensure_ascii=False, indent=2)\n\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        384
+      ],
+      "id": "fb2902ff-e09c-42cd-b362-ac679c48e3cd",
+      "name": "Compliance Checker 合规检查"
+    },
+    {
+      "parameters": {
+        "description": "从合同文本中提取关键条款信息，包括价格、数量、交付、付款、质量标准等关键字段，生成结构化数据。",
+        "language": "python",
+        "pythonCode": "# 合同条款提取工具\nimport json\nimport re\n\ndef extract_contract_terms(contract_text):\n    \"\"\"\n    提取合同关键条款\n    \"\"\"\n    terms = {\n        \"合同主体\": {},\n        \"商务条款\": {},\n        \"质量条款\": {},\n        \"交付条款\": {},\n        \"付款条款\": {},\n        \"法律条款\": {}\n    }\n    \n    # 提取价格信息\n    price_pattern = r'(\\d+\\.?\\d*)\\s*(元|美元|USD|CNY)\\s*[/／](吨|升|L)'\n    price_match = re.search(price_pattern, contract_text)\n    if price_match:\n        terms[\"商务条款\"][\"单价\"] = price_match.group(0)\n    \n    # 提取数量信息\n    quantity_pattern = r'(\\d+\\.?\\d*)\\s*(吨|升|L|千升)'\n    quantity_matches = re.findall(quantity_pattern, contract_text)\n    if quantity_matches:\n        terms[\"商务条款\"][\"采购数量\"] = quantity_matches[0][0] + quantity_matches[0][1]\n    \n    # 提取合同金额\n    amount_pattern = r'(\\d+,?\\d*\\.?\\d*)\\s*(万元|元|美元|USD)'\n    amount_match = re.search(amount_pattern, contract_text)\n    if amount_match:\n        terms[\"商务条款\"][\"合同金额\"] = amount_match.group(0)\n    \n    # 提取质量标准\n    quality_keywords = [\"ASTM D1655\", \"GB 6537\", \"国标\", \"质量标准\"]\n    for kw in quality_keywords:\n        if kw in contract_text:\n            terms[\"质量条款\"][\"质量标准\"] = kw\n            break\n    \n    # 提取交付地点\n    location_pattern = r'交付地点[：:](.*?)([。\\n，]|$)'\n    location_match = re.search(location_pattern, contract_text)\n    if location_match:\n        terms[\"交付条款\"][\"交付地点\"] = location_match.group(1).strip()\n    \n    # 提取付款方式\n    payment_keywords = {\n        \"账期\": r'(\\d+)天?账期',\n        \"预付\": r'预付(\\d+)%',\n        \"信用证\": \"信用证\"\n    }\n    for key, pattern in payment_keywords.items():\n        match = re.search(pattern, contract_text)\n        if match:\n            terms[\"付款条款\"][\"付款方式\"] = match.group(0)\n            break\n    \n    # 提取违约金条款\n    penalty_pattern = r'违约金.{0,20}(\\d+\\.?\\d*)%'\n    penalty_match = re.search(penalty_pattern, contract_text)\n    if penalty_match:\n        terms[\"法律条款\"][\"违约金比例\"] = penalty_match.group(1) + \"%\"\n    \n    # 提取仲裁条款\n    if \"仲裁\" in contract_text:\n        arbitration_pattern = r'仲裁.{0,30}?([\\u4e00-\\u9fa5]+仲裁)'\n        arb_match = re.search(arbitration_pattern, contract_text)\n        if arb_match:\n            terms[\"法律条款\"][\"争议解决\"] = arb_match.group(1)\n    \n    return terms  # 直接返回字典，不转成 JSON 字符串\n\n# n8n AI Agent Tool 调用接口\n# 获取输入数据（AI Agent 会传入 contractText）\ncontract_text = _input.first().json.get('contractText', '')\n\n# 执行条款提取\nresult = extract_contract_terms(contract_text)\n\n# AI Agent Tool 直接返回字符串（JSON 格式）\nreturn json.dumps(result, ensure_ascii=False, indent=2)\n\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        384
+      ],
+      "id": "373e31f8-846d-4ce4-adff-070fbc91d8d2",
+      "name": "Terms Extractor 条款提取"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 格式化审查结果 - 解析 AI 输出的 JSON\nconst aiOutput = $input.first().json.output || '';\nconst timestamp = new Date().toISOString();\n\nlet reviewData = null;\nlet parseError = null;\n\ntry {\n  // 尝试直接解析 JSON\n  reviewData = JSON.parse(aiOutput);\n} catch (error) {\n  // 如果直接解析失败，尝试提取 JSON 代码块\n  const jsonMatch = aiOutput.match(/```json\\s*([\\s\\S]*?)```/i) || \n                    aiOutput.match(/```\\s*([\\s\\S]*?)```/i);\n  \n  if (jsonMatch) {\n    try {\n      reviewData = JSON.parse(jsonMatch[1].trim());\n    } catch (e) {\n      parseError = `JSON 代码块解析失败: ${e.message}`;\n    }\n  } else {\n    // 尝试查找 JSON 对象（以 { 开头，以 } 结尾）\n    const jsonObjMatch = aiOutput.match(/\\{[\\s\\S]*\\}/i);\n    if (jsonObjMatch) {\n      try {\n        reviewData = JSON.parse(jsonObjMatch[0]);\n      } catch (e) {\n        parseError = `JSON 对象解析失败: ${e.message}`;\n      }\n    } else {\n      parseError = '未找到有效的 JSON 数据';\n    }\n  }\n}\n\n// 如果解析失败，返回错误信息\nif (!reviewData) {\n  return {\n    json: {\n      success: false,\n      timestamp: timestamp,\n      error: parseError || 'JSON 解析失败',\n      rawOutput: aiOutput,\n      message: 'AI 输出格式错误，请检查'\n    }\n  };\n}\n\n// 提取关键信息\nconst contractInfo = reviewData.合同基本信息 || {};\nconst totalEvaluation = reviewData.总体评估 || {};\n\n// 构建标准化的响应\nconst response = {\n  success: true,\n  timestamp: timestamp,\n  \n  // 合同基本信息\n  contractInfo: {\n    contractId: contractInfo.合同编号 || 'N/A',\n    partyA: contractInfo.甲方 || '',\n    partyB: contractInfo.乙方 || '',\n    amount: contractInfo.合同金额 || '',\n    signDate: contractInfo.签订日期 || '',\n    duration: contractInfo.合同期限 || '',\n    quantity: contractInfo.采购数量 || '',\n    deliveryLocation: contractInfo.交付地点 || ''\n  },\n  \n  // 总体评估（快速访问）\n  summary: {\n    totalScore: totalEvaluation.综合评分 || 0,\n    scoreGrade: totalEvaluation.评分等级 || '未评级',\n    riskLevel: totalEvaluation.风险等级 || '未评估',\n    recommendation: totalEvaluation.建议操作 || '请查看详细报告',\n    keyIssues: totalEvaluation.关键问题 || [],\n    nextActions: totalEvaluation.后续建议 || []\n  },\n  \n  // 详细审查意见\n  reviewDetails: {\n    compliantClauses: (reviewData.详细审查意见?.合规条款 || []),\n    attentionClauses: (reviewData.详细审查意见?.注意条款 || []),\n    problematicClauses: (reviewData.详细审查意见?.问题条款 || []),\n    optimizationSuggestions: (reviewData.详细审查意见?.优化建议 || [])\n  },\n  \n  // 风险评估\n  riskAssessment: reviewData.风险评估 || {},\n  \n  // 合规性检查\n  complianceCheck: reviewData.合规性检查 || {},\n  \n  // 修改建议\n  modificationSuggestions: reviewData.修改建议 || [],\n  \n  // 完整的原始数据（供前端完整展示）\n  fullReport: reviewData,\n  \n  // 消息\n  message: `合同审查完成 - 评分: ${totalEvaluation.综合评分 || 'N/A'}分, 风险: ${totalEvaluation.风险等级 || '未评估'}`\n};\n\nreturn { json: response };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        -32
+      ],
+      "id": "3255f139-b561-4ab2-963a-d04934635a83",
+      "name": "格式化审查结果"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        928,
+        -32
+      ],
+      "id": "6ed7cdd4-5d3d-4874-9539-d37cc5856053",
+      "name": "返回审查报告"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        208
+      ],
+      "id": "2c5ab715-a0b9-4dae-b9bd-de48d165c4fb",
+      "name": "对话记忆"
+    }
+  ],
+  "connections": {
+    "合同接收Webhook": {
+      "main": [
+        [
+          {
+            "node": "提取合同数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "提取合同数据": {
+      "main": [
+        [
+          {
+            "node": "AI合同审查专家",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI合同审查专家": {
+      "main": [
+        [
+          {
+            "node": "格式化审查结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI模型": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI合同审查专家",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Assessment Tool 合同风险评估": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI合同审查专家",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compliance Checker 合规检查": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI合同审查专家",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Terms Extractor 条款提取": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI合同审查专家",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "格式化审查结果": {
+      "main": [
+        [
+          {
+            "node": "返回审查报告",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "对话记忆": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI合同审查专家",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "46455fcd361ade4fbba5c43d3931cd4a5eebe22458f955842eb63d378a2d1c33"
+  }
+}

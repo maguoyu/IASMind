@@ -292,22 +292,22 @@ export default function N8nPage() {
     > = {
       success: {
         color: "bg-green-500",
-        icon: <CheckCircle2 className="h-3 w-3" />,
+        icon: <CheckCircle2 className="h-1.5 w-1.5" />,
         label: "成功",
       },
       error: {
         color: "bg-red-500",
-        icon: <XCircle className="h-3 w-3" />,
+        icon: <XCircle className="h-1.5 w-1.5" />,
         label: "失败",
       },
       waiting: {
         color: "bg-yellow-500",
-        icon: <Clock className="h-3 w-3" />,
+        icon: <Clock className="h-1.5 w-1.5" />,
         label: "等待",
       },
       running: {
         color: "bg-blue-500",
-        icon: <Loader2 className="h-3 w-3 animate-spin" />,
+        icon: <Loader2 className="h-1.5 w-1.5 animate-spin" />,
         label: "运行中",
       },
     };
@@ -319,8 +319,8 @@ export default function N8nPage() {
     };
 
     return (
-      <Badge className={`${config.color} text-white`}>
-        <span className="mr-1">{config.icon}</span>
+      <Badge className={`${config.color} text-white text-[10px] py-0 h-3.5 flex-shrink-0 leading-none`}>
+        <span className="mr-0.5">{config.icon}</span>
         {config.label}
       </Badge>
     );
@@ -333,12 +333,12 @@ export default function N8nPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4">
         {/* 标题和健康状态 */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">工作流管理</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-2xl font-bold">工作流管理</h1>
+            <p className="text-muted-foreground text-sm mt-1">
               管理和监控  自动化工作流
             </p>
           </div>
@@ -389,10 +389,10 @@ export default function N8nPage() {
                 </Tabs>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-[600px]">
+                <ScrollArea className="h-[calc(100vh-280px)]">
                   {viewMode === "workflows" ? (
                     // 工作流列表
-                    <div className="space-y-2 p-4">
+                    <div className="space-y-0.5 p-1.5">
                       {isLoading ? (
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-8 w-8 animate-spin" />
@@ -402,7 +402,15 @@ export default function N8nPage() {
                           暂无工作流
                         </div>
                       ) : (
-                        workflows.map((workflow) => (
+                        workflows
+                          .sort((a, b) => {
+                            // 激活状态的工作流排在前面
+                            if (a.active && !b.active) return -1;
+                            if (!a.active && b.active) return 1;
+                            // 同样状态下按名称排序
+                            return a.name.localeCompare(b.name);
+                          })
+                          .map((workflow) => (
                           <Card
                             key={workflow.id}
                             className={`cursor-pointer transition-colors hover:bg-accent ${
@@ -412,37 +420,33 @@ export default function N8nPage() {
                             }`}
                             onClick={() => void handleViewWorkflow(workflow)}
                           >
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <h3 className="font-semibold">
-                                    {workflow.name}
-                                  </h3>
-                                  <p className="text-muted-foreground text-sm">
-                                    ID: {workflow.id}
-                                  </p>
-                                  <div className="mt-2 flex items-center gap-2">
-                                    {workflow.active ? (
-                                      <Badge className="bg-green-500">
-                                        <Power className="mr-1 h-3 w-3" />
-                                        已激活
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="secondary">
-                                        <PowerOff className="mr-1 h-3 w-3" />
-                                        未激活
-                                      </Badge>
-                                    )}
+                            <CardContent className="p-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-xs truncate leading-tight">
+                                      {workflow.name}
+                                    </h3>
                                   </div>
+                                  {workflow.active ? (
+                                    <Badge className="bg-green-500 text-[10px] py-0 px-1 h-3.5 flex-shrink-0 leading-none">
+                                      <Power className="h-1.5 w-1.5" />
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="text-[10px] py-0 px-1 h-3.5 flex-shrink-0 leading-none">
+                                      <PowerOff className="h-1.5 w-1.5" />
+                                    </Badge>
+                                  )}
                                 </div>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button
                                       variant="ghost"
-                                      size="sm"
+                                      size="icon"
+                                      className="h-6 w-6 flex-shrink-0"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <ChevronRight className="h-4 w-4" />
+                                      <ChevronRight className="h-3 w-3" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
@@ -504,7 +508,7 @@ export default function N8nPage() {
                     </div>
                   ) : (
                     // 执行记录列表
-                    <div className="space-y-2 p-4">
+                    <div className="space-y-0.5 p-1.5">
                       {isLoading ? (
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-8 w-8 animate-spin" />
@@ -524,22 +528,19 @@ export default function N8nPage() {
                             }`}
                             onClick={() => void handleViewExecution(execution)}
                           >
-                            <CardContent className="p-4">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium">
-                                    {execution.workflowData?.name || "未知工作流"}
-                                  </span>
-                                  {renderStatusBadge(execution.status)}
-                                </div>
-                                <p className="text-muted-foreground text-xs">
-                                  开始时间: {formatDate(execution.startedAt)}
-                                </p>
-                                {execution.stoppedAt && (
-                                  <p className="text-muted-foreground text-xs">
-                                    结束时间: {formatDate(execution.stoppedAt)}
+                            <CardContent className="p-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-medium truncate flex-1 min-w-0 leading-tight">
+                                      {execution.workflowData?.name || "未知工作流"}
+                                    </span>
+                                    {renderStatusBadge(execution.status)}
+                                  </div>
+                                  <p className="text-muted-foreground text-[10px] truncate mt-0.5 leading-tight">
+                                    {formatDate(execution.startedAt)}
                                   </p>
-                                )}
+                                </div>
                               </div>
                             </CardContent>
                           </Card>
@@ -591,8 +592,9 @@ export default function N8nPage() {
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[calc(100vh-280px)]">
+                    <div className="space-y-6 p-6">
                     {/* 基本信息 */}
                     <div>
                       <h3 className="mb-4 text-lg font-semibold">基本信息</h3>
@@ -692,7 +694,8 @@ export default function N8nPage() {
                         </div>
                       </ScrollArea>
                     </div>
-                  </div>
+                    </div>
+                  </ScrollArea>
                 </CardContent>
               </Card>
             ) : viewMode === "executions" && selectedExecution ? (
@@ -700,8 +703,9 @@ export default function N8nPage() {
                 <CardHeader>
                   <CardTitle>执行详情</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[calc(100vh-280px)]">
+                    <div className="space-y-6 p-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-muted-foreground text-sm">工作流</p>
@@ -752,12 +756,13 @@ export default function N8nPage() {
                         </div>
                       </>
                     )}
-                  </div>
+                    </div>
+                  </ScrollArea>
                 </CardContent>
               </Card>
             ) : (
               <Card>
-                <CardContent className="flex h-[600px] items-center justify-center">
+                <CardContent className="flex h-[calc(100vh-280px)] items-center justify-center">
                   <div className="text-center text-muted-foreground">
                     <AlertCircle className="mx-auto mb-4 h-12 w-12" />
                     <p>

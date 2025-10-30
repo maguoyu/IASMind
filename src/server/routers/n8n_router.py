@@ -108,7 +108,8 @@ async def make_n8n_request(
     headers = get_n8n_headers()
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # 设置超时时间为 5 分钟，支持长时间运行的工作流
+        async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.request(
                 method=method,
                 url=url,
@@ -316,7 +317,8 @@ async def execute_workflow(workflow_id: str, request: WorkflowExecuteRequest):
         logger.info(f"使用 webhook 执行工作流: {webhook_url}")
         
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            # 设置超时时间为 5 分钟，支持长时间运行的工作流
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 response = await client.post(
                     webhook_url,
                     json=request.workflow_data if request.workflow_data else {},

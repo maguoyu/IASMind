@@ -25,12 +25,12 @@ class KnowledgeBase:
         self.file_count = kwargs.get('file_count', 0)
         self.vector_count = kwargs.get('vector_count', 0)
         self.status = kwargs.get('status', 'active')
-        self.embedding_model = kwargs.get('embedding_model', 'text-embedding-3-small')
+        self.embedding_model = kwargs.get('embedding_model', 'bge-m3')
         self.chunk_size = kwargs.get('chunk_size', 1000)
         self.chunk_overlap = kwargs.get('chunk_overlap', 200)
     
     @classmethod
-    def Create(cls, name: str, description: str = "", embedding_model: str = "text-embedding-3-small", 
+    def Create(cls, name: str, description: str = "", embedding_model: str = "bge-m3", 
                chunk_size: int = 1000, chunk_overlap: int = 200) -> 'KnowledgeBase':
         """创建新的知识库"""
         kb = cls(

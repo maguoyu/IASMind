@@ -1060,6 +1060,23 @@ export function ChartsMain() {
        }));
       
       setSystemDataSources(localSources);
+      
+      // 如果有系统数据源，默认选择第一个
+      if (localSources.length > 0) {
+        const firstSource = localSources[0];
+        if (firstSource) {
+          setSelectedDataSource(firstSource.id);
+          // 获取第一个数据源的表列表
+          try {
+            const response = await dataSourceApi.getTables(firstSource.id);
+            if (response && response.success && response.tables) {
+              setTablesList(response.tables);
+            }
+          } catch (error) {
+            console.error('获取第一个数据源的表列表失败:', error);
+          }
+        }
+      }
     } catch (error) {
       console.error('获取数据源失败:', error);
       toast.error('获取数据源失败，请检查网络连接');
@@ -1933,13 +1950,13 @@ export function ChartsMain() {
               </SelectTrigger>
               <SelectContent>
                 {/* 临时文件选项 */}
-                <SelectItem value="uploaded_file">
+                {/* <SelectItem value="uploaded_file">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-blue-500" />
                     <File className="w-3 h-3" />
                     临时文件分析
                   </div>
-                </SelectItem>
+                </SelectItem> */}
                 
                 {/* 系统数据源 */}
                 {systemDataSources.length > 0 && (

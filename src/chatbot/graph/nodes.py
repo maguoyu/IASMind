@@ -202,7 +202,7 @@ def enhanced_chatbot_node(state: State, config: RunnableConfig):
     # 处理知识库检索结果
     if knowledge_base_results:
         context_info.append("**知识库信息：**")
-        for i, result in enumerate(knowledge_base_results[:10], 1):  # 限制为前3条
+        for i, result in enumerate(knowledge_base_results[:10], 1):  # 限制为前10条
             try:
                 if isinstance(result, dict):
                     title = result.get('title', f'结果 {i}')

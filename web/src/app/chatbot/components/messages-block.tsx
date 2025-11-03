@@ -3,7 +3,8 @@
 
 import { motion } from "framer-motion";
 import { FastForward, Play } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
+import { toast } from "sonner";
 
 import { RainbowText } from "~/components/deer-flow/rainbow-text";
 import { Button } from "~/components/ui/button";
@@ -15,6 +16,7 @@ import {
 } from "~/components/ui/card";
 import { fastForwardReplay } from "~/core/api";
 import { useReplayMetadata } from "~/core/api/hooks";
+import { knowledgeBaseApi, type KnowledgeBase } from "~/core/api/knowledge-base";
 import type { Option, Resource } from "~/core/messages";
 import { useReplay } from "~/core/replay";
 import { sendMessage, useMessageIds, useStore, getGlobalAbortController, abortGlobalRequest } from "~/core/store";
@@ -34,6 +36,24 @@ export function MessagesBlock({ className }: { className?: string }) {
   const { title: replayTitle, hasError: replayHasError } = useReplayMetadata();
   const [replayStarted, setReplayStarted] = useState(false);
   const [feedback, setFeedback] = useState<{ option: Option } | null>(null);
+  
+  // 知识库状态提升到父组件，供 ConversationStarter 和 InputBox 共享
+  const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>([]);
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  
+  // 加载知识库数据
+  useEffect(() => {
+    const loadKnowledgeBases = async () => {
+      try {
+        const response = await knowledgeBaseApi.GetKnowledgeBases();
+        setKnowledgeBases(response.knowledge_bases);
+      } catch (error) {
+        console.error("加载知识库列表失败:", error);
+        toast.error("加载知识库列表失败");
+      }
+    };
+    void loadKnowledgeBases();
+  }, []);
   const handleSend = useCallback(
     async (
       message: string,
@@ -46,6 +66,38 @@ export function MessagesBlock({ className }: { className?: string }) {
       },
     ) => {
       const abortController = getGlobalAbortController();
+      
+      // 如果 options 中没有显式设置 enableKnowledgeRetrieval，则根据当前选中的知识库状态来设置
+      const shouldEnableKnowledgeRetrieval = options?.enableKnowledgeRetrieval !== undefined 
+        ? options.enableKnowledgeRetrieval 
+        : selectedKnowledgeBases.length > 0;
+      
+      // 构建知识库资源
+      let knowledgeBaseResources: Array<Resource> = [];
+      if (shouldEnableKnowledgeRetrieval && selectedKnowledgeBases.length > 0) {
+        knowledgeBaseResources = selectedKnowledgeBases.map(kbId => {
+          const kb = knowledgeBases.find(kb => kb.id === kbId);
+          return {
+            uri: `rag://knowledge_base/${kbId}`,
+            title: kb?.name ?? `知识库 ${kbId}`,
+            description: kb?.description ?? "知识库资源",
+            type: "knowledge_base"
+          };
+        });
+      }
+      
+      // 合并用户提供的资源和知识库资源
+      const allResources = [...(options?.resources ?? []), ...knowledgeBaseResources];
+      
+      console.log('handleSend 发送参数:', {
+        message,
+        selectedKnowledgeBases,
+        shouldEnableKnowledgeRetrieval,
+        knowledgeBaseResources,
+        allResources,
+        originalOptions: options
+      });
+      
       try {
         await sendMessage(
           "chatbot/stream",
@@ -53,9 +105,9 @@ export function MessagesBlock({ className }: { className?: string }) {
           {
             interruptFeedback:
               options?.interruptFeedback ?? feedback?.option.value,
-            resources: options?.resources,
+            resources: allResources,
             enableOnlineSearch: options?.enableOnlineSearch,
-            enableKnowledgeRetrieval: options?.enableKnowledgeRetrieval,
+            enableKnowledgeRetrieval: shouldEnableKnowledgeRetrieval,
             files: options?.files,
           },
           {
@@ -64,7 +116,7 @@ export function MessagesBlock({ className }: { className?: string }) {
         );
       } catch {}
     },
-    [feedback],
+    [feedback, selectedKnowledgeBases, knowledgeBases],
   );
   const handleCancel = useCallback(() => {
     abortGlobalRequest();
@@ -109,6 +161,9 @@ export function MessagesBlock({ className }: { className?: string }) {
             onSend={handleSend}
             onCancel={handleCancel}
             onRemoveFeedback={handleRemoveFeedback}
+            selectedKnowledgeBases={selectedKnowledgeBases}
+            onSelectedKnowledgeBasesChange={setSelectedKnowledgeBases}
+            knowledgeBases={knowledgeBases}
           />
         </div>
       ) : (

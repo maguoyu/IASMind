@@ -59,6 +59,7 @@ def main(
     language = inquirer.select(
         message="Select language / 选择语言:",
         choices=["English", "中文"],
+        default="中文",
     ).execute()
 
     # Choose questions based on language
@@ -72,7 +73,7 @@ def main(
     # Select a question
     initial_question = inquirer.select(
         message=(
-            "What do you want to know?" if language == "English" else "您想了解什么?"
+            "您想了解什么?" if language == "English" else "您想了解什么?"
         ),
         choices=[ask_own_option] + questions,
     ).execute()
@@ -80,7 +81,7 @@ def main(
     if initial_question == ask_own_option:
         initial_question = inquirer.text(
             message=(
-                "What do you want to know?"
+                "请输入您想了解的问题:"
                 if language == "English"
                 else "您想了解什么?"
             ),

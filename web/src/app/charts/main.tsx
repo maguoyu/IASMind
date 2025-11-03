@@ -518,10 +518,10 @@ const ThinkingStepsCard = ({ thinkingSteps, isStreaming }: { thinkingSteps: Thin
 
 // 航空相关快速问题
 const quickQuestions = [
-  "过去30天的航油消耗趋势如何？",
-  "哪些航线的航油效率最高？",
-  "不同机型的航油成本对比",
-  "各机场起降架次分布"
+  "按照航司统计最近一个月的加油量是多少？",
+  "统计各个加油员的最近一个月的工作量",
+  "不同机型的航油加油量对比",
+  "统计最近一年加油员的出车次数"
 ];
 
 // 本地存储工具函数

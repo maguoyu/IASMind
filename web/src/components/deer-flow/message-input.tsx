@@ -134,7 +134,7 @@ const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
         Placeholder.configure({
           showOnlyCurrent: false,
           placeholder: placeholder || (provider && !disableMention
-            ? "What can I do for you? \nYou may refer to RAG resources by using @."
+            ? "我可以为您做哪些工作? \n您可以参考RAG资源使用@."
             : "我可以为您做哪些工作？"),
           emptyEditorClass: "placeholder",
         }),

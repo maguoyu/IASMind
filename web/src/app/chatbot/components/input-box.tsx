@@ -35,6 +35,9 @@ export function InputBox({
   onSend,
   onCancel,
   onRemoveFeedback,
+  selectedKnowledgeBases: externalSelectedKnowledgeBases,
+  onSelectedKnowledgeBasesChange,
+  knowledgeBases: externalKnowledgeBases,
 }: {
   className?: string;
   size?: "large" | "normal";
@@ -51,6 +54,9 @@ export function InputBox({
   ) => void;
   onCancel?: () => void;
   onRemoveFeedback?: () => void;
+  selectedKnowledgeBases?: string[];
+  onSelectedKnowledgeBasesChange?: (knowledgeBases: string[]) => void;
+  knowledgeBases?: KnowledgeBase[];
 }) {
   const enableOnlineSearch = useSettingsStore(
     (state) => state.general.enableOnlineSearch,
@@ -66,27 +72,31 @@ export function InputBox({
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isEnhanceAnimating, setIsEnhanceAnimating] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState("");
-  const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>([]);
-
-  // 知识库数据状态
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  
+  // 知识库状态：优先使用外部传入的，否则使用内部状态（向后兼容）
+  const [internalSelectedKnowledgeBases, setInternalSelectedKnowledgeBases] = useState<string[]>([]);
+  const [internalKnowledgeBases, setInternalKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [loadingKnowledgeBases, setLoadingKnowledgeBases] = useState(false);
+  
+  const selectedKnowledgeBases = externalSelectedKnowledgeBases ?? internalSelectedKnowledgeBases;
+  const setSelectedKnowledgeBases = onSelectedKnowledgeBasesChange ?? setInternalSelectedKnowledgeBases;
+  const knowledgeBases = externalKnowledgeBases ?? internalKnowledgeBases;
 
-
-
-  // 加载知识库数据
+  // 加载知识库数据（仅在没有外部数据时）
   const LoadKnowledgeBases = useCallback(async () => {
+    if (externalKnowledgeBases) return; // 如果有外部数据，不需要加载
+    
     setLoadingKnowledgeBases(true);
     try {
       const response = await knowledgeBaseApi.GetKnowledgeBases();
-      setKnowledgeBases(response.knowledge_bases);
+      setInternalKnowledgeBases(response.knowledge_bases);
     } catch (error) {
       console.error("加载知识库列表失败:", error);
       toast.error("加载知识库列表失败");
     } finally {
       setLoadingKnowledgeBases(false);
     }
-  }, []);
+  }, [externalKnowledgeBases]);
 
   // 组件挂载时加载知识库数据
   useEffect(() => {
@@ -104,25 +114,19 @@ export function InputBox({
           return;
         }
         if (onSend) {
-          // 构建知识库资源
-          const knowledgeBaseResources: Array<Resource> = selectedKnowledgeBases.map(kbId => {
-            const kb = knowledgeBases.find(kb => kb.id === kbId);
-            return {
-              uri: `rag://knowledge_base/${kbId}`,
-              title: kb?.name ?? `知识库 ${kbId}`,
-              description: kb?.description ?? "知识库资源",
-              type: "knowledge_base"
-            };
+          console.log('InputBox 发送消息:', { 
+            message,
+            selectedKnowledgeBases,
+            resources,
+            enableOnlineSearch: enableOnlineSearch ?? false,
           });
 
-          // 合并用户提供的资源和知识库资源
-          const allResources = [...resources, ...knowledgeBaseResources];
-
+          // 父组件会处理知识库资源的构建，这里只传递用户资源
           onSend(message, {
             interruptFeedback: feedback?.option.value,
-            resources: allResources,
-            enableOnlineSearch: enableOnlineSearch,
-            enableKnowledgeRetrieval: selectedKnowledgeBases.length > 0,
+            resources: resources,
+            enableOnlineSearch: enableOnlineSearch ?? false,
+            // 不设置 enableKnowledgeRetrieval，让父组件根据 selectedKnowledgeBases 决定
           });
           onRemoveFeedback?.();
           // Clear enhancement animation after sending
@@ -130,7 +134,7 @@ export function InputBox({
         }
       }
     },
-    [responding, onCancel, onSend, feedback, onRemoveFeedback, selectedKnowledgeBases, knowledgeBases, enableOnlineSearch],
+    [responding, onCancel, onSend, feedback, onRemoveFeedback, selectedKnowledgeBases, enableOnlineSearch],
   );
 
   const handleEnhanceQuery = useCallback(async () => {
@@ -174,11 +178,13 @@ export function InputBox({
   }, [enableOnlineSearch]);
 
   // 知识库多选切换
-  const handleToggleKnowledgeBase = (id: string) => {
-    setSelectedKnowledgeBases((prev) =>
-      prev.includes(id) ? prev.filter((kb) => kb !== id) : [...prev, id],
-    );
-  };
+  const handleToggleKnowledgeBase = useCallback((id: string) => {
+    const newSelection = selectedKnowledgeBases.includes(id) 
+      ? selectedKnowledgeBases.filter((kbId: string) => kbId !== id) 
+      : [...selectedKnowledgeBases, id];
+    console.log('知识库选择更新:', { id, prev: selectedKnowledgeBases, newSelection });
+    setSelectedKnowledgeBases(newSelection);
+  }, [selectedKnowledgeBases, setSelectedKnowledgeBases]);
 
   return (
     <div

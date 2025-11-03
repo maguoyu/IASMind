@@ -120,26 +120,31 @@ export async function sendMessage(agentPath?: string,
   }
 
   const settings = getChatStreamSettings();
+  
+  const streamParams = {
+    thread_id: currentThreadId,
+    interrupt_feedback: interruptFeedback,
+    resources,
+    // 参数名全部改为camelCase
+    auto_accepted_plan: settings.autoAcceptedPlan,
+    enable_deep_thinking: settings.enableDeepThinking ?? false,
+    enable_background_investigation: enableOnlineSearch ?? settings.enableBackgroundInvestigation ?? true,
+    max_plan_iterations: settings.maxPlanIterations,
+    max_step_num: settings.maxStepNum,
+    max_search_results: settings.maxSearchResults,
+    report_style: settings.reportStyle,
+    mcp_settings: settings.mcpSettings,
+    enable_online_search: enableOnlineSearch,
+    enable_knowledge_retrieval: enableKnowledgeRetrieval,
+    files, // 传递 files
+  };
+  
+  console.log('chatStream 参数:', streamParams);
+  
   const stream = chatStream(
     agentPath ?? "chatbot/stream",
     content ?? "[REPLAY]",
-    {
-      thread_id: currentThreadId,
-      interrupt_feedback: interruptFeedback,
-      resources,
-      // 参数名全部改为camelCase
-      auto_accepted_plan: settings.autoAcceptedPlan,
-      enable_deep_thinking: settings.enableDeepThinking ?? false,
-      enable_background_investigation: enableOnlineSearch ?? settings.enableBackgroundInvestigation ?? true,
-      max_plan_iterations: settings.maxPlanIterations,
-      max_step_num: settings.maxStepNum,
-      max_search_results: settings.maxSearchResults,
-      report_style: settings.reportStyle,
-      mcp_settings: settings.mcpSettings,
-      enable_online_search: enableOnlineSearch,
-      enable_knowledge_retrieval: enableKnowledgeRetrieval,
-      files, // 传递 files
-    },
+    streamParams,
     options,
   );
 

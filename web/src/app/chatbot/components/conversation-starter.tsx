@@ -9,16 +9,25 @@ import { Welcome } from "./welcome";
 
 const questions = [
   "油温油密对加油量的影响？",
-  "如何使用智能对话系统进行航班查询？",
-  "智能航空助手能帮我解决哪些问题？",
-  "如何通过智能对话预订机票和酒店？",
+  "虹桥油库紧急疏散现场处置方案如何让启动？",
+  "值班经理每日工作记录如何填写？",
+  "自控A职责的职责是什么？",
 ];
 export function ConversationStarter({
   className,
   onSend,
 }: {
   className?: string;
-  onSend?: (message: string) => void;
+  onSend?: (
+    message: string,
+    options?: {
+      interruptFeedback?: string;
+      resources?: Array<any>;
+      enableOnlineSearch?: boolean;
+      enableKnowledgeRetrieval?: boolean;
+      files?: Array<any>;
+    },
+  ) => void;
 }) {
   return (
     <div className={cn("flex flex-col items-center", className)}>
@@ -43,7 +52,10 @@ export function ConversationStarter({
             <div
               className="bg-card text-muted-foreground cursor-pointer rounded-2xl border px-4 py-4 opacity-75 transition-all duration-300 hover:opacity-100 hover:shadow-md"
               onClick={() => {
-                onSend?.(question);
+                // 不传递 enableKnowledgeRetrieval，让父组件根据当前选中的知识库状态决定
+                onSend?.(question, {
+                  enableOnlineSearch: false,
+                });
               }}
             >
               {question}

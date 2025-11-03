@@ -50,12 +50,16 @@ export async function* chatStream(
     return yield* chatReplayStream(userMessage, params, options);
   
   try{
+    const requestBody = {
+      messages: [{ role: "user", content: userMessage }],
+      ...params,
+      files: params.files, // 确保 files 被传递
+    };
+    
+    console.log('发送到后端的请求体:', requestBody);
+    
     const stream = fetchStream(resolveServiceURL(agentPath), {
-      body: JSON.stringify({
-        messages: [{ role: "user", content: userMessage }],
-        ...params,
-        files: params.files, // 确保 files 被传递
-      }),
+      body: JSON.stringify(requestBody),
       signal: options.abortSignal,
     });
     

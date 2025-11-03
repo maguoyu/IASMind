@@ -8,7 +8,7 @@ import { cn } from "~/lib/utils";
 import { Welcome } from "./welcome";
 
 const questions = [
-  "油温油密对加油量的影响？",
+  "手动收回客梯和支腿步骤是什么？",
   "虹桥油库紧急疏散现场处置方案如何让启动？",
   "值班经理每日工作记录如何填写？",
   "自控A职责的职责是什么？",

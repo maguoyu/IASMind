@@ -149,6 +149,7 @@ export function CreateKnowledgeBaseDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                    <SelectItem value="text-embedding-3-small">bge-m3</SelectItem>
                       <SelectItem value="text-embedding-3-small">text-embedding-3-small</SelectItem>
                       <SelectItem value="text-embedding-3-large">text-embedding-3-large</SelectItem>
                     </SelectContent>

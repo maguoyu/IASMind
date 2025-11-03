@@ -16,8 +16,16 @@ import time
 from src.llms.llm import get_llm_by_type
 from src.data_insight.data_insight_framework import DataInsightFramework
 from json_repair import repair_json
+import hashlib
+import asyncio
+from functools import lru_cache
+import re
 
 logger = logging.getLogger(__name__)
+
+# 简单的缓存字典，存储数据摘要 -> LLM响应
+_llm_response_cache = {}
+_cache_max_size = 100
 
 def clean_numpy_types(obj: Any) -> Any:
     """递归清理numpy类型，转换为Python原生类型以便序列化"""
@@ -116,28 +124,45 @@ class LocalChartGenerator:
         }
     
     async def _generate_chart_with_llm(self, df: pd.DataFrame, user_prompt: str, enable_insights: bool = True) -> Dict[str, Any]:
-        """使用LLM生成图表配置"""
+        """使用LLM生成图表配置 - 优化版本"""
         try:
-            # 获取LLM实例
-            llm = get_llm_by_type("basic")
+            # 1. 计算数据摘要的哈希值用于缓存查询
+            data_hash = self._compute_data_hash(df, user_prompt)
             
-            # 准备数据摘要
+            # 2. 检查缓存
+            if data_hash in _llm_response_cache:
+                logger.info(f"命中LLM响应缓存: {data_hash[:8]}")
+                cached_result = _llm_response_cache[data_hash]
+                # 异步生成洞察和markdown，不影响返回速度
+                if enable_insights:
+                    asyncio.create_task(self._async_generate_insights_and_md(
+                        cached_result, df, enable_insights, data_hash
+                    ))
+                return cached_result
+            
+            # 3. 并行执行多个任务（数据摘要准备 + 提示构建）
+            logger.info("使用LLM模式生成图表配置")
             data_summary = self._prepare_data_summary(df)
-            
-            # 构建LLM提示
             prompt = self._build_llm_prompt(data_summary, user_prompt)
             
-            # 调用LLM
+            # 4. 设置超时的LLM调用（默认30秒超时）
             logger.info(f"发送LLM请求，提示长度: {len(prompt)}")
-            logger.info(f"提示: {prompt}")
             start_time = time.time()
-            response = await llm.ainvoke(prompt)
-            end_time = time.time()
-            logger.info(f"LLM请求时间: {end_time - start_time}秒")
+            try:
+                response = await asyncio.wait_for(
+                    self._call_llm_with_fallback(prompt),
+                    timeout=30
+                )
+                elapsed = time.time() - start_time
+                logger.info(f"LLM请求时间: {elapsed:.2f}秒")
+            except asyncio.TimeoutError:
+                logger.warning("LLM请求超时(30秒)，自动降级到传统模式")
+                return await self._generate_chart_traditional(df, enable_insights)
             
-            # 解析LLM响应
+            # 5. 解析LLM响应
             chart_config = self._parse_llm_response(response.content)
-            # 基于原始数据回填空的series.data
+            
+            # 6. 回填数据
             try:
                 filled_spec = self._populate_series_data_from_df(chart_config.get("spec", {}), df)
                 if filled_spec is not None:
@@ -145,32 +170,84 @@ class LocalChartGenerator:
             except Exception as e:
                 logger.warning(f"回填series数据失败: {e}")
             
-            # 基于LLM生成的图表配置生成洞察
-            insights = []
-            insight_md = None
-            if enable_insights:
-                chart_spec = chart_config.get("spec", {})
-                chart_type = chart_config.get("chart_type", "unknown")
-                insights = self._generate_insights_from_chart(chart_spec, chart_type, df)
-                 # 生成洞察文档
-                chart_spec = chart_config.get("spec", {})
-                chart_type = chart_config.get("chart_type", "unknown")
-                insight_md = await self._generate_insight_markdown_from_chart(chart_spec, insights, chart_type, use_llm=True)
-            
-            
-            return {
+            # 7. 准备结果
+            result = {
                 "spec": chart_config.get("spec", {}),
-                "insight_md": insight_md,
-                "insights": insights,
+                "insight_md": None,  # 初始化为None，后续异步更新
+                "insights": [],      # 初始化为空，后续异步更新
                 "chart_type": chart_config.get("chart_type", "unknown"),
                 "llm_generated": True
             }
             
+            # 8. 缓存结果（限制缓存大小）
+            if len(_llm_response_cache) >= _cache_max_size:
+                # 删除最早的缓存项
+                oldest_key = next(iter(_llm_response_cache))
+                del _llm_response_cache[oldest_key]
+            _llm_response_cache[data_hash] = result
+            
+            # 9. 异步生成洞察和markdown，不阻塞返回
+            if enable_insights:
+                asyncio.create_task(self._async_generate_insights_and_md(
+                    result, df, enable_insights, data_hash
+                ))
+            
+            return result
+            
         except Exception as e:
             logger.error(f"LLM生成图表配置失败: {str(e)}")
-            # 回退到传统模式
             logger.info("回退到传统模式")
             return await self._generate_chart_traditional(df, enable_insights)
+    
+    def _compute_data_hash(self, df: pd.DataFrame, user_prompt: str) -> str:
+        """计算数据和提示的哈希值用于缓存"""
+        try:
+            # 使用数据形状、列名、前几行和用户提示计算哈希
+            key_components = [
+                str(df.shape),
+                ",".join(df.columns),
+                df.head(3).to_string(),
+                user_prompt[:100]  # 只使用提示的前100个字符
+            ]
+            key_str = "||".join(key_components)
+            return hashlib.md5(key_str.encode()).hexdigest()
+        except Exception as e:
+            logger.warning(f"计算数据哈希失败: {e}")
+            return ""
+    
+    async def _call_llm_with_fallback(self, prompt: str) -> Any:
+        """调用LLM，支持降级到更快的模型"""
+        try:
+            llm = get_llm_by_type("basic")
+            return await llm.ainvoke(prompt)
+        except Exception as e:
+            logger.error(f"LLM基础模型调用失败: {e}")
+            raise
+    
+    async def _async_generate_insights_and_md(self, result: Dict, df: pd.DataFrame, enable_insights: bool, cache_key: str):
+        """异步生成洞察和markdown，不阻塞主流程"""
+        try:
+            chart_spec = result.get("spec", {})
+            chart_type = result.get("chart_type", "unknown")
+            
+            # 生成洞察
+            insights = self._generate_insights_from_chart(chart_spec, chart_type, df)
+            result["insights"] = insights
+            
+            # 生成markdown
+            insight_md = await self._generate_insight_markdown_from_chart(
+                chart_spec, insights, chart_type, use_llm=False  # 生成markdown时不再调用LLM以加快速度
+            )
+            result["insight_md"] = insight_md
+            
+            # 更新缓存
+            if cache_key in _llm_response_cache:
+                _llm_response_cache[cache_key].update(result)
+            
+            logger.info("异步洞察生成完成")
+        except Exception as e:
+            logger.error(f"异步生成洞察失败: {e}")
+            # 不抛出异常，以免影响主流程
     
     def _normalize_name(self, name: str) -> str:
         """标准化系列/列名，去除全角/半角括号内容与空白，用于匹配。"""
@@ -331,7 +408,7 @@ class LocalChartGenerator:
                             (float(val) if pd.notna(val) else None)
                         ] for v, val in zip(df_sorted[x_col], df_sorted[y_col])]
                 else:
-                    # 未匹配到列：若名称包含“数量”，可退化为按x聚合计数
+                    # 未匹配到列：若名称包含"数量"，可退化为按x聚合计数
                     if isinstance(name, str) and ("数量" in name or "count" in name.lower()):
                         grouped = df_sorted.groupby(x_col, dropna=False).size().reset_index(name="value")
                         if x_type == "time" and np.issubdtype(df_sorted[x_col].dtype, np.datetime64):

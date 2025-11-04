@@ -1,0 +1,515 @@
+{
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+        "typeVersion": 1.5,
+        "position": [
+          -272,
+          32
+        ],
+        "id": "a21ca428-73f5-4257-aad3-678c97592731",
+        "name": "Redis Chat Memory",
+        "credentials": {
+          "redis": {
+            "id": "M7p61axHV7QeE5Kx",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "content": "## 工作流配置\n\n**触发方式：** Webhook POST 请求\n\n**请求格式：**\n```json\n{\n  \"flightNumber\": \"CA123\",\n  \"passengerEmail\": \"user@example.com\",\n  \"passengerName\": \"张三\",\n  \"language\": \"both\"\n}\n```\n\n**参数说明：**\n- `flightNumber` (必需) - 航班号\n- `passengerEmail` (必需) - 乘客邮箱\n- `passengerName` (可选) - 乘客姓名\n- `language` (可选) - 语言选项: zh|en|both (默认: both)\n- `sessionId` (可选) - 会话ID\n\n**响应格式：**\n```json\n{\n  \"success\": true,\n  \"flightNumber\": \"CA123\",\n  \"delayMinutes\": 120,\n  \"delayReason\": \"天气原因\",\n  \"letter\": {\n    \"chinese\": \"...\",\n    \"english\": \"...\"\n  },\n  \"message\": \"安抚信已成功生成\"\n}\n```\n\n**数据库表要求：**\n- `flights` - 航班表（现有）\n- `flight_changes` - 变更记录表（现有）\n- `comfort_letter_history` - 安抚信发送历史表（需创建）"
+        },
+        "id": "8519b306-a4c0-4355-8882-30ab58fbd62c",
+        "name": "工作流配置",
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -1136,
+          176
+        ],
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "respondWith": "allIncomingItems",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          -592,
+          -80
+        ],
+        "id": "31115bd8-f84f-4d05-8c1e-764049ea28d8",
+        "name": "返回错误响应"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -800,
+          -144
+        ],
+        "id": "00a8a76e-6efe-4faa-b717-1512b71884f6",
+        "name": "返回输入错误"
+      },
+      {
+        "parameters": {
+          "respondWith": "allIncomingItems",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          768,
+          -352
+        ],
+        "id": "ac30457b-af45-46c9-9aee-0d36b090cc36",
+        "name": "返回成功响应"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "qwen3-max-preview",
+            "mode": "list",
+            "cachedResultName": "qwen3-max-preview"
+          },
+          "options": {
+            "temperature": 0.6
+          }
+        },
+        "id": "2ceb2940-25d8-4169-8b4e-23962cd65300",
+        "name": "千问大模型",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "position": [
+          -400,
+          -96
+        ],
+        "typeVersion": 1.2,
+        "credentials": {
+          "openAiApi": {
+            "id": "9LqVI8o5oytd2Z4c",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "你是一个专业的航班延误客户关系管理助手。你有权访问以下工具：\n1. query_flight_details - 查询航班详细信息\n2. query_flight_changes - 查询航班变更记录\n\n## 任务：生成中英双语安抚信\n\n### 第一步：获取航班数据\n首先使用 query_flight_details 查询航班 {{ $json.flightNumber }} 的详细信息。\n如果需要历史变更，使用 query_flight_changes 查询。\n\n### 第二步：生成安抚信内容\n基于获取的航班数据，生成安抚信。\n\n### 第三步：返回结构化响应\n必须返回以下 JSON 结构（不要添加任何其他内容）：\n```json\n{\n  \"success\": true,\n  \"flightNumber\": \"{{ $json.flightNumber }}\",\n  \"passengerName\": \"{{ $json.passengerName }}\",\n  \"delayMinutes\": 120,\n  \"delayReason\": \"待查询\",\n  \"compensationLevel\": \"standard\",\n  \"letter\": {\n    \"chinese\": \"[生成的中文安抚信]\",\n    \"english\": \"[Generated English comfort letter]\",\n    \"language\": \"{{ $json.language || 'both' }}\"\n  },\n  \"message\": \"安抚信已生成\"\n}\n```\n\n重要提示：\n- 当 language=both 时，同时生成中文和英文\n- 当 language=zh 时，仅生成中文，english 字段为空字符串\n- 当 language=en 时，仅生成英文，chinese 字段为空字符串\n- 返回纯 JSON，不要包含任何额外文本",
+          "options": {}
+        },
+        "id": "77b6cd6c-f301-41df-bfab-4183fd760c85",
+        "name": "安抚信生成AI助手",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "position": [
+          -496,
+          -352
+        ],
+        "typeVersion": 1.8,
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT * FROM flight_changes WHERE flight_number = '{{ $json.flightNumber }}' ORDER BY change_time DESC LIMIT 10",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.mySqlTool",
+        "typeVersion": 2.5,
+        "position": [
+          -128,
+          -16
+        ],
+        "id": "b9069b4d-dbab-43a4-bb2b-7bf7a8c7feb0",
+        "name": "query_flight_changes",
+        "credentials": {
+          "mySql": {
+            "id": "NB6QwN6VgdkBhk6T",
+            "name": "workflow-test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT f.*, fc.change_description, fc.previous_value, fc.new_value FROM flights f LEFT JOIN flight_changes fc ON f.flight_id = fc.flight_id WHERE f.flight_number = '{{ $json.flightNumber }}' AND (f.status = 'delayed' OR fc.change_type = 'delay_reason') ORDER BY fc.change_time DESC LIMIT 1",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.mySqlTool",
+        "typeVersion": 2.5,
+        "position": [
+          16,
+          -64
+        ],
+        "id": "43fc690e-cce8-4ecf-83f9-6ba67096cd38",
+        "name": "query_flight_details",
+        "credentials": {
+          "mySql": {
+            "id": "NB6QwN6VgdkBhk6T",
+            "name": "workflow-test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "rules": [
+              {
+                "value1": "={{ $json.flightNumber }}",
+                "condition": "notEmpty",
+                "type": "string"
+              },
+              {
+                "value1": "={{ $json.passengerEmail }}",
+                "condition": "notEmpty",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -976,
+          -336
+        ],
+        "id": "e6ede693-9db6-44b7-a9b6-624139e3151b",
+        "name": "验证输入数据"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "flight-number",
+                "name": "flightNumber",
+                "value": "={{ $json.body.flightNumber || $json.flightNumber || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "passenger-email",
+                "name": "passengerEmail",
+                "value": "={{ $json.body.passengerEmail || $json.passengerEmail || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "passenger-name",
+                "name": "passengerName",
+                "value": "={{ $json.body.passengerName || $json.passengerName || '尊敬的乘客' }}",
+                "type": "string"
+              },
+              {
+                "id": "language",
+                "name": "language",
+                "value": "={{ $json.body.language || $json.language || 'both' }}",
+                "type": "string"
+              },
+              {
+                "id": "session-id",
+                "name": "sessionId",
+                "value": "={{ $json.body.sessionId || $json.sessionId || 'comfort-' + Date.now() }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -1136,
+          -336
+        ],
+        "id": "bb287a10-adf2-47eb-8526-8c4af6ade0e4",
+        "name": "提取延误信息"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "flight-delay-comfort",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -1296,
+          -336
+        ],
+        "id": "97288e0f-96da-4366-8a13-0cb2257f02fb",
+        "name": "接收延误航班信息",
+        "webhookId": "53f57ff6-1adc-4fa5-a956-b190ede6ea80"
+      },
+      {
+        "parameters": {
+          "content": "## 航班延误 AI 安抚信系统（中英双语）\n\n**核心功能：**\n- 自动识别延误航班\n- 生成个性化中英双语安抚信\n- 智能提取补偿方案信息\n- 通过 Webhook 返回邮件内容（不发送邮件）\n- 记录发送历史到数据库\n\n**触发场景：**\n- 通过 Webhook 手动触发\n- 获取安抚信内容并返回给调用者\n\n**数据来源：**\n- 航班数据库（flights表）\n- 航班变更记录（flight_changes表）\n- 补偿规则配置\n\n**输出格式：**\nJSON 响应包含中英双语安抚信、补偿方案、联系方式等完整信息"
+        },
+        "id": "980f6230-a2e9-4f48-9236-e164cc7c91e9",
+        "name": "系统说明",
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -1136,
+          -16
+        ],
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "preserve-ai-output",
+                "name": "aiOutput",
+                "value": "={{ $json }}",
+                "type": "object"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -200,
+          -352
+        ],
+        "id": "preserve-ai-data",
+        "name": "保留AI数据"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO comfort_letter_history (flight_number, passenger_email, passenger_name, delay_minutes, delay_reason, letter_content_zh, letter_content_en, compensation_level, send_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "options": {
+            "queryParams": [
+              "={{ $json.flightNumber }}",
+              "={{ $json.passengerEmail }}",
+              "={{ $json.passengerName }}",
+              "={{ $json.delayMinutes || 0 }}",
+              "={{ $json.delayReason || '未知' }}",
+              "={{ $json.letter && $json.letter.chinese ? $json.letter.chinese : '' }}",
+              "={{ $json.letter && $json.letter.english ? $json.letter.english : '' }}",
+              "={{ $json.compensationLevel || 'standard' }}",
+              "=returned",
+              "={{ new Date().toISOString() }}"
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.mySqlTool",
+        "typeVersion": 2.5,
+        "position": [
+          432,
+          -464
+        ],
+        "id": "e2111e28-649a-4aa3-8efd-5097adf34ab6",
+        "name": "保存发送记录",
+        "credentials": {
+          "mySql": {
+            "id": "NB6QwN6VgdkBhk6T",
+            "name": "workflow-test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "response-data",
+                "name": "body",
+                "value": "={\n  success: true,\n  flightNumber: $json.flightNumber,\n  passengerName: $json.passengerName,\n  passengerEmail: $json.passengerEmail,\n  delayInformation: {\n    delayMinutes: $json.delayMinutes || 0,\n    delayReason: $json.delayReason || '未知',\n    compensationLevel: $json.compensationLevel || 'standard'\n  },\n  letter: {\n    chinese: $json.letter && $json.letter.chinese ? $json.letter.chinese : '',\n    english: $json.letter && $json.letter.english ? $json.letter.english : '',\n    language: $json.language || 'both'\n  },\n  message: '安抚信已成功生成（邮件内容已返回）',\n  returnedAt: new Date().toISOString()\n}",
+                "type": "object"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          608,
+          -352
+        ],
+        "id": "83155d94-3049-462e-acd9-1d07321704bf",
+        "name": "准备最终响应"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// 从AI输出中提取所需数据\nconst input = $input.item.json;\n\n// 生成中英双语安抚信\nconst generateLetter = (flightNumber, passengerName, delayMinutes, delayReason) => {\n  const zh = `尊敬的${passengerName || '尊敬的乘客'}，\n\n感谢您对我们航空公司的信任。我们对航班 ${flightNumber} 的延误向您表示诚挚的歉意。\n\n根据记录，您乘坐的航班于当地时间延误了约${delayMinutes || '待查询'}分钟。延误原因为：${delayReason || '待查询'}。我们深刻理解延误给您带来的不便和困扰。\n\n为了补偿您因此遭受的损失，我们将为您提供以下协助：\n- 如延误超过2小时，提供免费餐饮和饮用水\n- 如延误超过4小时，除上述外还将提供酒店住宿（如需要）\n- 免费改签其他航班或办理退票\n- 获得500-2000元的现金补偿（根据具体延误情况和政策）\n\n有关后续事宜，请拨打我们的客服热线 400-8888-888（工作时间：24小时）或发送电子邮件至 service@airline.com。\n\n再次为给您带来的不便表示歉意，感谢您的理解与支持。\n\n此致\n敬礼\n航空公司客服部门`;\n  \n  const en = `Dear ${passengerName || 'Valued Passenger'},\n\nThank you for choosing our airline. We sincerely apologize for the delay of flight ${flightNumber}.\n\nAccording to our records, your flight was delayed by approximately ${delayMinutes || 'TBD'} minutes due to ${delayReason || 'scheduling issues'}. We understand the inconvenience this has caused you.\n\nAs compensation for your trouble, we offer the following assistance:\n- If delay exceeds 2 hours: complimentary meals and beverages\n- If delay exceeds 4 hours: accommodation in addition to meals (if needed)\n- Free rebooking on another flight or ticket refund\n- Cash compensation ranging from RMB 500-2000 (depending on delay duration and policy)\n\nFor further assistance, please contact our customer service at 400-8888-888 (24/7) or email service@airline.com.\n\nWe sincerely apologize again for the inconvenience and appreciate your understanding.\n\nBest regards,\nCustomer Service Department\nAirline`;\n  \n  return { chinese: zh, english: en };\n};\n\n// 处理语言选项\nconst language = input.language || 'both';\nconst letter = generateLetter(\n  input.flightNumber,\n  input.passengerName,\n  input.delayMinutes,\n  input.delayReason\n);\n\nlet finalLetter = {};\nif (language === 'zh') {\n  finalLetter = { chinese: letter.chinese, english: '' };\n} else if (language === 'en') {\n  finalLetter = { chinese: '', english: letter.english };\n} else {\n  finalLetter = letter;\n}\n\n// 返回完整数据结构（包括所有输入字段）\nreturn {\n  ...input,\n  letter: finalLetter,\n  delayMinutes: input.delayMinutes || 120,\n  delayReason: input.delayReason || '天气原因',\n  compensationLevel: input.compensationLevel || 'standard'\n};"
+        },
+        "id": "ai-output-formatter",
+        "name": "格式化AI输出",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -32,
+          -352
+        ]
+      }
+    ],
+    "connections": {
+      "Redis Chat Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "安抚信生成AI助手",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "返回输入错误": {
+        "main": [
+          [
+            {
+              "node": "返回错误响应",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "千问大模型": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "安抚信生成AI助手",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "安抚信生成AI助手": {
+        "main": [
+          [
+            {
+              "node": "格式化AI输出",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "格式化AI输出": {
+        "main": [
+          [
+            {
+              "node": "保留AI数据",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "保留AI数据": {
+        "main": [
+          [
+            {
+              "node": "保存发送记录",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "保存发送记录": {
+        "main": [
+          [
+            {
+              "node": "准备最终响应",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "query_flight_changes": {
+        "ai_tool": [
+          [
+            {
+              "node": "安抚信生成AI助手",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "query_flight_details": {
+        "ai_tool": [
+          [
+            {
+              "node": "安抚信生成AI助手",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "验证输入数据": {
+        "main": [
+          [
+            {
+              "node": "安抚信生成AI助手",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "返回输入错误",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "提取延误信息": {
+        "main": [
+          [
+            {
+              "node": "验证输入数据",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "接收延误航班信息": {
+        "main": [
+          [
+            {
+              "node": "提取延误信息",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "准备最终响应": {
+        "main": [
+          [
+            {
+              "node": "返回成功响应",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {},
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "46455fcd361ade4fbba5c43d3931cd4a5eebe22458f955842eb63d378a2d1c33"
+    }
+  } 

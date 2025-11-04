@@ -1,0 +1,411 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## 实时航班跟踪与变更警报系统\n\n**核心功能：**\n- 实时监控航班状态变化\n- 自动发送变更警报通知\n- 支持多维度查询和统计\n- 多轮对话式查询体验\n\n**使用场景：**\n- \"查询CA123航班的实时状态\"\n- \"告诉我今天所有延误的航班\"\n- \"统计最近24小时内的航班变更\"\n- \"哪些航班因天气原因延误？\"\n- \"发送关于CA123航班的更新提醒\"\n\n**数据来源：**\n- 航班数据库实时数据\n- 天气API数据\n- 机场运营系统\n\n**返回格式：**\n统一返回 JSON 格式，包含航班信息、变更详情和警报通知状态"
+        },
+        "id": "38351fbf-47ac-4d15-9b71-cc6fadd475be",
+        "name": "使用说明",
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -448,
+          -16
+        ],
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "您是一个专业的航班跟踪和变更警报系统助手。\n\n## 核心职责\n\n1. **理解航班查询需求**：识别用户关于航班信息、延误、变更等的查询\n\n2. **调用查询和警报工具**：\n   - \"query_flights\" - 查询航班信息（状态、时间等）\n   - \"check_changes\" - 检查航班变更历史\n   - \"send_alert\" - 发送警报通知\n   - \"get_weather\" - 获取天气信息\n   - 必须实际调用工具，不要仅提供查询代码\n\n3. **数据库表结构**：\n\n   **flights 表（航班表）**：\n   - flight_id (INT, PK) - 航班ID\n   - flight_number (VARCHAR) - 航班号（唯一值）\n   - airline_name (VARCHAR) - 航司名称\n   - aircraft_type (VARCHAR) - 机型\n   - departure_city (VARCHAR) - 出发城市\n   - arrival_city (VARCHAR) - 到达城市\n   - departure_time (DATETIME) - 预计出发时间\n   - arrival_time (DATETIME) - 预计到达时间\n   - actual_departure (DATETIME) - 实际出发时间\n   - actual_arrival (DATETIME) - 实际到达时间\n   - status (VARCHAR) - 状态：scheduled/delayed/cancelled/arrived\n   - delay_minutes (INT) - 延误分钟数\n   - delay_reason (VARCHAR) - 延误原因\n   - created_at (TIMESTAMP)\n   - updated_at (TIMESTAMP)\n\n   **flight_changes 表（变更记录表）**：\n   - change_id (INT, PK) - 变更ID\n   - flight_id (INT, FK) - 航班ID【重要：不是id，是flight_id】\n   - flight_number (VARCHAR) - 航班号\n   - change_type (VARCHAR) - 变更类型：time/status/gate/aircraft/delay_reason等\n   - change_description (VARCHAR) - 变更描述\n   - previous_value (VARCHAR) - 变更前的值\n   - new_value (VARCHAR) - 变更后的值\n   - change_time (DATETIME) - 变更时间\n   - created_at (TIMESTAMP)\n\n4. **正确的SQL查询模式**：\n\n   ✅ 正确的查询示例：\n   - 查询特定航班：SELECT * FROM flights WHERE flight_number = 'CA123'\n   - 查询航班的所有变更：SELECT * FROM flight_changes WHERE flight_number = 'CA123' ORDER BY change_time DESC\n   - 使用flight_id查询变更：SELECT * FROM flight_changes WHERE flight_id = 1 ORDER BY change_time DESC\n   - 查询延误航班：SELECT * FROM flights WHERE status = 'delayed'\n   - 统计变更类型：SELECT change_type, COUNT(*) FROM flight_changes GROUP BY change_type\n   - 时间范围查询：SELECT * FROM flights WHERE departure_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)\n\n   ❌ 错误的查询示例（不要用）：\n   - SELECT * FROM flights WHERE id = 1  ← 错误！应该是 flight_id\n   - SELECT * FROM flight_changes WHERE id IN (SELECT id FROM flights ...)  ← 错误！应该是 flight_id\n\n5. **查询规范**：\n   - 使用参数化查询防止 SQL 注入\n   - 默认查询最近7天数据\n   - 仅支持 SELECT 查询\n   - 按航班号、日期、状态等多维度筛选\n   - 【重要】flight_changes表中查询关联flights时：\n     * 通过 flight_id 或 flight_number 字段关联\n     * 例：SELECT fc.* FROM flight_changes fc JOIN flights f ON fc.flight_id = f.flight_id WHERE f.flight_number = 'CA123'\n\n6. **警报通知**：\n   - 航班状态变更时自动发送警报\n   - 支持邮件、短信、推送多种方式\n   - 记录所有警报发送历史\n   - 用户可订阅特定航班的变更提醒\n\n7. **响应要求**：\n   - 查询执行后提供清晰的文本总结\n   - 包含：查询说明、找到的记录数、关键信息、变更趋势\n   - 如果涉及警报发送，说明通知状态\n   - 即使只是调用工具也要总结结果\n\n## 重点提醒：\n- 【核心】：使用 flight_id 不是 id！\n- 【必须】：实际调用工具执行SQL查询\n- 【必须】：提供详细的文本总结\n- 用户期望得到有意义的航班信息分析，而不仅仅是原始数据\n- 始终告诉用户发现了什么航班变更",
+          "options": {}
+        },
+        "id": "6934fb6c-b66f-4648-8906-603234362eff",
+        "name": "航班跟踪AI助手",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "position": [
+          224,
+          -256
+        ],
+        "typeVersion": 1.8
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "qwen3-max-preview",
+            "mode": "list",
+            "cachedResultName": "qwen3-max-preview"
+          },
+          "options": {
+            "temperature": 0.3
+          }
+        },
+        "id": "93759b8f-eccc-49f2-a141-5b95ce531b2b",
+        "name": "千问大模型",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "position": [
+          384,
+          16
+        ],
+        "typeVersion": 1.2,
+        "credentials": {
+          "openAiApi": {
+            "id": "9LqVI8o5oytd2Z4c",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "{{ $fromAI('query_flights') }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.mySqlTool",
+        "typeVersion": 2.5,
+        "position": [
+          816,
+          -48
+        ],
+        "id": "90aa4520-4b2f-4b93-866f-c77daddcfdda",
+        "name": "query_flights",
+        "credentials": {
+          "mySql": {
+            "id": "NB6QwN6VgdkBhk6T",
+            "name": "workflow-test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "{{ $fromAI('check_changes') }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.mySqlTool",
+        "typeVersion": 2.5,
+        "position": [
+          704,
+          64
+        ],
+        "id": "318a189a-cbb0-46fd-8118-e451c8147880",
+        "name": "check_changes",
+        "credentials": {
+          "mySql": {
+            "id": "NB6QwN6VgdkBhk6T",
+            "name": "workflow-test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "input-track-001",
+                "name": "trackInput",
+                "value": "={{ $json.body.trackInput || $json.trackInput || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "input-session-001",
+                "name": "sessionId",
+                "value": "={{ $json.body.sessionId || $json.sessionId || 'flight-session-' + Date.now() }}",
+                "type": "string"
+              },
+              {
+                "id": "input-userid-001",
+                "name": "userId",
+                "value": "={{ $json.body.userId || $json.userId || 'anonymous' }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -432,
+          -240
+        ],
+        "id": "1e9b4caf-707a-4f5c-b16b-716972a38e56",
+        "name": "提取输入参数"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "rules": [
+              {
+                "value1": "={{ $json.trackInput }}",
+                "condition": "notEmpty",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -240,
+          -240
+        ],
+        "id": "4e4978f6-8892-453c-b508-a21f29905d23",
+        "name": "验证输入"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          0,
+          0
+        ],
+        "id": "a6ffb4a8-43c8-47ff-a057-7e3f1e1eb427",
+        "name": "返回空输入错误"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "flight-tracking-realtime",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -640,
+          -240
+        ],
+        "id": "dc365c6c-98c9-49ab-a806-0a5e90e4799e",
+        "name": "接收航班查询请求",
+        "webhookId": "6b40671b-ac43-490f-8788-d445e9699b59"
+      },
+      {
+        "parameters": {
+          "respondWith": "allIncomingItems",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          848,
+          -256
+        ],
+        "id": "2480e460-1c7d-46c6-81d6-e069fa8da0ec",
+        "name": "返回查询结果"
+      },
+      {
+        "parameters": {
+          "respondWith": "allIncomingItems",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          160,
+          0
+        ],
+        "id": "c5c231ac-7448-42c4-81c9-5a03bfa93aac",
+        "name": "返回错误信息"
+      },
+      {
+        "parameters": {
+          "jsCode": "// 将 AI 响应转换为标准的航班跟踪格式\n// 提取航班信息、变更详情和警报状态\n\nconst aiResponse = $json;\n\n// 初始化响应结构\nlet message = '';\nlet flights = [];\nlet changes = [];\nlet alerts = [];\nlet weatherInfo = {};\nlet totalRecords = 0;\n\n// 第一步：获取 AI 的文本响应\nif (aiResponse.text) {\n  message = aiResponse.text;\n} else if (aiResponse.output) {\n  message = aiResponse.output;\n}\n\n// 第二步：从中间步骤提取各类工具的结果\nif (aiResponse.intermediate_steps && Array.isArray(aiResponse.intermediate_steps)) {\n  for (let i = 0; i < aiResponse.intermediate_steps.length; i++) {\n    const step = aiResponse.intermediate_steps[i];\n    \n    if (!step) continue;\n    \n    try {\n      let result = step.observation;\n      \n      // 处理结果格式（JSON字符串转对象）\n      if (typeof result === 'string') {\n        try {\n          result = JSON.parse(result);\n        } catch (e) {\n          result = result; // 保持原样\n        }\n      }\n      \n      // 根据工具类型分类提取数据\n      if (step.tool === 'query_flights') {\n        flights = Array.isArray(result) ? result : result && result.flights ? result.flights : [];\n        totalRecords = flights.length;\n      } else if (step.tool === 'check_changes') {\n        changes = Array.isArray(result) ? result : result && result.changes ? result.changes : [];\n      } else if (step.tool === 'send_alert') {\n        alerts = step.observation ? [{ status: 'sent', message: step.observation }] : [];\n      } else if (step.tool === 'get_weather') {\n        weatherInfo = result && result.list ? { forecast: result.list[0] } : {};\n      }\n    } catch (e) {\n      console.log('处理工具结果失败:', e.message);\n    }\n  }\n}\n\n// 第三步：如果没有从中间步骤获取数据，检查 AI 响应中的其他字段\nif (flights.length === 0 && aiResponse.flights) {\n  flights = Array.isArray(aiResponse.flights) ? aiResponse.flights : [aiResponse.flights];\n  totalRecords = flights.length;\n}\n\nif (changes.length === 0 && aiResponse.changes) {\n  changes = Array.isArray(aiResponse.changes) ? aiResponse.changes : [aiResponse.changes];\n}\n\n// 第四步：生成最终响应\nreturn {\n  status: 'success',\n  message: message || '航班查询完成',\n  data: {\n    flights: flights,\n    changes: changes,\n    alerts: alerts,\n    weather: weatherInfo,\n    summary: {\n      totalFlights: flights.length,\n      totalChanges: changes.length,\n      alertsSent: alerts.length\n    }\n  },\n  timestamp: new Date().toISOString()\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          608,
+          -256
+        ],
+        "id": "95a0e05b-ea18-4105-8970-f3d468fec560",
+        "name": "转换为JSON格式"
+      },
+      {
+        "parameters": {},
+        "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+        "typeVersion": 1.5,
+        "position": [
+          544,
+          16
+        ],
+        "id": "84771d57-33ca-482d-b893-660610943120",
+        "name": "Redis会话记忆",
+        "credentials": {
+          "redis": {
+            "id": "M7p61axHV7QeE5Kx",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "content": "## 工作流配置\n\n**触发方式：** Webhook POST 请求\n\n**请求格式：**\n```json\n{\n  \"trackInput\": \"查询 CA123 航班状态\",\n  \"sessionId\": \"用户会话ID（可选）\",\n  \"userId\": \"用户ID（可选）\"\n}\n```\n\n**支持的查询类型：**\n- 航班查询：\"查询 CA123 航班的状态\"\n- 延误信息：\"有哪些航班被延误了？\"\n- 变更历史：\"CA123 最近有什么变更吗？\"\n- 天气查询：\"北京的天气如何？\"\n- 发送警报：\"发送 CA123 航班变更提醒\"\n\n**数据库连接：** MySQL 油料管理系统\n**AI模型：** 千问 3 Max Preview\n**内存管理：** Redis 会话记忆"
+        },
+        "id": "f5417f19-2f60-43b0-8e08-37bfb35aabd8",
+        "name": "工作流配置说明",
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -448,
+          144
+        ],
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "url": "{{ $env.NOTIFICATION_SERVICE_URL }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          704,
+          288
+        ],
+        "id": "a3028263-ac46-49f4-b8b8-54a89366889e",
+        "name": "send_alert"
+      },
+      {
+        "parameters": {
+          "url": "https://api.openweathermap.org/data/2.5/forecast",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          416,
+          320
+        ],
+        "id": "a5d4d772-1d30-4b2f-9eee-5fdb793089b8",
+        "name": "get_weather"
+      }
+    ],
+    "connections": {
+      "航班跟踪AI助手": {
+        "main": [
+          [
+            {
+              "node": "转换为JSON格式",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "千问大模型": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "航班跟踪AI助手",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "query_flights": {
+        "ai_tool": [
+          [
+            {
+              "node": "航班跟踪AI助手",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "check_changes": {
+        "ai_tool": [
+          [
+            {
+              "node": "航班跟踪AI助手",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "提取输入参数": {
+        "main": [
+          [
+            {
+              "node": "验证输入",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "验证输入": {
+        "main": [
+          [
+            {
+              "node": "航班跟踪AI助手",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "返回空输入错误",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "返回空输入错误": {
+        "main": [
+          [
+            {
+              "node": "返回错误信息",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "接收航班查询请求": {
+        "main": [
+          [
+            {
+              "node": "提取输入参数",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "转换为JSON格式": {
+        "main": [
+          [
+            {
+              "node": "返回查询结果",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Redis会话记忆": {
+        "ai_memory": [
+          [
+            {
+              "node": "航班跟踪AI助手",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {},
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "46455fcd361ade4fbba5c43d3931cd4a5eebe22458f955842eb63d378a2d1c33"
+    }
+  }

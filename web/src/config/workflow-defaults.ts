@@ -23,6 +23,20 @@ export const workflowDefaults: Record<string, WorkflowDefaultParams> = {
     chatInput: "hello world`",
     sessionId: "user-12345",
   },
+  "实时航班跟踪与变更警报": {
+    "trackInput": "查询最新航班状态",
+    "sessionId": "user-session-flight-12345"
+  },
+  "油单数据库查询": {
+    "trackInput": "查询 CA123 航班的最新状态",
+    "sessionId": "user-session-12345"
+  },
+  "航班延误 AI 安抚信（中英双语）": {
+    "flightNumber": "MU456",
+    "passengerEmail": "john.doe@example.com",
+    "passengerName": "约翰·多伊",
+    "language": "both"
+  },
   "传输协议-sse": {
     chatInput: "给我讲个关于加油的笑话",
     sessionId: "user-11111",
@@ -39,7 +53,7 @@ export const workflowDefaults: Record<string, WorkflowDefaultParams> = {
     "sessionId": "user-session-001",
     "userId": "developer-123",
     "context": "我是一个学生"
-  }
+  },
   // 示例：为特定工作流名称配置参数
   // "我的聊天机器人": {
   //   chatInput: "你好，请介绍一下你自己",

@@ -1,0 +1,332 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## MySQL 智能聊天助手\n\n**功能说明：**\n- 通过自然语言查询 MySQL 数据库\n- 支持多轮对话和上下文记忆\n- 所有响应以 JSON 格式输出\n\n**使用示例：**\n- \"统计各个航司最近一个月的加油量\"\n- \"查询 2025 年的所有加油记录\"\n- \"统计按航司分类的加油总重量\"\n- \"查找温度异常的加油操作\"\n\n**返回数据格式：**\n统一返回标准 JSON 结构，包含查询结果和业务洞察。"
+        },
+        "id": "28c71462-63f6-46c7-9a25-29da8ab003fe",
+        "name": "使用说明",
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -320,
+          640
+        ],
+        "typeVersion": 1
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "您是一个专业的 SQL 数据库查询助手，专门为油料管理系统（oil-biz）服务。\n\n## 核心职责\n\n1. **理解查询需求**：用户会用自然语言提出数据查询需求，您必须准确理解其意图\n\n2. **调用查询工具**：对于任何涉及数据的查询请求，您**必须**使用 \"execute_query\" 工具来执行 SQL\n   - 不要仅仅提供 SQL 代码\n   - 必须实际调用工具执行查询\n   - 工具会返回实际的数据库查询结果\n\n3. **数据库信息**：\n   - 数据库：oil-biz（油料管理系统）\n   - 主表：oilbill（油单表）\n   - 关键字段：\n     * airline_name（航司名称）\n     * refueling_weight（加油重量，单位：千克）\n     * refueling_date（加油日期）\n     * refueling_volume（加油体积）\n     * temperature（温度）\n     * density（密度）\n\n4. **查询规范**：\n   - 使用参数化查询防止 SQL 注入\n   - 默认返回 100 条结果（除非用户指定）\n   - 只支持 SELECT 查询（禁止 DELETE、UPDATE、INSERT）\n\n5. **常见查询模式**：\n   - 统计查询：按航司统计加油量 → SELECT airline_name, SUM(refueling_weight) ... GROUP BY airline_name\n   - 时间范围查询：最近一个月 → 使用 DATE_SUB(CURDATE(), INTERVAL 30 DAY)\n   - 聚合查询：总量、平均值、最大值等\n\n6. **响应方式**：\n   - 查询执行后，您**必须**提供清晰的文本总结，包含：\n     * 查询的内容说明（了解了用户的需求）\n     * 数据库查询的结果统计（共找到 X 条记录）\n     * 关键数据摘要（如前几条记录、总数等）\n     * 业务洞察（如最大值、最小值、排名等）\n   - 不要返回空的响应文本\n   - 即使只是调用工具，也要总结结果\n\n7. **重点提示**：\n   - 您的最后响应必须是一个自然语言的文本总结\n   - 用户期望看到有意义的解释和数据摘要，而不仅仅是原始数据\n   - 始终告诉用户您找到了什么数据以及有什么发现\n\n## 重点：您必须使用工具来执行查询并提供文本总结！\n当用户提出任何数据查询需求时，立即使用 \"execute_query\" 工具，然后提供明确的文本总结。",
+          "options": {}
+        },
+        "id": "094dd36b-9329-4779-8072-28caeba5381d",
+        "name": "AI_Query_Assistant",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "position": [
+          352,
+          416
+        ],
+        "typeVersion": 1.8
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "qwen3-max-preview",
+            "mode": "list",
+            "cachedResultName": "qwen3-max-preview"
+          },
+          "options": {
+            "temperature": 0.3
+          }
+        },
+        "id": "e41d8616-01f3-4079-8667-3f117590eb7d",
+        "name": "OpenAI_LM",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "position": [
+          512,
+          672
+        ],
+        "typeVersion": 1.2,
+        "credentials": {
+          "openAiApi": {
+            "id": "9LqVI8o5oytd2Z4c",
+            "name": "OpenAi account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "{{ $fromAI('execute_query') }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.mySqlTool",
+        "typeVersion": 2.5,
+        "position": [
+          832,
+          656
+        ],
+        "id": "6beba35e-9534-4e4c-a3b5-d27d5fb32258",
+        "name": "execute_query",
+        "credentials": {
+          "mySql": {
+            "id": "peh2ft4tRLbwuZwm",
+            "name": "MySQL account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                "name": "chatInput",
+                "value": "={{ $json.body.chatInput || $json.chatInput || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+                "name": "sessionId",
+                "value": "={{ $json.body.sessionId || $json.sessionId || 'default-session' }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -304,
+          432
+        ],
+        "id": "f1243622-dd2a-4edd-b769-6ee05e0ab044",
+        "name": "extract_input"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "rules": [
+              {
+                "value1": "={{ $json.chatInput }}",
+                "condition": "notEmpty",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -112,
+          432
+        ],
+        "id": "6587cc8a-8d99-4056-9349-44386a586ee7",
+        "name": "validate_input"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          128,
+          656
+        ],
+        "id": "b7df15ff-4771-4f0a-9d20-54d5419dc394",
+        "name": "error_empty_input"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "mysql-chat",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -512,
+          432
+        ],
+        "id": "6d280f50-ad54-455d-9d9f-246abaa30c62",
+        "name": "receive_chat",
+        "webhookId": "f123a456-b789-4c12-d345-e678f901a234"
+      },
+      {
+        "parameters": {
+          "respondWith": "allIncomingItems",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          976,
+          416
+        ],
+        "id": "299af664-7860-406a-bea7-bb66272deca4",
+        "name": "return_response"
+      },
+      {
+        "parameters": {
+          "respondWith": "allIncomingItems",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          288,
+          656
+        ],
+        "id": "797277a4-9e34-48bd-bb1d-d5a127d9267e",
+        "name": "return_error"
+      },
+      {
+        "parameters": {
+          "jsCode": "// 将 AI 响应转换为标准格式\n// 提取 AI 最终的文本响应和任何执行的查询结果\n\nconst aiResponse = $json;\n\n// 初始化响应结构\nlet message = '';\nlet data = [];\nlet count = 0;\n\n// 第一步：获取 AI 的文本响应（最终生成的文本）\nif (aiResponse.text) {\n  message = aiResponse.text;\n} else if (aiResponse.output) {\n  message = aiResponse.output;\n}\n\n// 第二步：如果存在中间步骤（表示 AI 调用了工具），提取查询结果\nif (aiResponse.intermediate_steps && Array.isArray(aiResponse.intermediate_steps)) {\n  // 倒序遍历，找最后一次工具调用的结果\n  for (let i = aiResponse.intermediate_steps.length - 1; i >= 0; i--) {\n    const step = aiResponse.intermediate_steps[i];\n    \n    if (step && step.tool === 'execute_query') {\n      try {\n        // 提取 observation（工具返回结果）\n        let result = step.observation;\n        \n        // 处理结果格式\n        if (typeof result === 'string') {\n          try {\n            // 尝试解析 JSON 字符串\n            result = JSON.parse(result);\n          } catch (e) {\n            // 如果不是 JSON，尝试按行分割\n            if (result.includes('\\n')) {\n              result = result.split('\\n').map(line => ({ text: line }));\n            }\n          }\n        }\n        \n        // 转换为数组格式\n        if (Array.isArray(result)) {\n          data = result;\n        } else if (result && typeof result === 'object') {\n          data = [result];\n        } else if (result) {\n          data = [{ result: String(result).trim() }];\n        }\n        \n        count = data.length;\n        break; // 找到结果后退出循环\n      } catch (e) {\n        console.log('提取查询结果失败:', e.message);\n      }\n    }\n  }\n}\n\n// 第三步：如果没有从中间步骤获取数据，检查 AI 响应中的其他字段\nif (data.length === 0 && aiResponse.data) {\n  data = Array.isArray(aiResponse.data) ? aiResponse.data : [aiResponse.data];\n  count = data.length;\n}\n\n// 第四步：生成最终响应\nreturn {\n  status: 'success',\n  message: message || '查询完成',\n  data: data,\n  count: count,\n  timestamp: new Date().toISOString()\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          736,
+          416
+        ],
+        "id": "e3e2cd5b-3cfc-4f00-adff-8b24281217c3",
+        "name": "convert_to_json"
+      },
+      {
+        "parameters": {},
+        "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          672
+        ],
+        "id": "c6c161d1-4ad9-4321-b61e-ad4215c019a8",
+        "name": "Redis_Memory",
+        "credentials": {
+          "redis": {
+            "id": "M7p61axHV7QeE5Kx",
+            "name": "Redis account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "AI_Query_Assistant": {
+        "main": [
+          [
+            {
+              "node": "convert_to_json",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI_LM": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI_Query_Assistant",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "execute_query": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI_Query_Assistant",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "extract_input": {
+        "main": [
+          [
+            {
+              "node": "validate_input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "validate_input": {
+        "main": [
+          [
+            {
+              "node": "AI_Query_Assistant",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "error_empty_input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "error_empty_input": {
+        "main": [
+          [
+            {
+              "node": "return_error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "receive_chat": {
+        "main": [
+          [
+            {
+              "node": "extract_input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "convert_to_json": {
+        "main": [
+          [
+            {
+              "node": "return_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Redis_Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI_Query_Assistant",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {},
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "46455fcd361ade4fbba5c43d3931cd4a5eebe22458f955842eb63d378a2d1c33"
+    }
+  }

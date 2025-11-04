@@ -624,8 +624,15 @@ class DatabaseAnalysisNodes:
         for col in columns:
             sample_values = [row.get(col) for row in data[:10] if row.get(col) is not None]
             if sample_values:
+                # 检查列名是否包含时间相关关键词
+                is_time_related = any(keyword in col.lower() for keyword in ['年', '月', '日', '周', '时', '季', 'year', 'month', 'day', 'date', 'time', '日期', '年份'])
+                
                 if all(self._is_numeric_value(v) for v in sample_values):
-                    numeric_columns.append(col)
+                    # 如果是时间相关列，标记为分类列；否则为数值列
+                    if is_time_related:
+                        categorical_columns.append(col)
+                    else:
+                        numeric_columns.append(col)
                 else:
                     categorical_columns.append(col)
         
@@ -644,10 +651,10 @@ class DatabaseAnalysisNodes:
             config["type"] = "scatter"
             config["x"] = numeric_columns[0]
             config["y"] = numeric_columns[1]
-        elif len(numeric_columns) == 1:
+        elif len(numeric_columns) == 1 and len(categorical_columns) >= 1:
             config["type"] = "line"
+            config["x"] = categorical_columns[0]
             config["y"] = numeric_columns[0]
-            config["x"] = categorical_columns[0] if categorical_columns else "index"
         
         return config
     
@@ -664,8 +671,15 @@ class DatabaseAnalysisNodes:
         for col in columns:
             sample_values = [row.get(col) for row in data[:10] if row.get(col) is not None]
             if sample_values:
+                # 检查列名是否包含时间相关关键词
+                is_time_related = any(keyword in col.lower() for keyword in ['年', '月', '日', '周', '时', '季', 'year', 'month', 'day', 'date', 'time', '日期', '年份'])
+                
                 if all(self._is_numeric_value(v) for v in sample_values):
-                    numeric_columns.append(col)
+                    # 如果是时间相关列，标记为分类列；否则为数值列
+                    if is_time_related:
+                        categorical_columns.append(col)
+                    else:
+                        numeric_columns.append(col)
                 else:
                     categorical_columns.append(col)
         
@@ -681,9 +695,9 @@ class DatabaseAnalysisNodes:
             if categorical_columns and numeric_columns:
                 config["x"] = categorical_columns[0]
                 config["y"] = numeric_columns[0]
-            elif numeric_columns:
-                # 没有类别列，使用索引或第一个数值列
-                config["x"] = columns[0] if columns else "index"
+            elif numeric_columns and len(numeric_columns) >= 1:
+                # 没有类别列，使用第一列作为x，第一个数值列作为y
+                config["x"] = columns[0]
                 config["y"] = numeric_columns[0]
             else:
                 # 降级为表格

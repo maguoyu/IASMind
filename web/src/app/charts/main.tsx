@@ -1583,7 +1583,6 @@ export function ChartsMain() {
 
             // 使用SSE流式接口
             for await (const event of databaseAnalysisApi.analyzeDatabaseStream(requestData)) {
-              console.log('收到SSE事件:', event.type, event);
               
               if (event.type === 'thinking_step') {
                 // 更新思考步骤
@@ -1599,7 +1598,6 @@ export function ChartsMain() {
               } else if (event.type === 'result') {
                 // 保存最终结果
                 analysisResult = event;
-                console.log('保存分析结果:', analysisResult);
               } else if (event.type === 'error') {
                 throw new Error(event.error);
               } else if (event.type === 'done') {
@@ -1845,6 +1843,7 @@ export function ChartsMain() {
     // 对于custom类型的图表，如果有config（spec），即使data为空也要渲染
     if (chart.type === 'custom' && chart.config) {
       console.log('渲染自定义图表，使用spec:', chart.config);
+      console.log('📊 自定义图表 ECharts Options:', JSON.stringify(chart.config, null, 2));
       return (
         <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
           <EChartsWrapper 
@@ -1864,10 +1863,12 @@ export function ChartsMain() {
     
     switch (chart.type) {
       case 'bar':
+        const barOptions = generateEChartsConfig(chart.data, 'bar');
+
         return (
           <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
-              spec={generateEChartsConfig(chart.data, 'bar')} 
+              spec={barOptions} 
               onError={(error) => {
                 console.error('ECharts 渲染错误:', error);
                 toast.error('柱状图渲染失败');
@@ -1877,10 +1878,13 @@ export function ChartsMain() {
         );
       
             case 'pie':
+        const pieOptions = generateEChartsConfig(chart.data, 'pie');
+        console.log('📊 饼图 原始数据 chart.data:', chart.data);
+        console.log('📊 饼图 ECharts Options:', JSON.stringify(pieOptions, null, 2));
         return (
           <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
-              spec={generateEChartsConfig(chart.data, 'pie')}
+              spec={pieOptions}
               onError={(error) => {
                 console.error('ECharts 渲染错误:', error);
                 toast.error('饼图渲染失败');
@@ -1890,10 +1894,13 @@ export function ChartsMain() {
         );
       
             case 'line':
+        const lineOptions = generateEChartsConfig(chart.data, 'line');
+        console.log('📊 折线图 原始数据 chart.data:', chart.data);
+        console.log('📊 折线图 ECharts Options:', JSON.stringify(lineOptions, null, 2));
         return (
           <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
-              spec={generateEChartsConfig(chart.data, 'line')}
+              spec={lineOptions}
               onError={(error) => {
                 console.error('ECharts 渲染错误:', error);
                 toast.error('折线图渲染失败');
@@ -1903,10 +1910,13 @@ export function ChartsMain() {
         );
       
             case 'area':
+        const areaOptions = generateEChartsConfig(chart.data, 'line');
+        console.log('📊 面积图 原始数据 chart.data:', chart.data);
+        console.log('📊 面积图 ECharts Options:', JSON.stringify(areaOptions, null, 2));
         return (
           <div className="w-full h-[400px] sm:h-[500px] lg:h-[550px] min-h-[300px]">
             <EChartsWrapper 
-              spec={generateEChartsConfig(chart.data, 'line')} // area图使用line类型但填充区域
+              spec={areaOptions}
               onError={(error) => {
                 console.error('ECharts 渲染错误:', error);
                 toast.error('面积图渲染失败');

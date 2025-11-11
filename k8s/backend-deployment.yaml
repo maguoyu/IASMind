@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iasmind-backend
+  namespace: iasmind
+  labels:
+    app.kubernetes.io/name: iasmind-backend
+    app.kubernetes.io/part-of: iasmind
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iasmind-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: iasmind-backend
+        app.kubernetes.io/part-of: iasmind
+    spec:
+      imagePullSecrets:
+        - name: harbor-registry
+      containers:
+        - name: backend
+          image: 172.20.0.113/ias/iasmind-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: iasmind-config
+          volumeMounts:
+            - name: config
+              mountPath: /app/conf.yaml
+              subPath: conf.yaml
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: config
+          configMap:
+            name: iasmind-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iasmind-backend
+  namespace: iasmind
+  labels:
+    app.kubernetes.io/name: iasmind-backend
+    app.kubernetes.io/part-of: iasmind
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: iasmind-backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+
+
+

@@ -238,13 +238,13 @@ export interface MetadataSearchResponse {
 
 // 数据源API类
 export class DataSourceApi {
-  private baseUrl = resolveServiceURL('/api/datasources');
+  private basePath = '/api/datasources';  // 只存储路径，不解析
 
   /**
    * 获取所有数据源
    */
   async getAll(): Promise<DataSource[]> {
-    const response = await apiClient.get(this.baseUrl);
+    const response = await apiClient.get(this.basePath);
     return response.data;
   }
 
@@ -252,7 +252,7 @@ export class DataSourceApi {
    * 根据ID获取数据源
    */
   async getById(id: string): Promise<DataSource> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}`);
+    const response = await apiClient.get(`${this.basePath}/${id}`);
     return response.data;
   }
 
@@ -260,7 +260,7 @@ export class DataSourceApi {
    * 创建数据源
    */
   async create(data: DataSourceCreate): Promise<DataSource> {
-    const response = await apiClient.post(this.baseUrl, data);
+    const response = await apiClient.post(this.basePath, data);
     return response.data;
   }
 
@@ -268,7 +268,7 @@ export class DataSourceApi {
    * 更新数据源
    */
   async update(id: string, data: DataSourceUpdate): Promise<DataSource> {
-    const response = await apiClient.put(`${this.baseUrl}/${id}`, data);
+    const response = await apiClient.put(`${this.basePath}/${id}`, data);
     return response.data;
   }
 
@@ -276,14 +276,14 @@ export class DataSourceApi {
    * 删除数据源
    */
   async delete(id: string): Promise<void> {
-    await apiClient.delete(`${this.baseUrl}/${id}`);
+    await apiClient.delete(`${this.basePath}/${id}`);
   }
 
   /**
    * 测试数据源连接
    */
   async testConnection(id: string): Promise<ConnectionTestResponse> {
-    const response = await apiClient.post(`${this.baseUrl}/${id}/test`);
+    const response = await apiClient.post(`${this.basePath}/${id}/test`);
     return response.data;
   }
 
@@ -291,7 +291,7 @@ export class DataSourceApi {
    * 使用参数测试连接（不保存）
    */
   async testConnectionParams(data: DataSourceCreate): Promise<ConnectionTestResponse> {
-    const response = await apiClient.post(`${this.baseUrl}/test-connection`, data);
+    const response = await apiClient.post(`${this.basePath}/test-connection`, data);
     return response.data;
   }
 
@@ -299,7 +299,7 @@ export class DataSourceApi {
    * 获取数据源中的表列表
    */
   async getTables(id: string): Promise<TablesResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/tables`);
+    const response = await apiClient.get(`${this.basePath}/${id}/tables`);
     return response.data;
   }
 
@@ -307,7 +307,7 @@ export class DataSourceApi {
    * 获取指定表的列信息
    */
   async getTableColumns(id: string, tableName: string): Promise<ColumnsResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/tables/${tableName}/columns`);
+    const response = await apiClient.get(`${this.basePath}/${id}/tables/${tableName}/columns`);
     return response.data;
   }
 
@@ -316,7 +316,7 @@ export class DataSourceApi {
    * @param id 数据源ID
    */
   async getMetadata(id: string): Promise<MetadataResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/realtime`);
+    const response = await apiClient.get(`${this.basePath}/${id}/metadata/realtime`);
     return response.data;
   }
 
@@ -325,7 +325,7 @@ export class DataSourceApi {
    * 总是从数据源实时查询最新的元数据信息
    */
   async getMetadataRealtime(id: string): Promise<MetadataResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/realtime`);
+    const response = await apiClient.get(`${this.basePath}/${id}/metadata/realtime`);
     return response.data;
   }
 
@@ -333,7 +333,7 @@ export class DataSourceApi {
    * 向量化数据源元数据
    */
   async vectorizeMetadata(id: string, request: VectorizeRequest): Promise<VectorizeResponse> {
-    const response = await apiClient.post(`${this.baseUrl}/${id}/metadata/vectorize`, request);
+    const response = await apiClient.post(`${this.basePath}/${id}/metadata/vectorize`, request);
     return response.data;
   }
 
@@ -341,7 +341,7 @@ export class DataSourceApi {
    * 获取元数据向量化状态
    */
   async getVectorizeStatus(id: string): Promise<VectorizeStatusResponse> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/vectorize/status`);
+    const response = await apiClient.get(`${this.basePath}/${id}/metadata/vectorize/status`);
     return response.data;
   }
 
@@ -349,7 +349,7 @@ export class DataSourceApi {
    * 删除数据源的元数据向量
    */
   async deleteMetadataVectors(id: string): Promise<{ success: boolean; message: string; deleted_count: number }> {
-    const response = await apiClient.delete(`${this.baseUrl}/${id}/metadata/vectors`);
+    const response = await apiClient.delete(`${this.basePath}/${id}/metadata/vectors`);
     return response.data;
   }
 
@@ -357,7 +357,7 @@ export class DataSourceApi {
    * 搜索元数据向量（为text2sql提供支撑）
    */
   async searchMetadataVectors(request: MetadataSearchRequest): Promise<MetadataSearchResponse> {
-    const response = await apiClient.post(`${this.baseUrl}/metadata/search`, request);
+    const response = await apiClient.post(`${this.basePath}/metadata/search`, request);
     return response.data;
   }
 
@@ -365,7 +365,7 @@ export class DataSourceApi {
    * 获取元数据向量统计信息
    */
   async getVectorizeStats(id: string): Promise<{ success: boolean; stats: any; message: string }> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}/metadata/vectorize/stats`);
+    const response = await apiClient.get(`${this.basePath}/${id}/metadata/vectorize/stats`);
     return response.data;
   }
 }

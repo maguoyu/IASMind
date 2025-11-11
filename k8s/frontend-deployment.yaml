@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iasmind-frontend
+  namespace: iasmind
+  labels:
+    app.kubernetes.io/name: iasmind-frontend
+    app.kubernetes.io/part-of: iasmind
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: iasmind-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: iasmind-frontend
+        app.kubernetes.io/part-of: iasmind
+    spec:
+      imagePullSecrets:
+        - name: harbor-registry
+      containers:
+        - name: frontend
+          image: 172.20.0.113/ias/iasmind-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: iasmind-config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iasmind-frontend
+  namespace: iasmind
+  labels:
+    app.kubernetes.io/name: iasmind-frontend
+    app.kubernetes.io/part-of: iasmind
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: iasmind-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+

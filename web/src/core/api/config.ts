@@ -40,13 +40,24 @@ export const apiClient = {
   async get<T = any>(endpoint: string, options: { params?: Record<string, any> } = {}): Promise<ApiResponse<T>> {
     return ApiResponseHandler.wrap(async () => {
       try {
-        const url = new URL(resolveServiceURL(endpoint));
+        // 构建基础 URL
+        let url = resolveServiceURL(endpoint);
+        
+        // 使用 URLSearchParams 构建查询字符串
         if (options.params) {
+          const searchParams = new URLSearchParams();
           Object.entries(options.params).forEach(([key, value]) => {
             if (value !== undefined && value !== null) {
-              url.searchParams.append(key, String(value));
+              searchParams.append(key, String(value));
             }
           });
+          
+          const queryString = searchParams.toString();
+          if (queryString) {
+            // 检查 URL 是否已包含查询参数
+            const separator = url.includes('?') ? '&' : '?';
+            url = `${url}${separator}${queryString}`;
+          }
         }
 
         // 添加认证令牌
@@ -59,7 +70,7 @@ export const apiClient = {
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const response = await fetch(url.toString(), {
+        const response = await fetch(url, {
           method: 'GET',
           headers,
         });

@@ -1,0 +1,59 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: iasmind-ingress
+  namespace: iasmind
+  labels:
+    app.kubernetes.io/name: iasmind
+    app.kubernetes.io/part-of: iasmind
+  annotations:
+    # Nginx Ingress Controller 配置
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # 如果需要 CORS 支持，取消下面的注释
+    # nginx.ingress.kubernetes.io/enable-cors: "true"
+    # nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    # nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    # nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+spec:
+  ingressClassName: nginx  # 根据实际使用的 Ingress Controller 调整（nginx, traefik, istio 等）
+  rules:
+    # 使用域名访问（推荐）
+    - host: iasmind.k8s.com  # 修改为实际域名，如 iasmind.example.com
+      http:
+        paths:
+          # 后端 API 服务 - 必须在前面，因为路径更具体
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: iasmind-backend
+                port:
+                  number: 8000
+          # 前端服务 - 根路径（匹配所有其他路径）
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: iasmind-frontend
+                port:
+                  number: 3000
+    # 如果使用 IP 访问（无域名），取消下面的注释并注释掉上面的 host 规则
+    # - http:
+    #     paths:
+    #       # 后端 API 服务
+    #       - path: /api
+    #         pathType: Prefix
+    #         backend:
+    #           service:
+    #             name: iasmind-backend
+    #             port:
+    #               number: 8000
+    #       # 前端服务
+    #       - path: /
+    #         pathType: Prefix
+    #         backend:
+    #           service:
+    #             name: iasmind-frontend
+    #             port:
+    #               number: 3000
+

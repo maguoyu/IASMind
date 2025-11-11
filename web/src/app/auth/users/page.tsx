@@ -1,5 +1,8 @@
 "use client";
 
+// 禁用静态预渲染，因为这是一个需要认证的页面
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '~/components/ui/button';
 import { Input } from '~/components/ui/input';

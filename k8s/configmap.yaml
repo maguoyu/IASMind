@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iasmind-config
+  namespace: iasmind
+  labels:
+    app.kubernetes.io/name: iasmind
+    app.kubernetes.io/part-of: iasmind
+data:
+  # conf.yaml 配置文件
+  conf.yaml: |
+    # [!NOTE]
+    # Read the `docs/configuration_guide.md` carefully, and update the
+    # configurations to match your specific settings and requirements.
+    # - Replace `api_key` with your own credentials.
+    # - Replace `base_url` and `model` name if you want to use a custom model.
+    # - A restart is required every time you change the `config.yaml` file.
+    #BASIC_MODEL:
+    #  base_url: https://ark.cn-beijing.volces.com/api/v3/
+    #  model: "doubao-1-5-pro-32k-250115"
+    #  api_key: 52a5d4ec-886d-4b5c-bf69-baf31a0f9f9b
+    BASIC_MODEL:
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      model: "qwen3-max-preview"
+      api_key: sk-05bacb2bd6bf45ba98306a21cfe8c356
+
+    # Reasoning model is optional.
+    # Uncomment the following settings if you want to use reasoning model
+    # for planning.
+
+    # REASONING_MODEL:
+    #   base_url: https://ark-cn-beijing.bytedance.net/api/v3
+    #   model: "doubao-1-5-thinking-pro-m-250428"
+    #   api_key: xxxx
+    MINIO:
+      endpoint: "172.20.0.112:9000"  # MinIO server address and port
+      access_key: "minioadmin"        # Access key
+      secret_key: "minioadmin"        # Secret key
+      secure: false                   # Use HTTPS (true) or HTTP (false)
+      default_bucket: "ias-mind"      # Default bucket name
+
+  # ==================== 应用设置 ====================
+  DEBUG: "True"
+  APP_ENV: "development"
+  NODE_ENV: "production"
+  DOCKER_CONTAINER: "true"
+  AGENT_RECURSION_LIMIT: "30"
+
+  # ==================== API 配置 ====================
+  NEXT_PUBLIC_API_URL: "http://172.20.0.201:8000/api"
+
+  # ==================== 搜索引擎配置 ====================
+  # 支持的搜索引擎: tavily (推荐), duckduckgo, brave_search, arxiv, searxng
+  SEARCH_API: "searxng"
+  TAVILY_API_KEY: "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"
+  SEARX_HOST: "http://172.20.0.116:8080/"
+  # BRAVE_SEARCH_API_KEY: "xxx"  # 仅在 SEARCH_API 为 brave_search 时需要
+  # JINA_API_KEY: "jina_xxx"  # 可选，默认为 None
+
+  # ==================== RAG 配置 ====================
+  # RAG 提供商: ragflow 或 local_milvus
+  RAG_PROVIDER: "local_milvus"
+  MILVUS_URL: "http://172.20.0.112:19530"
+  DOC_COLLECTION_NAME: "ias_docs"
+  METADATA_COLLECTION_NAME: "metadata_vectors"
+  
+  # Ollama Embedding 模型配置（用于向量化）
+  # 推荐模型：
+  # - bge-m3: 中文效果最佳，支持长文档(8192 tokens)，多模态检索
+  # - bge-large-zh-v1.5: 纯中文优化，速度快
+  # - mxbai-embed-large: 多语言支持
+  # - nomic-embed-text: 英文为主
+  OLLAMA_EMBEDDING_URL: "http://172.20.0.113:11434"
+  OLLAMA_EMBEDDING_MODEL: "bge-m3"
+  
+  # RAGFlow 配置（可选）
+  # RAGFLOW_API_URL: "http://localhost:9388"
+  # RAGFLOW_API_KEY: "ragflow-xxx"
+  # RAGFLOW_RETRIEVAL_SIZE: "10"
+
+  # ==================== 数据库配置 ====================
+  # MySQL 数据库配置
+  MYSQL_HOST: "172.20.0.113"
+  MYSQL_PORT: "3306"
+  MYSQL_USER: "root"
+  MYSQL_PASSWORD: "1q2w3e4r"
+  MYSQL_DATABASE: "ias_mind"
+  MYSQL_CHARSET: "utf8mb4"
+
+  # Redis 配置
+  REDIS_HOST: "172.20.0.111"
+  REDIS_PORT: "6379"
+  REDIS_DB: "2"
+  REDIS_SSL: "false"
+  # REDIS_PASSWORD: "your_redis_password_here"
+
+  # ==================== 文件路径配置 ====================
+  FILE_PATH: "E:/work/code/langchain/file/"
+  EXPLORATION_FILE_PATH: "E:/work/code/langchain/file/exploration/"
+
+  # ==================== n8n 工作流配置 ====================
+  N8N_API_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmZTJjMTEwYi1mZjUzLTQyY2UtOGM2MC01MTczYmZmMzVkNTgiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYxMTk5NzU5fQ.WTMgxBMcX5AB4Its1koZn0xDZK710x7rj52YFZNDeE8"
+  # N8N_API_URL: "http://172.20.0.113:15678/api/v1"
+  # N8N_WEBHOOK_URL: "http://172.20.0.113:15678"
+
+  # ==================== 火山引擎 TTS 配置（可选）====================
+  # 用于生成播客的语音合成
+  # VOLCENGINE_TTS_APPID: "xxx"
+  # VOLCENGINE_TTS_ACCESS_TOKEN: "xxx"
+  # VOLCENGINE_TTS_CLUSTER: "volcano_tts"  # 可选，默认为 volcano_tts
+  # VOLCENGINE_TTS_VOICE_TYPE: "BV700_V2_streaming"  # 可选，默认为 BV700_V2_streaming
+
+  # ==================== LangSmith 追踪和监控配置（可选）====================
+  # LANGSMITH_TRACING: "true"
+  # LANGSMITH_ENDPOINT: "https://api.smith.langchain.com"
+  # LANGSMITH_API_KEY: "xxx"
+  # LANGSMITH_PROJECT: "xxx"
+
+  # [!NOTE]
+  # 关于模型设置和其他配置，请参考 `docs/configuration_guide.md`

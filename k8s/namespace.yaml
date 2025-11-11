@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iasmind
+  labels:
+    app.kubernetes.io/name: iasmind
+    app.kubernetes.io/part-of: iasmind
+*** End Patch
+
+

@@ -1,26 +1,28 @@
 ##### DEPENDENCIES
 
-FROM node:20-alpine AS deps
+FROM node:20.18.0-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 
 # Install dependencies based on the preferred package manager
 
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml\* ./
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 
 RUN \
     if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
     elif [ -f package-lock.json ]; then npm ci; \
-    elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm i; \
-    else echo "Lockfile not found." && exit 1; \
+    elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm i --frozen-lockfile; \
+    else npm install -g pnpm && pnpm install; \
     fi
 
 ##### BUILDER
 
-FROM node:20-alpine AS builder
+FROM node:20.18.0-alpine AS builder
 WORKDIR /app
 ARG NEXT_PUBLIC_API_URL
+# 将 ARG 转换为 ENV，这样 Next.js 构建时才能使用
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -30,7 +32,7 @@ RUN \
     if [ -f yarn.lock ]; then SKIP_ENV_VALIDATION=1 yarn build; \
     elif [ -f package-lock.json ]; then SKIP_ENV_VALIDATION=1 npm run build; \
     elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && SKIP_ENV_VALIDATION=1 pnpm run build; \
-    else echo "Lockfile not found." && exit 1; \
+    else npm install -g pnpm && SKIP_ENV_VALIDATION=1 pnpm run build; \
     fi
 
 ##### RUNNER

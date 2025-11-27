@@ -1,0 +1,22 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- 机身主体 -->
+    <ellipse cx="24" cy="24" rx="14" ry="3.5" fill="#1890ff" stroke="#fff" stroke-width="2.5"/>
+    <!-- 机头 - 尖形流线型 -->
+    <path d="M10,24 L10,20.5 Q10,19 11.5,19 L13,20.5 L13,27.5 L11.5,29 Q10,29 10,27.5 Z" 
+          fill="#1890ff" stroke="#fff" stroke-width="2.5"/>
+    <!-- 主翼 - 大而明显，类似真实飞机 -->
+    <path d="M16,20.5 L6,12 L4,13 L14,21.5 Z" fill="#1890ff" stroke="#fff" stroke-width="2"/>
+    <path d="M16,27.5 L6,36 L4,35 L14,26.5 Z" fill="#1890ff" stroke="#fff" stroke-width="2"/>
+    <!-- 尾翼 -->
+    <path d="M32,20.5 L42,16 L44,17 L34,21.5 Z" fill="#1890ff" stroke="#fff" stroke-width="2"/>
+    <path d="M32,27.5 L42,32 L44,31 L34,26.5 Z" fill="#1890ff" stroke="#fff" stroke-width="2"/>
+    <!-- 垂直尾翼 -->
+    <path d="M34,20.5 L36,14 L36,24 L34,27.5 Z" fill="#1890ff" stroke="#fff" stroke-width="2"/>
+    <!-- 舷窗 -->
+    <circle cx="18" cy="24" r="2.5" fill="#fff"/>
+    <circle cx="24" cy="24" r="2.5" fill="#fff"/>
+    <circle cx="30" cy="24" r="2.5" fill="#fff"/>
+  </g>
+</svg>
+

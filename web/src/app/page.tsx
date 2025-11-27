@@ -8,6 +8,7 @@ import {
   BarChartOutlined,
   BookOutlined,
   BulbOutlined,
+  CarOutlined,
   DatabaseOutlined,
   FileTextOutlined,
   LineChartOutlined,
@@ -86,6 +87,13 @@ export default function HomePage() {
       description: "通过可视化智能工作流编排自动化任务和业务流程",
       icon: <ApartmentOutlined className="text-2xl" />,
       href: "/n8n",
+      color: "bg-gradient-to-br from-purple-500 to-violet-600"
+    },
+    {
+      title: "自动派工",
+      description: "航油加油车自动派工系统",
+      icon: <CarOutlined className="text-2xl" />,
+      href: "/auto_dispatch",
       color: "bg-gradient-to-br from-purple-500 to-violet-600"
     },
     {

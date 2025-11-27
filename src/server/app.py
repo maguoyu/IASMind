@@ -27,6 +27,7 @@ from src.server.routers.database_analysis_router import router as database_analy
 from src.server.routers.charts_router import router as charts_router
 from src.server.routers.file_router import router as file_router
 from src.server.routers.n8n_router import router as n8n_router
+from src.server.routers.auto_dispatch_router import router as auto_dispatch_router
 from src.utils.memory import ensure_redis_memory_initialized
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ app.include_router(datasource_router)
 app.include_router(database_analysis_router)
 app.include_router(file_router)
 app.include_router(n8n_router)
+app.include_router(auto_dispatch_router)
 
 
 @app.on_event("startup")

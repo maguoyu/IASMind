@@ -88,9 +88,9 @@ data:
   MYSQL_CHARSET: "utf8mb4"
 
   # Redis 配置
-  REDIS_HOST: "172.20.0.111"
+  REDIS_HOST: "172.20.0.112"
   REDIS_PORT: "6379"
-  REDIS_DB: "2"
+  REDIS_DB: "0"
   REDIS_SSL: "false"
   # REDIS_PASSWORD: "your_redis_password_here"
 

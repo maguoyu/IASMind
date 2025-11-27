@@ -27,6 +27,7 @@ from src.server.routers.database_analysis_router import router as database_analy
 from src.server.routers.charts_router import router as charts_router
 from src.server.routers.file_router import router as file_router
 from src.server.routers.n8n_router import router as n8n_router
+from src.utils.memory import ensure_redis_memory_initialized
 
 logger = logging.getLogger(__name__)
 
@@ -67,3 +68,14 @@ app.include_router(datasource_router)
 app.include_router(database_analysis_router)
 app.include_router(file_router)
 app.include_router(n8n_router)
+
+
+@app.on_event("startup")
+async def initialize_dependencies():
+    """应用启动时初始化Redis检查点索引。"""
+    try:
+        await ensure_redis_memory_initialized()
+        logger.info("Redis检查点初始化成功")
+    except Exception as exc:
+        logger.exception("Redis检查点初始化失败: %s", exc)
+        raise

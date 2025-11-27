@@ -5,6 +5,6 @@ metadata:
   labels:
     app.kubernetes.io/name: iasmind
     app.kubernetes.io/part-of: iasmind
-*** End Patch
+
 
 
